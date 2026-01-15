@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import fastifyFormBody from '@fastify/formbody';
 import fastifyWs from '@fastify/websocket';
 import OpenAI from 'openai';
+import fs from 'fs';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -25,7 +26,7 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
 // Constants
-const SYSTEM_MESSAGE = 'You are a helpful and bubbly AI assistant who loves to chat about anything the user is interested about and is prepared to offer them facts. You have a penchant for dad jokes, owl jokes, and rickrolling – subtly. Always stay positive, but work in a joke when appropriate.';
+const SYSTEM_MESSAGE = 'You are a voice-only assistant on a phone call using the OpenAI Realtime API. Always answer questions about people, places, organizations, events, dates, numbers, current affairs, or other factual topics using information provided by the web search tool. Do not answer from memory. First call the tool named "GPT-web-search" with a concise "query" that captures the user\'s request (include "user_location" when the user\'s location is relevant or specified). After making the tool call, wait for a "function_call_output" item before speaking. Base your answer solely on the web search results; keep responses concise and conversational for audio (2–4 sentences) and favor up-to-date facts. If results are empty or inconclusive, say you couldn\'t find reliable information and ask a brief clarifying question. For non-factual chit-chat (greetings, small talk, jokes), you may respond naturally without calling the tool.';
 const VOICE = 'alloy';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 5050; // Allow dynamic port assignment
@@ -33,8 +34,8 @@ const PORT = process.env.PORT || 5050; // Allow dynamic port assignment
 // Waiting music configuration (optional)
 const ENABLE_WAIT_MUSIC = process.env.ENABLE_WAIT_MUSIC === 'true';
 const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 700);
-const WAIT_MUSIC_FREQ_HZ = Number(process.env.WAIT_MUSIC_FREQ_HZ || 440);
 const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
+const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.mp3
 
 // List of Event Types to log to the console. See the OpenAI Realtime API Documentation: https://platform.openai.com/docs/api-reference/realtime
 const LOG_EVENT_TYPES = [
@@ -90,7 +91,73 @@ fastify.register(async (fastify) => {
         let waitingMusicInterval = null;
         let waitingMusicStartTimeout = null;
         let toolCallInProgress = false;
-        let sinePhase = 0;
+        // ffmpeg removed; we only support WAV files and tone fallback
+        let waitingMusicUlawBuffer = null;
+        let waitingMusicOffset = 0;
+        // Parse a WAV file and convert to µ-law (PCMU) 8kHz mono bytes
+        function parseWavToUlaw(filePath) {
+            const buf = fs.readFileSync(filePath);
+            if (buf.length < 44) throw new Error('WAV file too small');
+            if (buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WAVE') {
+                throw new Error('Not a RIFF/WAVE file');
+            }
+            let pos = 12;
+            let audioFormat = null;
+            let numChannels = null;
+            let sampleRate = null;
+            let bitsPerSample = null;
+            let dataOffset = null;
+            let dataSize = null;
+            while (pos + 8 <= buf.length) {
+                const chunkId = buf.toString('ascii', pos, pos + 4);
+                const chunkSize = buf.readUInt32LE(pos + 4);
+                if (chunkId === 'fmt ') {
+                    audioFormat = buf.readUInt16LE(pos + 8);
+                    numChannels = buf.readUInt16LE(pos + 10);
+                    sampleRate = buf.readUInt32LE(pos + 12);
+                    bitsPerSample = buf.readUInt16LE(pos + 22);
+                } else if (chunkId === 'data') {
+                    dataOffset = pos + 8;
+                    dataSize = chunkSize;
+                }
+                pos += 8 + chunkSize;
+            }
+            if (audioFormat !== 1) throw new Error('WAV must be PCM');
+            if (bitsPerSample !== 16) throw new Error('WAV must be 16-bit');
+            if (!dataOffset || !dataSize) throw new Error('WAV data chunk not found');
+            const bytesPerSample = 2; // 16-bit PCM
+            const frames = Math.floor(dataSize / (bytesPerSample * numChannels));
+            const monoSamples = new Int16Array(frames);
+            // Downmix to mono
+            for (let i = 0; i < frames; i++) {
+                let sum = 0;
+                for (let ch = 0; ch < numChannels; ch++) {
+                    const off = dataOffset + (i * numChannels + ch) * 2;
+                    const s = buf.readInt16LE(off);
+                    sum += s;
+                }
+                const avg = Math.max(-32768, Math.min(32767, Math.floor(sum / numChannels)));
+                monoSamples[i] = avg;
+            }
+            // Resample to 8000 Hz using linear interpolation
+            const srcRate = sampleRate;
+            const dstRate = 8000;
+            const ratio = dstRate / srcRate;
+            const outLen = Math.max(1, Math.floor(monoSamples.length * ratio));
+            const ulawBytes = Buffer.alloc(outLen);
+            for (let oi = 0; oi < outLen; oi++) {
+                const srcIndex = oi / ratio; // map dst->src
+                const i0 = Math.floor(srcIndex);
+                const frac = srcIndex - i0;
+                const s0 = monoSamples[i0] || 0;
+                const s1 = monoSamples[i0 + 1] || s0;
+                let s = s0 + frac * (s1 - s0);
+                // Apply volume scalar
+                s = Math.max(-32768, Math.min(32767, Math.floor(s * WAIT_MUSIC_VOLUME)));
+                ulawBytes[oi] = linearToMuLaw(s);
+            }
+            return ulawBytes;
+        }
 
         // Convert 16-bit PCM linear sample to 8-bit mu-law (PCMU)
         function linearToMuLaw(s16) {
@@ -115,26 +182,40 @@ fastify.register(async (fastify) => {
         function startWaitingMusic() {
             if (!ENABLE_WAIT_MUSIC || !streamSid || isWaitingMusic) return;
             isWaitingMusic = true;
-            if (!waitingMusicInterval) {
-                waitingMusicInterval = setInterval(() => {
-                    if (!isWaitingMusic || !streamSid) return;
-                    const frameSize = 160; // 20ms @ 8kHz mono
-                    const sampleRate = 8000;
-                    const freq = WAIT_MUSIC_FREQ_HZ;
-                    const volume = WAIT_MUSIC_VOLUME;
-                    const bytes = new Uint8Array(frameSize);
-                    for (let i = 0; i < frameSize; i++) {
-                        const sample = Math.sin(sinePhase) * volume;
-                        const pcm = Math.max(-1, Math.min(1, sample));
-                        const s16 = Math.floor(pcm * 32767);
-                        bytes[i] = linearToMuLaw(s16);
-                        sinePhase += (2 * Math.PI * freq) / sampleRate;
-                        if (sinePhase > 1e9) sinePhase = sinePhase % (2 * Math.PI);
+            // If audio file is provided and exists
+            if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
+                try {
+                    if (WAIT_MUSIC_FILE.toLowerCase().endsWith('.wav')) {
+                        // Parse WAV and pre-encode to µ-law buffer
+                        waitingMusicUlawBuffer = parseWavToUlaw(WAIT_MUSIC_FILE);
+                        waitingMusicOffset = 0;
+                        if (!waitingMusicInterval) {
+                            waitingMusicInterval = setInterval(() => {
+                                if (!isWaitingMusic || !streamSid || !waitingMusicUlawBuffer || waitingMusicUlawBuffer.length < 160) return;
+                                const frameSize = 160; // 20ms @ 8kHz mono
+                                let end = waitingMusicOffset + frameSize;
+                                let frame;
+                                if (end <= waitingMusicUlawBuffer.length) {
+                                    frame = waitingMusicUlawBuffer.subarray(waitingMusicOffset, end);
+                                } else {
+                                    const first = waitingMusicUlawBuffer.subarray(waitingMusicOffset);
+                                    const rest = waitingMusicUlawBuffer.subarray(0, end - waitingMusicUlawBuffer.length);
+                                    frame = Buffer.concat([first, rest]);
+                                }
+                                waitingMusicOffset = end % waitingMusicUlawBuffer.length;
+                                const payload = frame.toString('base64');
+                                connection.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }));
+                            }, 20);
+                        }
+                    } else {
+                        // Non-WAV files are not supported without ffmpeg; will fall back to tone
                     }
-                    const payload = Buffer.from(bytes).toString('base64');
-                    connection.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }));
-                }, 20);
+                } catch (e) {
+                    console.error('Failed to load waiting music file, falling back to tone:', e);
+                }
             }
+
+            // No fallback tone; only WAV file is supported for waiting music.
         }
 
         function stopWaitingMusic() {
@@ -145,6 +226,9 @@ fastify.register(async (fastify) => {
             if (isWaitingMusic) {
                 isWaitingMusic = false;
             }
+            // Remove unused buffer since ffmpeg is not used
+            waitingMusicUlawBuffer = null;
+            waitingMusicOffset = 0;
         }
 
         function clearWaitingMusicInterval() {
@@ -202,7 +286,7 @@ fastify.register(async (fastify) => {
                         },
                      }],
                     input: query,
-                    truncations: 'auto',
+                    truncation: 'auto',
                 });
 
                 console.log('Web search result:', result.output_text);

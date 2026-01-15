@@ -97,11 +97,13 @@ Enable via environment flags in `.env`:
 ```
 ENABLE_WAIT_MUSIC=true
 WAIT_MUSIC_THRESHOLD_MS=700
-WAIT_MUSIC_FREQ_HZ=440
 WAIT_MUSIC_VOLUME=0.12
+WAIT_MUSIC_FILE=melodyloops-relaxing-jazz.wav
 ```
 
 Notes:
 - Audio is PCMU (G.711 µ-law), 8 kHz, mono; frames are sent at ~20 ms cadence to Twilio.
 - Music starts after `WAIT_MUSIC_THRESHOLD_MS` when a tool call begins and stops on the first assistant `response.output_audio.delta`, on `input_audio_buffer.speech_started`, and at cleanup.
 - Adjust `WAIT_MUSIC_FREQ_HZ` and `WAIT_MUSIC_VOLUME` to taste. Keep volume low to avoid distraction and clipping.
+
+Provide a `.wav` file; the app parses WAV directly (PCM 16-bit) and downmixes/resamples to 8 kHz mono in-process, then streams PCMU frames. Non-WAV files are not supported.
