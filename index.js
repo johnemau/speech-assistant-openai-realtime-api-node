@@ -31,6 +31,31 @@ const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 5050; // Allow dynamic port assignment
 
+// Allowed callers (E.164). Configure via env `ALLOWED_CALLERS` as comma-separated numbers.
+// Defaults to the three numbers provided.
+function normalizeUSNumberToE164(input) {
+    if (!input) return null;
+    // Remove non-digits except leading +
+    const trimmed = String(input).trim();
+    if (trimmed.startsWith('+')) {
+        // Keep only + and digits
+        const normalized = '+' + trimmed.replace(/[^0-9]/g, '');
+        return normalized;
+    }
+    // Strip all non-digits
+    const digits = trimmed.replace(/[^0-9]/g, '');
+    if (!digits) return null;
+    // Ensure leading country code 1 for US
+    const withCountry = digits.startsWith('1') ? digits : ('1' + digits);
+    return '+' + withCountry;
+}
+
+const ALLOWED_CALLERS = (process.env.ALLOWED_CALLERS || '')
+    .split(',')
+    .map(s => normalizeUSNumberToE164(s))
+    .filter(Boolean);
+const ALLOWED_CALLERS_SET = new Set(ALLOWED_CALLERS);
+
 // Waiting music configuration (optional)
 const ENABLE_WAIT_MUSIC = process.env.ENABLE_WAIT_MUSIC === 'true';
 const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 700);
@@ -61,6 +86,19 @@ fastify.get('/', async (request, reply) => {
 // Route for Twilio to handle incoming calls
 // <Say> punctuation to improve text-to-speech translation
 fastify.all('/incoming-call', async (request, reply) => {
+    const fromRaw = request.body?.From || request.body?.from || request.body?.Caller;
+    const fromE164 = normalizeUSNumberToE164(fromRaw);
+    console.log('Incoming call from:', fromRaw, '=>', fromE164);
+
+    if (!fromE164 || !ALLOWED_CALLERS_SET.has(fromE164)) {
+        const denyTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+                          <Response>
+                              <Say voice="Google.en-US-Chirp3-HD-Aoede">Sorry, this line is restricted. Goodbye.</Say>
+                              <Hangup/>
+                          </Response>`;
+        return reply.type('text/xml').send(denyTwiml);
+    }
+
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
                               <Say voice="Google.en-US-Chirp3-HD-Aoede">Please wait while we connect your call to the A. I. voice assistant, powered by Twilio and the Open A I Realtime API</Say>
@@ -316,30 +354,6 @@ fastify.register(async (fastify) => {
 
             console.log('Sending session update:', JSON.stringify(sessionUpdate));
             openAiWs.send(JSON.stringify(sessionUpdate));
-
-            // Uncomment the following line to have AI speak first:
-            // sendInitialConversationItem();
-        };
-
-        // Send initial conversation item if AI talks first
-        const sendInitialConversationItem = () => {
-            const initialConversationItem = {
-                type: 'conversation.item.create',
-                item: {
-                    type: 'message',
-                    role: 'user',
-                    content: [
-                        {
-                            type: 'input_text',
-                            text: 'Greet the user with "Hello there! I am an AI voice assistant powered by Twilio and the OpenAI Realtime API. You can ask me for facts, jokes, or anything you can imagine. How can I help you?"'
-                        }
-                    ]
-                }
-            };
-
-            if (SHOW_TIMING_MATH) console.log('Sending initial conversation item:', JSON.stringify(initialConversationItem));
-            openAiWs.send(JSON.stringify(initialConversationItem));
-            openAiWs.send(JSON.stringify({ type: 'response.create' }));
         };
 
         // Handle interruption when the caller's speech starts
