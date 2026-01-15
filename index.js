@@ -27,7 +27,7 @@ fastify.register(fastifyWs);
 
 // Constants
 const SYSTEM_MESSAGE = 'You are a voice-only assistant on a phone call using the OpenAI Realtime API. Always answer questions about people, places, organizations, events, dates, numbers, current affairs, or other factual topics using information provided by the web search tool. Do not answer from memory. First call the tool named "GPT-web-search" with a concise "query" that captures the user\'s request (include "user_location" when the user\'s location is relevant or specified). After making the tool call, wait for a "function_call_output" item before speaking. Base your answer solely on the web search results; keep responses concise and conversational for audio (2–4 sentences) and favor up-to-date facts. If results are empty or inconclusive, say you couldn\'t find reliable information and ask a brief clarifying question. For non-factual chit-chat (greetings, small talk, jokes), you may respond naturally without calling the tool.';
-const VOICE = 'alloy';
+const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 5050; // Allow dynamic port assignment
 
