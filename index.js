@@ -3,6 +3,7 @@ import WebSocket from 'ws';
 import dotenv from 'dotenv';
 import fastifyFormBody from '@fastify/formbody';
 import fastifyWs from '@fastify/websocket';
+import OpenAI from 'openai';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -14,6 +15,9 @@ if (!OPENAI_API_KEY) {
     console.error('Missing OpenAI API key. Please set it in the .env file.');
     process.exit(1);
 }
+
+// Initialize OpenAI client
+const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // Initialize Fastify
 const fastify = Fastify();
@@ -81,6 +85,41 @@ fastify.register(async (fastify) => {
             }
         });
 
+        // Define the GPT-web-search tool
+        const gptWebSearchTool = {
+            type: 'function',
+            name: 'GPT-web-search',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: {
+                        type: 'string',
+                        description: "The user's question or topic to research across the live web."
+                    }
+                },
+                required: ['query']
+            },
+            description: 'Comprehensive and fast web search'
+        };
+
+        // Handle GPT-web-search tool calls
+        const handleWebSearchToolCall = async (query) => {
+            try {
+                const result = await openaiClient.responses.create({
+                    model: 'gpt-5',
+                    reasoning: { effort: 'high' },
+                    tools: [{ type: 'web_search' }],
+                    input: query,
+                });
+
+                console.log('Web search result:', result.output_text);
+                return result.output_text;
+            } catch (error) {
+                console.error('Error calling web search:', error);
+                throw error;
+            }
+        };
+
         // Control initial session with OpenAI
         const initializeSession = () => {
             const sessionUpdate = {
@@ -94,6 +133,7 @@ fastify.register(async (fastify) => {
                         output: { format: { type: 'audio/pcmu' }, voice: VOICE },
                     },
                     instructions: SYSTEM_MESSAGE,
+                    tools: [ gptWebSearchTool ],
                 },
             };
 
@@ -205,6 +245,54 @@ fastify.register(async (fastify) => {
 
                 if (response.type === 'input_audio_buffer.speech_started') {
                     handleSpeechStartedEvent();
+                }
+
+                // Handle function calls from response.done event
+                if (response.type === 'response.done') {
+                    const functionCall = response.response?.output?.[0];
+                    
+                    if (functionCall?.type === 'function_call') {
+                        console.log('Function call detected:', functionCall.name);
+                        
+                        if (functionCall.name === 'GPT-web-search') {
+                            try {
+                                const toolInput = JSON.parse(functionCall.arguments);
+                                const query = toolInput.query;
+                                
+                                console.log(`Executing web search for query: ${query}`);
+                                handleWebSearchToolCall(query)
+                                    .then((searchResult) => {
+                                        // Send function call output back to OpenAI
+                                        const toolResultEvent = {
+                                            type: 'conversation.item.create',
+                                            item: {
+                                                type: 'function_call_output',
+                                                call_id: functionCall.call_id,
+                                                output: JSON.stringify(searchResult)
+                                            }
+                                        };
+                                        openAiWs.send(JSON.stringify(toolResultEvent));
+                                        openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    })
+                                    .catch((error) => {
+                                        console.error('Error handling web search tool call:', error);
+                                        // Send error result back to OpenAI
+                                        const toolErrorEvent = {
+                                            type: 'conversation.item.create',
+                                            item: {
+                                                type: 'function_call_output',
+                                                call_id: functionCall.call_id,
+                                                output: JSON.stringify({ error: error.message })
+                                            }
+                                        };
+                                        openAiWs.send(JSON.stringify(toolErrorEvent));
+                                        openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    });
+                            } catch (parseError) {
+                                console.error('Error parsing tool arguments:', parseError);
+                            }
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('Error processing OpenAI message:', error, 'Raw message:', data);
