@@ -87,3 +87,21 @@ To have the AI voice assistant talk before the user, uncomment the line `// send
 When the user speaks and OpenAI sends `input_audio_buffer.speech_started`, the code will clear the Twilio Media Streams buffer and send OpenAI `conversation.item.truncate`.
 
 Depending on your application's needs, you may want to use the [`input_audio_buffer.speech_stopped`](https://platform.openai.com/docs/api-reference/realtime-server-events/input_audio_buffer/speech_stopped) event, instead.
+
+### Waiting Music During Tool Calls (optional)
+
+Play a soft background tone while the assistant executes long-running tool calls (for example, web search). Music starts after a configurable threshold and stops immediately when assistant audio resumes or when the caller speaks.
+
+Enable via environment flags in `.env`:
+
+```
+ENABLE_WAIT_MUSIC=true
+WAIT_MUSIC_THRESHOLD_MS=700
+WAIT_MUSIC_FREQ_HZ=440
+WAIT_MUSIC_VOLUME=0.12
+```
+
+Notes:
+- Audio is PCMU (G.711 µ-law), 8 kHz, mono; frames are sent at ~20 ms cadence to Twilio.
+- Music starts after `WAIT_MUSIC_THRESHOLD_MS` when a tool call begins and stops on the first assistant `response.output_audio.delta`, on `input_audio_buffer.speech_started`, and at cleanup.
+- Adjust `WAIT_MUSIC_FREQ_HZ` and `WAIT_MUSIC_VOLUME` to taste. Keep volume low to avoid distraction and clipping.

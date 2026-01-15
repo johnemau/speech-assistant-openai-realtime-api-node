@@ -30,6 +30,12 @@ const VOICE = 'alloy';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 5050; // Allow dynamic port assignment
 
+// Waiting music configuration (optional)
+const ENABLE_WAIT_MUSIC = process.env.ENABLE_WAIT_MUSIC === 'true';
+const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 700);
+const WAIT_MUSIC_FREQ_HZ = Number(process.env.WAIT_MUSIC_FREQ_HZ || 440);
+const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
+
 // List of Event Types to log to the console. See the OpenAI Realtime API Documentation: https://platform.openai.com/docs/api-reference/realtime
 const LOG_EVENT_TYPES = [
     'error',
@@ -78,6 +84,75 @@ fastify.register(async (fastify) => {
         let lastAssistantItem = null;
         let markQueue = [];
         let responseStartTimestampTwilio = null;
+
+        // Waiting music state
+        let isWaitingMusic = false;
+        let waitingMusicInterval = null;
+        let waitingMusicStartTimeout = null;
+        let toolCallInProgress = false;
+        let sinePhase = 0;
+
+        // Convert 16-bit PCM linear sample to 8-bit mu-law (PCMU)
+        function linearToMuLaw(s16) {
+            const CLIP = 32635;
+            const BIAS = 0x84; // 132
+            let sign = 0;
+            if (s16 < 0) {
+                sign = 0x80;
+                s16 = -s16;
+            }
+            if (s16 > CLIP) s16 = CLIP;
+            s16 = s16 + BIAS;
+            let exponent = 7;
+            for (let expMask = 0x4000; (s16 & expMask) === 0 && exponent > 0; expMask >>= 1) {
+                exponent--;
+            }
+            const mantissa = (s16 >> (exponent + 3)) & 0x0F;
+            let mu = ~(sign | (exponent << 4) | mantissa);
+            return mu & 0xFF;
+        }
+
+        function startWaitingMusic() {
+            if (!ENABLE_WAIT_MUSIC || !streamSid || isWaitingMusic) return;
+            isWaitingMusic = true;
+            if (!waitingMusicInterval) {
+                waitingMusicInterval = setInterval(() => {
+                    if (!isWaitingMusic || !streamSid) return;
+                    const frameSize = 160; // 20ms @ 8kHz mono
+                    const sampleRate = 8000;
+                    const freq = WAIT_MUSIC_FREQ_HZ;
+                    const volume = WAIT_MUSIC_VOLUME;
+                    const bytes = new Uint8Array(frameSize);
+                    for (let i = 0; i < frameSize; i++) {
+                        const sample = Math.sin(sinePhase) * volume;
+                        const pcm = Math.max(-1, Math.min(1, sample));
+                        const s16 = Math.floor(pcm * 32767);
+                        bytes[i] = linearToMuLaw(s16);
+                        sinePhase += (2 * Math.PI * freq) / sampleRate;
+                        if (sinePhase > 1e9) sinePhase = sinePhase % (2 * Math.PI);
+                    }
+                    const payload = Buffer.from(bytes).toString('base64');
+                    connection.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }));
+                }, 20);
+            }
+        }
+
+        function stopWaitingMusic() {
+            if (waitingMusicStartTimeout) {
+                clearTimeout(waitingMusicStartTimeout);
+                waitingMusicStartTimeout = null;
+            }
+            if (isWaitingMusic) {
+                isWaitingMusic = false;
+            }
+        }
+
+        function clearWaitingMusicInterval() {
+            if (waitingMusicInterval) {
+                clearInterval(waitingMusicInterval);
+                waitingMusicInterval = null;
+            }
+        }
 
         const openAiWs = new WebSocket(`wss://api.openai.com/v1/realtime?model=gpt-realtime&temperature=${TEMPERATURE}`, {
             headers: {
@@ -241,6 +316,8 @@ fastify.register(async (fastify) => {
                 }
 
                 if (response.type === 'response.output_audio.delta' && response.delta) {
+                    // Assistant audio is streaming; stop any waiting music immediately
+                    stopWaitingMusic();
                     const audioDelta = {
                         event: 'media',
                         streamSid: streamSid,
@@ -262,6 +339,8 @@ fastify.register(async (fastify) => {
                 }
 
                 if (response.type === 'input_audio_buffer.speech_started') {
+                    // Caller barged in; stop waiting music and handle truncation
+                    stopWaitingMusic();
                     handleSpeechStartedEvent();
                 }
 
@@ -273,6 +352,13 @@ fastify.register(async (fastify) => {
                         console.log('Function call detected:', functionCall.name);
                         
                         if (functionCall.name === 'GPT-web-search') {
+                            // Schedule waiting music if the tool call takes longer than threshold
+                            toolCallInProgress = true;
+                            if (ENABLE_WAIT_MUSIC) {
+                                waitingMusicStartTimeout = setTimeout(() => {
+                                    if (toolCallInProgress) startWaitingMusic();
+                                }, WAIT_MUSIC_THRESHOLD_MS);
+                            }
                             try {
                                 const toolInput = JSON.parse(functionCall.arguments);
                                 const query = toolInput.query;
@@ -281,6 +367,10 @@ fastify.register(async (fastify) => {
                                 console.log(`Executing web search for query: ${query}`);
                                 handleWebSearchToolCall(query, userLocation)
                                     .then((searchResult) => {
+                                        // Tool completed; stop waiting music before continuing response
+                                        toolCallInProgress = false;
+                                        stopWaitingMusic();
+                                        clearWaitingMusicInterval();
                                         // Send function call output back to OpenAI
                                         const toolResultEvent = {
                                             type: 'conversation.item.create',
@@ -295,6 +385,9 @@ fastify.register(async (fastify) => {
                                     })
                                     .catch((error) => {
                                         console.error('Error handling web search tool call:', error);
+                                        toolCallInProgress = false;
+                                        stopWaitingMusic();
+                                        clearWaitingMusicInterval();
                                         // Send error result back to OpenAI
                                         const toolErrorEvent = {
                                             type: 'conversation.item.create',
@@ -309,6 +402,9 @@ fastify.register(async (fastify) => {
                                     });
                             } catch (parseError) {
                                 console.error('Error parsing tool arguments:', parseError);
+                                toolCallInProgress = false;
+                                stopWaitingMusic();
+                                clearWaitingMusicInterval();
                             }
                         }
                     }
@@ -342,6 +438,9 @@ fastify.register(async (fastify) => {
                         // Reset start and media timestamp on a new stream
                         responseStartTimestampTwilio = null; 
                         latestMediaTimestamp = 0;
+                        // Ensure waiting music is not running for a new stream
+                        stopWaitingMusic();
+                        clearWaitingMusicInterval();
                         break;
                     case 'mark':
                         if (markQueue.length > 0) {
@@ -360,16 +459,22 @@ fastify.register(async (fastify) => {
         // Handle connection close
         connection.on('close', () => {
             if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close();
+            stopWaitingMusic();
+            clearWaitingMusicInterval();
             console.log('Client disconnected.');
         });
 
         // Handle WebSocket close and errors
         openAiWs.on('close', () => {
             console.log('Disconnected from the OpenAI Realtime API');
+            stopWaitingMusic();
+            clearWaitingMusicInterval();
         });
 
         openAiWs.on('error', (error) => {
             console.error('Error in the OpenAI WebSocket:', error);
+            stopWaitingMusic();
+            clearWaitingMusicInterval();
         });
     });
 });
