@@ -55,9 +55,6 @@ npm install
 
 ### Twilio setup
 
-#### Point a Phone Number to your ngrok URL
-In the [Twilio Console](https://console.twilio.com/), go to **Phone Numbers** > **Manage** > **Active Numbers** and click on the additional phone number you purchased for this app in the **Prerequisites**.
-
 In your Phone Number configuration settings, update the first **A call comes in** dropdown to **Webhook**, and paste your ngrok forwarding URL (referenced above), followed by `/incoming-call`. For example, `https://[your-ngrok-subdomain].ngrok.app/incoming-call`. Then, click **Save configuration**.
 
 ### Update the .env file
@@ -70,10 +67,18 @@ cp .env.example .env
 
 In the .env file, update the `OPENAI_API_KEY` to your OpenAI API key from the **Prerequisites**.
 
-## Run the app
-Once ngrok is running, dependencies are installed, Twilio is configured properly, and the `.env` is set up, run the dev server with the following command:
-```
 node index.js
+## Personalized Greeting
+
+- **Env var:** `USER_FIRST_NAME`
+- **Usage:** Set this to the caller's first name to get a cooler, personalized greeting when the call connects.
+- **Example `.env`:**
+
+```
+USER_FIRST_NAME=Jordan
+```
+
+If `USER_FIRST_NAME` is not set, the assistant will greet you as "legend".
 ```
 ## Test the app
 With the development server running, call the phone number you purchased in the **Prerequisites**. After the introduction, you should be able to talk to the AI Assistant. Have fun!
