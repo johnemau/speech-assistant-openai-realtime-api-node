@@ -1,3 +1,4 @@
+import ngrok from '@ngrok/ngrok';
 import Fastify from 'fastify';
 import WebSocket from 'ws';
 import dotenv from 'dotenv';
@@ -9,11 +10,16 @@ import fs from 'fs';
 // Load environment variables from .env file
 dotenv.config();
 
-// Retrieve the OpenAI API key from environment variables.
-const { OPENAI_API_KEY } = process.env;
+// Retrieve required environment variables.
+const { OPENAI_API_KEY, NGROK_DOMAIN, USER_FIRST_NAME } = process.env;
 
 if (!OPENAI_API_KEY) {
     console.error('Missing OpenAI API key. Please set it in the .env file.');
+    process.exit(1);
+}
+
+if (!NGROK_DOMAIN) {
+    console.error('Missing NGROK_DOMAIN. Please set it in the environment or .env file.');
     process.exit(1);
 }
 
@@ -26,10 +32,25 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
 // Constants
-const SYSTEM_MESSAGE = 'You are a voice-only assistant on a phone call using the OpenAI Realtime API. Always answer questions about people, places, organizations, events, dates, numbers, current affairs, or other factual topics using information provided by the web search tool. Do not answer from memory. First call the tool named "GPT-web-search" with a concise "query" that captures the user\'s request (include "user_location" when the user\'s location is relevant or specified). After making the tool call, wait for a "function_call_output" item before speaking. Base your answer solely on the web search results; keep responses concise and conversational for audio (2–4 sentences) and favor up-to-date facts. If results are empty or inconclusive, say you couldn\'t find reliable information and ask a brief clarifying question. For non-factual chit-chat (greetings, small talk, jokes), you may respond naturally without calling the tool.';
+const SYSTEM_MESSAGE = `You are a voice-only assistant on a phone call using the OpenAI Realtime API. Always answer questions about people, places, organizations, events, dates, numbers, current affairs, or other factual topics using information provided by the web search tool. Do not answer from memory. First call the tool named "GPT-web-search" with a concise "query" that captures the user's request (include "user_location" when the user's location is relevant or specified). After making the tool call, wait for a "function_call_output" item before speaking. Base your answer solely on the web search results; keep responses concise and conversational for audio (2–4 sentences) and favor up-to-date facts. If results are empty or inconclusive, say you couldn't find reliable information and ask a brief clarifying question. For non-factual chit-chat (greetings, small talk, jokes), you may respond naturally without calling the tool.
+
+# Tools
+- Before any tool call, say one short line like "By your command." Then call the tool immediately.
+
+# Instructions/Rules
+...
+
+## Unclear audio 
+- Always respond in the same language the user is speaking in, if unintelligible.
+- Only respond to clear audio or text. 
+- If the user's audio is not clear (e.g. ambiguous input/background noise/silent/unintelligible) or if you did not fully hear or understand the user, ask for clarification using {preferred_language} phrases.
+
+# Instructions/Rules
+- When reading numbers or codes, speak each character separately, separated by hyphens (e.g., 4-1-5). 
+- Repeat EXACTLY the provided number, do not forget any.`;
 const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
-const PORT = process.env.PORT || 5050; // Allow dynamic port assignment
+const PORT = process.env.PORT || 8080; // Allow dynamic port assignment
 
 // Allowed callers (E.164). Configure via env `ALLOWED_CALLERS` as comma-separated numbers.
 // Defaults to the three numbers provided.
@@ -99,11 +120,12 @@ fastify.all('/incoming-call', async (request, reply) => {
         return reply.type('text/xml').send(denyTwiml);
     }
 
+    const callerName = (USER_FIRST_NAME || '').trim() || 'legend';
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Aoede">Please wait while we connect your call to the A. I. voice assistant, powered by Twilio and the Open A I Realtime API</Say>
+                              <Say voice="Google.en-US-Chirp3-HD-Aoede">Hey ${callerName}, connecting to your AI assistant now.</Say>
                               <Pause length="1"/>
-                              <Say voice="Google.en-US-Chirp3-HD-Aoede">O.K. you can start talking!</Say>
+                              <Say voice="Google.en-US-Chirp3-HD-Aoede">At your service, ${callerName}. What would you like me to do?</Say>
                               <Connect>
                                   <Stream url="wss://${request.headers.host}/media-stream" />
                               </Connect>
@@ -577,10 +599,20 @@ fastify.register(async (fastify) => {
     });
 });
 
-fastify.listen({ port: PORT }, (err) => {
-    if (err) {
+// Start server and establish ngrok ingress using SessionBuilder
+(async () => {
+    try {
+        await fastify.listen({ port: PORT });
+
+        const session = await new ngrok.SessionBuilder().authtokenFromEnv().connect();
+        const endpointBuilder = session.httpEndpoint().domain(NGROK_DOMAIN);
+        const listener = await endpointBuilder.listen();
+        await listener.forward(`localhost:${PORT}`);
+
+        console.log(`Server is listening on port ${PORT}`);
+        console.log(`Ingress established at: ${listener.url()}`);
+    } catch (err) {
         console.error(err);
         process.exit(1);
     }
-    console.log(`Server is listening on port ${PORT}`);
-});
+})();
