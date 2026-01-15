@@ -127,6 +127,7 @@ fastify.register(async (fastify) => {
                         },
                      }],
                     input: query,
+                    truncations: 'auto',
                 });
 
                 console.log('Web search result:', result.output_text);
