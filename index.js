@@ -70,19 +70,19 @@ function normalizeUSNumberToE164(input) {
     return '+' + withCountry;
 }
 
-const PRIMARY_CALLERS = (process.env.PRIMARY_USER_PHONE_NUMBERS || '')
-    .split(',')
-    .map(s => normalizeUSNumberToE164(s))
-    .filter(Boolean);
-const SECONDARY_CALLERS = (process.env.SECONDARY_USER_PHONE_NUMBERS || '')
-    .split(',')
-    .map(s => normalizeUSNumberToE164(s))
-    .filter(Boolean);
-
+const PRIMARY_CALLERS_SET = new Set(
+    (process.env.PRIMARY_USER_PHONE_NUMBERS || '')
+        .split(',')
+        .map(s => normalizeUSNumberToE164(s))
+        .filter(Boolean)
+);
+const SECONDARY_CALLERS_SET = new Set(
+    (process.env.SECONDARY_USER_PHONE_NUMBERS || '')
+        .split(',')
+        .map(s => normalizeUSNumberToE164(s))
+        .filter(Boolean)
+);
 // If both lists are empty, no callers are allowed.
-
-const PRIMARY_CALLERS_SET = new Set(PRIMARY_CALLERS);
-const SECONDARY_CALLERS_SET = new Set(SECONDARY_CALLERS);
 const ALL_ALLOWED_CALLERS_SET = new Set([...PRIMARY_CALLERS_SET, ...SECONDARY_CALLERS_SET]);
 
 // Waiting music configuration (optional)
@@ -141,7 +141,7 @@ fastify.all('/incoming-call', async (request, reply) => {
                           <Response>
                               <Say voice="Google.en-US-Chirp3-HD-Aoede">Hey ${callerName}, connecting to your AI assistant now.</Say>
                               <Pause length="1"/>
-                              <Say voice="Google.en-US-Chirp3-HD-Aoede">At your service, ${callerName}. What would you like me to do?</Say>
+                              <Say voice="Google.en-US-Chirp3-HD-Aoede">At your service, ${callerName}. How may I help?</Say>
                               <Connect>
                                   <Stream url="wss://${request.headers.host}/media-stream" />
                               </Connect>
