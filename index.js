@@ -11,7 +11,7 @@ import fs from 'fs';
 dotenv.config();
 
 // Retrieve required environment variables.
-const { OPENAI_API_KEY, NGROK_DOMAIN, USER_FIRST_NAME } = process.env;
+const { OPENAI_API_KEY, NGROK_DOMAIN, PRIMARY_USER_FIRST_NAME, SECONDARY_USER_FIRST_NAME, USER_FIRST_NAME } = process.env;
 
 if (!OPENAI_API_KEY) {
     console.error('Missing OpenAI API key. Please set it in the .env file.');
@@ -52,8 +52,7 @@ const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 8080; // Allow dynamic port assignment
 
-// Allowed callers (E.164). Configure via env `ALLOWED_CALLERS` as comma-separated numbers.
-// Defaults to the three numbers provided.
+// Allowed callers (E.164). Configure via env `PRIMARY_USER_PHONE_NUMBERS` and `SECONDARY_USER_PHONE_NUMBERS` as comma-separated numbers.
 function normalizeUSNumberToE164(input) {
     if (!input) return null;
     // Remove non-digits except leading +
@@ -71,11 +70,20 @@ function normalizeUSNumberToE164(input) {
     return '+' + withCountry;
 }
 
-const ALLOWED_CALLERS = (process.env.ALLOWED_CALLERS || '')
+const PRIMARY_CALLERS = (process.env.PRIMARY_USER_PHONE_NUMBERS || '')
     .split(',')
     .map(s => normalizeUSNumberToE164(s))
     .filter(Boolean);
-const ALLOWED_CALLERS_SET = new Set(ALLOWED_CALLERS);
+const SECONDARY_CALLERS = (process.env.SECONDARY_USER_PHONE_NUMBERS || '')
+    .split(',')
+    .map(s => normalizeUSNumberToE164(s))
+    .filter(Boolean);
+
+// If both lists are empty, no callers are allowed.
+
+const PRIMARY_CALLERS_SET = new Set(PRIMARY_CALLERS);
+const SECONDARY_CALLERS_SET = new Set(SECONDARY_CALLERS);
+const ALL_ALLOWED_CALLERS_SET = new Set([...PRIMARY_CALLERS_SET, ...SECONDARY_CALLERS_SET]);
 
 // Waiting music configuration (optional)
 const ENABLE_WAIT_MUSIC = process.env.ENABLE_WAIT_MUSIC === 'true';
@@ -111,7 +119,7 @@ fastify.all('/incoming-call', async (request, reply) => {
     const fromE164 = normalizeUSNumberToE164(fromRaw);
     console.log('Incoming call from:', fromRaw, '=>', fromE164);
 
-    if (!fromE164 || !ALLOWED_CALLERS_SET.has(fromE164)) {
+    if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
         const denyTwiml = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
                               <Say voice="Google.en-US-Chirp3-HD-Aoede">Sorry, this line is restricted. Goodbye.</Say>
@@ -120,7 +128,15 @@ fastify.all('/incoming-call', async (request, reply) => {
         return reply.type('text/xml').send(denyTwiml);
     }
 
-    const callerName = (USER_FIRST_NAME || '').trim() || 'legend';
+    // Choose greeting based on caller list membership
+    const primaryName = (PRIMARY_USER_FIRST_NAME || USER_FIRST_NAME || '').trim();
+    const secondaryName = (SECONDARY_USER_FIRST_NAME || '').trim();
+    let callerName = 'legend';
+    if (PRIMARY_CALLERS_SET.has(fromE164) && primaryName) {
+        callerName = primaryName;
+    } else if (SECONDARY_CALLERS_SET.has(fromE164) && secondaryName) {
+        callerName = secondaryName;
+    }
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
                               <Say voice="Google.en-US-Chirp3-HD-Aoede">Hey ${callerName}, connecting to your AI assistant now.</Say>

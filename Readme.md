@@ -70,15 +70,16 @@ In the .env file, update the `OPENAI_API_KEY` to your OpenAI API key from the **
 node index.js
 ## Personalized Greeting
 
-- **Env var:** `USER_FIRST_NAME`
-- **Usage:** Set this to the caller's first name to get a cooler, personalized greeting when the call connects.
+- **Env vars:** `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`
+- **Usage:** Set distinct names for primary and secondary callers. The assistant greets primary callers with `PRIMARY_USER_FIRST_NAME` and secondary callers with `SECONDARY_USER_FIRST_NAME`.
 - **Example `.env`:**
 
 ```
-USER_FIRST_NAME=Jordan
+PRIMARY_USER_FIRST_NAME=Jordan
+SECONDARY_USER_FIRST_NAME=Taylor
 ```
 
-If `USER_FIRST_NAME` is not set, the assistant will greet you as "legend".
+If a name is not set for the matching caller group, the assistant will greet you as "legend".
 ```
 ## Test the app
 With the development server running, call the phone number you purchased in the **Prerequisites**. After the introduction, you should be able to talk to the AI Assistant. Have fun!
@@ -109,19 +110,24 @@ WAIT_MUSIC_FILE=melodyloops-relaxing-jazz.wav
 Notes:
 - Audio is PCMU (G.711 µ-law), 8 kHz, mono; frames are sent at ~20 ms cadence to Twilio.
 - Music starts after `WAIT_MUSIC_THRESHOLD_MS` when a tool call begins and stops on the first assistant `response.output_audio.delta`, on `input_audio_buffer.speech_started`, and at cleanup.
-- Adjust `WAIT_MUSIC_FREQ_HZ` and `WAIT_MUSIC_VOLUME` to taste. Keep volume low to avoid distraction and clipping.
+- Adjust `WAIT_MUSIC_VOLUME` to taste. Keep volume low to avoid distraction and clipping.
 
 Provide a `.wav` file; the app parses WAV directly (PCM 16-bit) and downmixes/resamples to 8 kHz mono in-process, then streams PCMU frames. Non-WAV files are not supported.
 
 ### Allowlist Inbound Callers
 
-Restrict who can call into the assistant via an allowlist. Configure a comma-separated list of E.164 phone numbers in `.env`:
+Restrict who can call into the assistant via allowlists and greet them differently based on group.
+
+- **Env vars:** `PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS`
+- **Format:** Comma-separated E.164 numbers (e.g., `+12065551234`).
+- **Example `.env`:**
 
 ```
-ALLOWED_CALLERS=+12065551234
+PRIMARY_USER_PHONE_NUMBERS=+12065551234
+SECONDARY_USER_PHONE_NUMBERS=+14255550123,+14255550124
 ```
 
 Notes:
-- Twilio sends the caller number as `From` in E.164 format (e.g., `+12065551234`).
-- If `ALLOWED_CALLERS` is not set or empty, all incoming calls will be rejected.
+- Twilio sends the caller number as `From` in E.164 format.
+- If both lists are empty, all incoming calls will be rejected.
 - Non-listed callers receive a brief message and the call is hung up.
