@@ -107,3 +107,16 @@ Notes:
 - Adjust `WAIT_MUSIC_FREQ_HZ` and `WAIT_MUSIC_VOLUME` to taste. Keep volume low to avoid distraction and clipping.
 
 Provide a `.wav` file; the app parses WAV directly (PCM 16-bit) and downmixes/resamples to 8 kHz mono in-process, then streams PCMU frames. Non-WAV files are not supported.
+
+### Allowlist Inbound Callers
+
+Restrict who can call into the assistant via an allowlist. Configure a comma-separated list of E.164 phone numbers in `.env`:
+
+```
+ALLOWED_CALLERS=+12065551234
+```
+
+Notes:
+- Twilio sends the caller number as `From` in E.164 format (e.g., `+12065551234`).
+- If `ALLOWED_CALLERS` is not set or empty, all incoming calls will be rejected.
+- Non-listed callers receive a brief message and the call is hung up.
