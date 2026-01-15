@@ -95,20 +95,37 @@ fastify.register(async (fastify) => {
                     query: {
                         type: 'string',
                         description: "The user's question or topic to research across the live web."
+                    },
+                    user_location: {
+                        type: 'object',
+                        description: 'Optional approximate user location to improve local relevance. Defaults to US Washington if not provided.',
+                        properties: {
+                            type: { type: 'string', description: 'Location type; use "approximate".' },
+                            country: { type: 'string', description: 'Two-letter country code like US.' },
+                            region: { type: 'string', description: 'Region or state name.' },
+                            city: { type: 'string', description: 'Optional city.' }
+                        }
                     }
                 },
                 required: ['query']
             },
-            description: 'Comprehensive and fast web search'
+            description: 'Comprehensive web search'
         };
 
         // Handle GPT-web-search tool calls
-        const handleWebSearchToolCall = async (query) => {
+        const handleWebSearchToolCall = async (query, userLocation) => {
             try {
                 const result = await openaiClient.responses.create({
                     model: 'gpt-5',
                     reasoning: { effort: 'high' },
-                    tools: [{ type: 'web_search' }],
+                    tools: [{ 
+                        type: 'web_search',
+                        user_location: userLocation ?? {
+                            type: "approximate",
+                            country: "US",
+                            region: "Washington"
+                        },
+                     }],
                     input: query,
                 });
 
@@ -258,9 +275,10 @@ fastify.register(async (fastify) => {
                             try {
                                 const toolInput = JSON.parse(functionCall.arguments);
                                 const query = toolInput.query;
+                                const userLocation = toolInput.user_location;
                                 
                                 console.log(`Executing web search for query: ${query}`);
-                                handleWebSearchToolCall(query)
+                                handleWebSearchToolCall(query, userLocation)
                                     .then((searchResult) => {
                                         // Send function call output back to OpenAI
                                         const toolResultEvent = {
