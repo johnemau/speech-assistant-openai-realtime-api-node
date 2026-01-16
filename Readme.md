@@ -36,15 +36,14 @@ When developing & testing locally, you'll need to open a tunnel to forward reque
 
 Open a Terminal and run:
 ```
-ngrok http 5050
+ngrok http 8080
 ```
 Once the tunnel has been opened, copy the `Forwarding` URL. It will look something like: `https://[your-ngrok-subdomain].ngrok.app`. You will
 need this when configuring your Twilio number setup.
 
-Note that the `ngrok` command above forwards to a development server running on port `5050`, which is the default port configured in this application. If
-you override the `PORT` defined in `index.js`, you will need to update the `ngrok` command accordingly.
-
-Keep in mind that each time you run the `ngrok http` command, a new URL will be created, and you'll need to update it everywhere it is referenced below.
+Notes:
+- The app defaults to `PORT=8080`. If you change the port via the `PORT` environment variable, update the `ngrok http` command accordingly.
+- If you use a custom domain, ensure it's reserved in your ngrok account and set `NGROK_DOMAIN` to that domain.
 
 ### Install required packages
 
@@ -59,15 +58,33 @@ In your Phone Number configuration settings, update the first **A call comes in*
 
 ### Update the .env file
 
-Create a `/env` file, or copy the `.env.example` file to `.env`:
+Create a `.env` file with the required variables:
 
 ```
-cp .env.example .env
+OPENAI_API_KEY=sk-...
+NGROK_AUTHTOKEN=...
+NGROK_DOMAIN=your-subdomain.ngrok.app
+PORT=8080
 ```
 
-In the .env file, update the `OPENAI_API_KEY` to your OpenAI API key from the **Prerequisites**.
+Then start the server:
 
-node index.js
+```
+npm start
+```
+
+You should see logs similar to:
+
+```
+Starting server...
+HTTP server listening at http://localhost:8080
+Server is listening on port 8080
+Ingress established at: https://your-subdomain.ngrok.app
+```
+
+Quick local checks:
+- Visit http://localhost:8080/ to confirm the root endpoint.
+- Visit http://localhost:8080/health for a simple healthcheck.
 ## Personalized Greeting
 
 - **Env vars:** `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`
