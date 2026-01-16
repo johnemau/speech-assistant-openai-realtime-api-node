@@ -633,8 +633,8 @@ fastify.register(async (fastify) => {
             }
             const session = await new ngrok.SessionBuilder().authtokenFromEnv().connect();
             const endpointBuilder = session.httpEndpoint().domain(NGROK_DOMAIN);
-            const listener = await endpointBuilder.listen();
             console.log(`ngrok forwarding active on domain ${NGROK_DOMAIN}`);
+            const listener = await endpointBuilder.listen();
             await listener.forward(`0.0.0.0:${PORT}`);
         } else {
             console.log('ngrok domain not configured; skipping ngrok setup.');
