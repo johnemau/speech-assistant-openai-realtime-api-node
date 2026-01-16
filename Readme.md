@@ -118,7 +118,6 @@ Play a soft background tone while the assistant executes long-running tool calls
 Enable via environment flags in `.env`:
 
 ```
-ENABLE_WAIT_MUSIC=true
 WAIT_MUSIC_THRESHOLD_MS=700
 WAIT_MUSIC_VOLUME=0.12
 WAIT_MUSIC_FILE=melodyloops-relaxing-jazz.wav
