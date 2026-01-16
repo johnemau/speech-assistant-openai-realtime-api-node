@@ -86,7 +86,6 @@ const SECONDARY_CALLERS_SET = new Set(
 const ALL_ALLOWED_CALLERS_SET = new Set([...PRIMARY_CALLERS_SET, ...SECONDARY_CALLERS_SET]);
 
 // Waiting music configuration (optional)
-const ENABLE_WAIT_MUSIC = process.env.ENABLE_WAIT_MUSIC === 'true';
 const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 700);
 const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
 const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.mp3
@@ -262,7 +261,7 @@ fastify.register(async (fastify) => {
         }
 
         function startWaitingMusic() {
-            if (!ENABLE_WAIT_MUSIC || !streamSid || isWaitingMusic) return;
+            if (!streamSid || isWaitingMusic) return;
             isWaitingMusic = true;
             // If audio file is provided and exists
             if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
@@ -496,11 +495,9 @@ fastify.register(async (fastify) => {
                         if (functionCall.name === 'GPT-web-search') {
                             // Schedule waiting music if the tool call takes longer than threshold
                             toolCallInProgress = true;
-                            if (ENABLE_WAIT_MUSIC) {
-                                waitingMusicStartTimeout = setTimeout(() => {
-                                    if (toolCallInProgress) startWaitingMusic();
-                                }, WAIT_MUSIC_THRESHOLD_MS);
-                            }
+                            waitingMusicStartTimeout = setTimeout(() => {
+                                if (toolCallInProgress) startWaitingMusic();
+                            }, WAIT_MUSIC_THRESHOLD_MS);
                             try {
                                 const toolInput = JSON.parse(functionCall.arguments);
                                 const query = toolInput.query;
