@@ -19,8 +19,7 @@ if (!OPENAI_API_KEY) {
 }
 
 if (!NGROK_DOMAIN) {
-    console.error('Missing NGROK_DOMAIN. Please set it in the environment or .env file.');
-    process.exit(1);
+    console.warn('NGROK_DOMAIN not set; skipping ngrok binding. Service will be reachable via platform routing.');
 }
 
 // Initialize OpenAI client
@@ -50,7 +49,7 @@ const SYSTEM_MESSAGE = `You are a voice-only assistant on a phone call using the
 - Repeat EXACTLY the provided number, do not forget any.`;
 const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
-const PORT = process.env.PORT || 8080; // Allow dynamic port assignment
+const PORT = process.env.PORT || 10000; // Render default PORT is 10000
 
 // Allowed callers (E.164). Configure via env `PRIMARY_USER_PHONE_NUMBERS` and `SECONDARY_USER_PHONE_NUMBERS` as comma-separated numbers.
 function normalizeUSNumberToE164(input) {
@@ -624,17 +623,22 @@ fastify.register(async (fastify) => {
 // Start server and establish ngrok ingress using SessionBuilder
 (async () => {
     try {
-        await fastify.listen({ port: PORT });
-        console.log(`HTTP server listening at http://localhost:${PORT}`);
+        await fastify.listen({ host: '0.0.0.0', port: PORT });
+        console.log(`HTTP server listening on 0.0.0.0:${PORT}`);
 
-        if (!process.env.NGROK_AUTHTOKEN) {
-            console.warn('Warning: NGROK_AUTHTOKEN is not set. Ensure ngrok is authenticated for domain binding.');
+        // Optionally establish ngrok ingress if NGROK_DOMAIN is provided
+        if (NGROK_DOMAIN) {
+            if (!process.env.NGROK_AUTHTOKEN) {
+                console.warn('Warning: NGROK_AUTHTOKEN is not set. Ensure ngrok is authenticated for domain binding.');
+            }
+            const session = await new ngrok.SessionBuilder().authtokenFromEnv().connect();
+            const endpointBuilder = session.httpEndpoint().domain(NGROK_DOMAIN);
+            const listener = await endpointBuilder.listen();
+            console.log(`ngrok forwarding active on domain ${NGROK_DOMAIN}`);
+            await listener.forward(`0.0.0.0:${PORT}`);
+        } else {
+            console.log('ngrok domain not configured; skipping ngrok setup.');
         }
-
-        const session = await new ngrok.SessionBuilder().authtokenFromEnv().connect();
-        const endpointBuilder = session.httpEndpoint().domain(NGROK_DOMAIN);
-        const listener = await endpointBuilder.listen();
-        await listener.forward(`localhost:${PORT}`);
     } catch (err) {
         console.error(err);
         process.exit(1);
