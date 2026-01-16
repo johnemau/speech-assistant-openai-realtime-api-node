@@ -428,11 +428,12 @@ fastify.register(async (fastify) => {
                     model: "gpt-realtime",
                     output_modalities: ["audio"],
                     audio: {
-                        input: { format: { type: 'audio/pcmu' }, turn_detection: { type: "server_vad" } },
+                        input: { format: { type: 'audio/pcmu' }, turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: true }, noise_reduction: { type: 'near_field' } },
                         output: { format: { type: 'audio/pcmu' }, voice: VOICE },
                     },
                     instructions: SYSTEM_MESSAGE,
                     tools: [ gptWebSearchTool ],
+                    tool_choice: { name: 'GPT-web-search', type: 'function' },
                 },
             };
 
