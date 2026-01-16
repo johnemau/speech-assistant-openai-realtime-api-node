@@ -122,7 +122,7 @@ fastify.all('/incoming-call', async (request, reply) => {
     if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
         const denyTwiml = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Aoede">Sorry, this line is restricted. Goodbye.</Say>
+                              <Say voice="Google.en-US-Chirp3-HD-Charon">Sorry, this line is restricted. Goodbye.</Say>
                               <Hangup/>
                           </Response>`;
         return reply.type('text/xml').send(denyTwiml);
@@ -139,9 +139,9 @@ fastify.all('/incoming-call', async (request, reply) => {
     }
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Aoede">Hey ${callerName}, connecting to your AI assistant now.</Say>
+                              <Say voice="Google.en-US-Chirp3-HD-Charon">Hey ${callerName}, connecting to your AI assistant now.</Say>
                               <Pause length="1"/>
-                              <Say voice="Google.en-US-Chirp3-HD-Aoede">At your service, ${callerName}. How may I help?</Say>
+                              <Say voice="Google.en-US-Chirp3-HD-Charon">At your service, ${callerName}. How may I help?</Say>
                               <Connect>
                                   <Stream url="wss://${request.headers.host}/media-stream" />
                               </Connect>
@@ -619,14 +619,16 @@ fastify.register(async (fastify) => {
 (async () => {
     try {
         await fastify.listen({ port: PORT });
+        console.log(`HTTP server listening at http://localhost:${PORT}`);
+
+        if (!process.env.NGROK_AUTHTOKEN) {
+            console.warn('Warning: NGROK_AUTHTOKEN is not set. Ensure ngrok is authenticated for domain binding.');
+        }
 
         const session = await new ngrok.SessionBuilder().authtokenFromEnv().connect();
         const endpointBuilder = session.httpEndpoint().domain(NGROK_DOMAIN);
         const listener = await endpointBuilder.listen();
         await listener.forward(`localhost:${PORT}`);
-
-        console.log(`Server is listening on port ${PORT}`);
-        console.log(`Ingress established at: ${listener.url()}`);
     } catch (err) {
         console.error(err);
         process.exit(1);
