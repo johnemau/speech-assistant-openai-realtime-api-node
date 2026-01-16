@@ -51,7 +51,7 @@ You are a voice-only AI assistant participating in a live phone call using the O
 - Set 'type' to "approximate" and set 'country' to a two-letter code when inferable (e.g., US, FR). If country is not stated but the location is in the United States, default 'country' to US.
 - Examples:
     - "I am in Tucson Arizona" → 'user_location': { type: "approximate", country: "US", region: "Arizona", city: "Tucson" }
-    - "I will be in Paris, France" → 'user_location': { type: "approximate", country: "FR", region: "France", city: "Paris" }
+    - "I will be in Paris, France" → 'user_location': { type: "approximate", country: "FR", region: "Île-de-France", city: "Paris" }
 
 # Speaking Style
 - Keep responses brief and voice-friendly, typically 1–3 short sentences.
@@ -381,7 +381,7 @@ fastify.register(async (fastify) => {
                     },
                     user_location: {
                         type: 'object',
-                        description: 'Optional approximate user location to improve local relevance. Defaults to US Washington if not provided. When the user mentions a location, infer and include it here. Set type="approximate". If country is stated, use its two-letter code (e.g., US, FR); if not and the location is in the United States, default to US. Examples: "I am in Tucson Arizona" → region=Arizona, city=Tucson; "I will be in Paris, France" → region=France, city=Paris.',
+                        description: 'Optional approximate user location to improve local relevance. Defaults to US Washington if not provided. When the user mentions a location, infer and include it here. Set type="approximate". If country is stated, use its two-letter code (e.g., US, FR); if not and the location is in the United States, default to US. Examples: "I am in Tucson Arizona" → region=Arizona, city=Tucson; "I will be in Paris, France" → region=Île-de-France, city=Paris.',
                         properties: {
                             type: { type: 'string', description: 'Location type; use "approximate".' },
                             country: { type: 'string', description: 'Two-letter country code like US.' },
