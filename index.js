@@ -171,9 +171,16 @@ fastify.all('/incoming-call', async (request, reply) => {
     } else if (SECONDARY_CALLERS_SET.has(fromE164) && secondaryName) {
         callerName = secondaryName;
     }
+    // Determine current time in Washington State (America/Los_Angeles)
+    const pacificHour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }).format(new Date()));
+    const timeGreeting = (pacificHour >= 5 && pacificHour < 12)
+        ? 'Good morning'
+        : (pacificHour >= 12 && pacificHour < 17)
+            ? 'Good afternoon'
+            : 'Good evening';
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Charon">Hey ${callerName}, connecting to your AI assistant now.</Say>
+                              <Say voice="Google.en-US-Chirp3-HD-Charon">${timeGreeting}, ${callerName}. Connecting to your AI assistant now.</Say>
                               <Pause length="1"/>
                               <Say voice="Google.en-US-Chirp3-HD-Charon">At your service, ${callerName}. How may I help?</Say>
                               <Connect>
