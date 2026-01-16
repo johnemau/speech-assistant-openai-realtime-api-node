@@ -180,7 +180,7 @@ fastify.all('/incoming-call', async (request, reply) => {
             : 'Good evening';
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Charon">${timeGreeting}, ${callerName}. Connecting to your AI assistant now.</Say>
+                              <Say voice="Google.en-US-Chirp3-HD-Charon">${timeGreeting}, ${callerName}. Connecting to your AI assistant momentarily.</Say>
                               <Pause length="1"/>
                               <Say voice="Google.en-US-Chirp3-HD-Charon">At your service, ${callerName}. How may I help?</Say>
                               <Connect>
@@ -433,7 +433,7 @@ fastify.register(async (fastify) => {
                     },
                     instructions: SYSTEM_MESSAGE,
                     tools: [ gptWebSearchTool ],
-                    tool_choice: { name: 'GPT-web-search', type: 'function' },
+                    tool_choice: 'required',
                 },
             };
 
