@@ -46,7 +46,8 @@ const SYSTEM_MESSAGE = `You are a voice-only assistant on a phone call using the
 
 # Instructions/Rules
 - When reading numbers or codes, speak each character separately, separated by hyphens (e.g., 4-1-5). 
-- Repeat EXACTLY the provided number, do not forget any.`;
+- Repeat EXACTLY the provided number, do not forget any.
+- Do not include any sound effects or onomatopoeic expressions in your responses.`;
 const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 10000; // Render default PORT is 10000
