@@ -112,6 +112,12 @@ fastify.get('/', async (request, reply) => {
     reply.send({ message: 'Twilio Media Stream Server is running!' });
 });
 
+// Health Check Route (for Render/uptime monitors)
+fastify.get('/healthz', async (request, reply) => {
+    // Respond quickly with a 2xx to indicate instance is healthy
+    reply.code(200).send({ status: 'ok' });
+});
+
 // Route for Twilio to handle incoming calls
 // <Say> punctuation to improve text-to-speech translation
 fastify.all('/incoming-call', async (request, reply) => {
