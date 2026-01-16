@@ -382,16 +382,19 @@ fastify.register(async (fastify) => {
         // Handle GPT-web-search tool calls
         const handleWebSearchToolCall = async (query, userLocation) => {
             try {
+                const effectiveLocation = userLocation ?? {
+                    type: "approximate",
+                    country: "US",
+                    region: "Washington"
+                };
+                console.log('Web search user_location:', effectiveLocation);
+
                 const result = await openaiClient.responses.create({
                     model: 'gpt-5',
                     reasoning: { effort: 'high' },
                     tools: [{ 
                         type: 'web_search',
-                        user_location: userLocation ?? {
-                            type: "approximate",
-                            country: "US",
-                            region: "Washington"
-                        },
+                        user_location: effectiveLocation,
                      }],
                     input: query,
                     truncation: 'auto',
