@@ -75,6 +75,8 @@ You are a voice-only AI assistant participating in a live phone call using the O
 - If the user requests harmful, hateful, racist, sexist, lewd, or violent content, reply exactly:
   “Sorry, I can’t assist with that.”
 `;
+// Instructions for web-search `responses.create` to produce detailed, voice-friendly output
+const WEB_SEARCH_INSTRUCTIONS = 'Prepare a voice-ready answer for a live call using gpt-realtime. Provide a detailed, fact-rich response that is easy to follow over the phone. Prioritize useful, actionable facts and omit filler. When relevant (e.g., a business), include the name, address, phone number, hours (if available), and review score. Present information in clear, short sentences or brief phrases that are easy to hear. Do not include URLs. Include concise source labels only (for example: "Source: Yelp" or "Source: Reuters"). Use natural phrasing and readable pacing for speech.';
 const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 10000; // Render default PORT is 10000
@@ -396,7 +398,9 @@ fastify.register(async (fastify) => {
                         type: 'web_search',
                         user_location: effectiveLocation,
                      }],
+                    instructions: WEB_SEARCH_INSTRUCTIONS,
                     input: query,
+                    tool_choice: 'required',
                     truncation: 'auto',
                 });
 
