@@ -392,7 +392,7 @@ fastify.register(async (fastify) => {
                 console.log('Web search user_location:', effectiveLocation);
 
                 const result = await openaiClient.responses.create({
-                    model: 'gpt-5',
+                    model: 'gpt-5.2',
                     reasoning: { effort: 'high' },
                     tools: [{ 
                         type: 'web_search',
