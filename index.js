@@ -835,7 +835,7 @@ fastify.register(async (fastify) => {
                                     subject,
                                     html: bodyHtml,
                                     headers: {
-                                        'From-Ai-Assistant': 'true'
+                                        'X-From-Ai-Assistant': 'true'
                                     }
                                 };
                                 if (IS_DEV) console.log('Dev sendMail options:', mailOptions);
