@@ -184,6 +184,42 @@ if (!SENDER_FROM_EMAIL) {
     console.warn('SENDER_FROM_EMAIL missing; emails cannot be sent until configured.');
 }
 
+// Send a one-time test email to the PRIMARY user when the server starts
+async function sendStartupTestEmail() {
+    try {
+        if (!senderTransport || !SENDER_FROM_EMAIL || !PRIMARY_TO_EMAIL) {
+            console.warn('Skipping startup test email; missing email configuration.');
+            return;
+        }
+
+        const primaryName = String(process.env.PRIMARY_USER_FIRST_NAME || '').trim();
+        const greeting = primaryName ? `Hi ${primaryName},` : 'Hello,';
+        const html = `<!DOCTYPE html>
+<html>
+  <body>
+    <p>${greeting}</p>
+    <p>Your Twilio Media Stream server has started successfully.</p>
+    <p>This is an automatic test email sent on startup.</p>
+    <hr />
+    <p style="font-family: monospace; line-height: 1.2; margin-top: 12px;">\n      /\\_/\\\n     ( •.• )\n      > ^ <\n    </p>
+  </body>
+</html>`;
+
+        const mailOptions = {
+            from: SENDER_FROM_EMAIL,
+            to: PRIMARY_TO_EMAIL,
+            subject: 'Server started — Test Email',
+            html,
+            headers: { 'X-Startup-Test': 'true' }
+        };
+
+        const info = await senderTransport.sendMail(mailOptions);
+        console.log('Startup test email sent to PRIMARY user.', { messageId: info?.messageId });
+    } catch (err) {
+        console.warn('Failed to send startup test email:', err?.message || err);
+    }
+}
+
 // Initialize Fastify
 const fastify = Fastify();
 fastify.register(fastifyFormBody);
@@ -1100,6 +1136,10 @@ fastify.register(async (fastify) => {
         } else {
             console.log('ngrok domain not configured; skipping ngrok setup.');
         }
+
+        // Fire and forget: send a test email to the PRIMARY user on startup
+        // Do not block server readiness
+        sendStartupTestEmail().catch(() => {});
     } catch (err) {
         console.error(err);
         process.exit(1);
