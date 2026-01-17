@@ -36,7 +36,6 @@ const DEFAULT_SECRET_ENV_KEYS = [
     'SECONDARY_USER_PHONE_NUMBERS',
     'PRIMARY_USER_FIRST_NAME',
     'SECONDARY_USER_FIRST_NAME',
-    'USER_FIRST_NAME',
     'TWILIO_AUTH_TOKEN',
     'TWILIO_ACCOUNT_SID',
     'TWILIO_API_KEY',
@@ -131,7 +130,7 @@ if (!isTruthy(process.env.DISABLE_LOG_REDACTION)) {
 }
 
 // Retrieve required environment variables.
-const { OPENAI_API_KEY, NGROK_DOMAIN, PRIMARY_USER_FIRST_NAME, SECONDARY_USER_FIRST_NAME, USER_FIRST_NAME } = process.env;
+const { OPENAI_API_KEY, NGROK_DOMAIN, PRIMARY_USER_FIRST_NAME, SECONDARY_USER_FIRST_NAME } = process.env;
 
 // Email-related environment variables
 const {
