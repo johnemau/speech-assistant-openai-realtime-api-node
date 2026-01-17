@@ -6,12 +6,24 @@ import fastifyFormBody from '@fastify/formbody';
 import fastifyWs from '@fastify/websocket';
 import OpenAI from 'openai';
 import fs from 'fs';
+import nodemailer from 'nodemailer';
 
 // Load environment variables from .env file
 dotenv.config();
 
 // Retrieve required environment variables.
 const { OPENAI_API_KEY, NGROK_DOMAIN, PRIMARY_USER_FIRST_NAME, SECONDARY_USER_FIRST_NAME, USER_FIRST_NAME } = process.env;
+
+// Email-related environment variables
+const {
+    EMAIL_SUBJECT_PREFIX,
+    SENDER_FROM_EMAIL,
+    SMTP_USER,
+    SMTP_PASS,
+    PRIMARY_TO_EMAIL,
+    SECONDARY_TO_EMAIL,
+    SMTP_NODEMAILER_SERVICE_ID,
+} = process.env;
 
 if (!OPENAI_API_KEY) {
     console.error('Missing OpenAI API key. Please set it in the .env file.');
@@ -24,6 +36,26 @@ if (!NGROK_DOMAIN) {
 
 // Initialize OpenAI client
 const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+let senderTransport = null;
+
+// Initialize Nodemailer transporter (single sender) using service ID
+if (SMTP_USER && SMTP_PASS) {
+    senderTransport = nodemailer.createTransport({
+        service: SMTP_NODEMAILER_SERVICE_ID,
+        auth: { user: SMTP_USER, pass: SMTP_PASS },
+    });
+    senderTransport.verify().then(() => {
+        console.log('Email transporter verified.');
+    }).catch((err) => {
+        console.warn('Email transporter verification failed:', err?.message || err);
+    });
+} else {
+    console.warn('SMTP credentials missing; send_email will be unavailable.');
+}
+if (!SENDER_FROM_EMAIL) {
+    console.warn('SENDER_FROM_EMAIL missing; emails cannot be sent until configured.');
+}
 
 // Initialize Fastify
 const fastify = Fastify();
@@ -52,6 +84,12 @@ You are a voice-only AI assistant participating in a live phone call using the O
 - Examples:
     - "I am in Tucson Arizona" → 'user_location': { type: "approximate", country: "US", region: "Arizona", city: "Tucson" }
     - "I will be in Paris, France" → 'user_location': { type: "approximate", country: "FR", region: "Île-de-France", city: "Paris" }
+
+# Email Tool
+- When the caller says "email me that" or similar, call the tool named send_email.
+- Compose the tool args from the latest conversation context — do not invent outside facts.
+- Provide a short, clear 'subject' and 'body_html' containing an HTML-only body.
+- After calling send_email and receiving the result, respond briefly confirming success or describing any error.
 
 # Speaking Style
 - Keep responses brief and voice-friendly, typically 1–3 short sentences.
@@ -191,7 +229,9 @@ fastify.all('/incoming-call', async (request, reply) => {
                               <Pause length="1"/>
                               <Say voice="Google.en-US-Chirp3-HD-Charon">At your service, ${callerName}. How may I help?</Say>
                               <Connect>
-                                  <Stream url="wss://${request.headers.host}/media-stream" />
+                                  <Stream url="wss://${request.headers.host}/media-stream">
+                                      <Parameter name="caller_number" value="${fromE164}" />
+                                  </Stream>
                               </Connect>
                           </Response>`;
 
@@ -205,6 +245,7 @@ fastify.register(async (fastify) => {
 
         // Connection-specific state
         let streamSid = null;
+        let currentCallerE164 = null;
         let latestMediaTimestamp = 0;
         let lastAssistantItem = null;
         let markQueue = [];
@@ -395,6 +436,21 @@ fastify.register(async (fastify) => {
             description: 'Comprehensive web search'
         };
 
+        // Define send_email tool
+        const sendEmailTool = {
+            type: 'function',
+            name: 'send_email',
+            parameters: {
+                type: 'object',
+                properties: {
+                    subject: { type: 'string', description: 'Short subject summarizing the latest context.' },
+                    body_html: { type: 'string', description: 'HTML-only email body composed from the latest conversation context.' }
+                },
+                required: ['subject', 'body_html']
+            },
+            description: 'Send an HTML email with the latest context. The assistant must supply subject and HTML body.'
+        };
+
         // Handle GPT-web-search tool calls
         const handleWebSearchToolCall = async (query, userLocation) => {
             try {
@@ -439,7 +495,7 @@ fastify.register(async (fastify) => {
                         output: { format: { type: 'audio/pcmu' }, voice: VOICE },
                     },
                     instructions: SYSTEM_MESSAGE,
-                    tools: [ gptWebSearchTool ],
+                    tools: [ gptWebSearchTool, sendEmailTool ],
                     tool_choice: 'auto',
                 },
             };
@@ -594,6 +650,101 @@ fastify.register(async (fastify) => {
                                 stopWaitingMusic();
                                 clearWaitingMusicInterval();
                             }
+                        } else if (functionCall.name === 'send_email') {
+                            try {
+                                const toolInput = JSON.parse(functionCall.arguments);
+                                const subjectRaw = String(toolInput.subject || '').trim();
+                                const bodyHtml = String(toolInput.body_html || '').trim();
+
+                                if (!subjectRaw || !bodyHtml) {
+                                    const errMsg = 'Missing subject or body_html.';
+                                    const toolErrorEvent = {
+                                        type: 'conversation.item.create',
+                                        item: {
+                                            type: 'function_call_output',
+                                            call_id: functionCall.call_id,
+                                            output: JSON.stringify({ error: errMsg })
+                                        }
+                                    };
+                                    openAiWs.send(JSON.stringify(toolErrorEvent));
+                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    return;
+                                }
+
+                                const subject = EMAIL_SUBJECT_PREFIX ? `${EMAIL_SUBJECT_PREFIX} ${subjectRaw}` : subjectRaw;
+
+                                // Determine caller group
+                                let group = null;
+                                if (currentCallerE164 && PRIMARY_CALLERS_SET.has(currentCallerE164)) group = 'primary';
+                                else if (currentCallerE164 && SECONDARY_CALLERS_SET.has(currentCallerE164)) group = 'secondary';
+
+                                const fromEmail = SENDER_FROM_EMAIL || null;
+                                const toEmail = group === 'primary' ? (PRIMARY_TO_EMAIL || null) : (group === 'secondary' ? (SECONDARY_TO_EMAIL || null) : null);
+
+                                if (!senderTransport || !fromEmail || !toEmail) {
+                                    const errMsg = 'Email is not configured for this caller.';
+                                    const toolErrorEvent = {
+                                        type: 'conversation.item.create',
+                                        item: {
+                                            type: 'function_call_output',
+                                            call_id: functionCall.call_id,
+                                            output: JSON.stringify({ error: errMsg })
+                                        }
+                                    };
+                                    openAiWs.send(JSON.stringify(toolErrorEvent));
+                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    return;
+                                }
+
+                                // Send email
+                                senderTransport.sendMail({
+                                    from: fromEmail,
+                                    to: toEmail,
+                                    subject,
+                                    html: bodyHtml,
+                                    headers: {
+                                        'FROM-AI-ASSITANT': 'true'
+                                    }
+                                }).then((info) => {
+                                    const result = {
+                                        messageId: info.messageId,
+                                        accepted: info.accepted,
+                                        rejected: info.rejected,
+                                    };
+                                    const toolResultEvent = {
+                                        type: 'conversation.item.create',
+                                        item: {
+                                            type: 'function_call_output',
+                                            call_id: functionCall.call_id,
+                                            output: JSON.stringify(result)
+                                        }
+                                    };
+                                    openAiWs.send(JSON.stringify(toolResultEvent));
+                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                }).catch((error) => {
+                                    const toolErrorEvent = {
+                                        type: 'conversation.item.create',
+                                        item: {
+                                            type: 'function_call_output',
+                                            call_id: functionCall.call_id,
+                                            output: JSON.stringify({ error: error?.message || String(error) })
+                                        }
+                                    };
+                                    openAiWs.send(JSON.stringify(toolErrorEvent));
+                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                });
+                            } catch (parseError) {
+                                const toolErrorEvent = {
+                                    type: 'conversation.item.create',
+                                    item: {
+                                        type: 'function_call_output',
+                                        call_id: functionCall.call_id,
+                                        output: JSON.stringify({ error: parseError?.message || String(parseError) })
+                                    }
+                                };
+                                openAiWs.send(JSON.stringify(toolErrorEvent));
+                                openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                            }
                         }
                     }
                 }
@@ -629,6 +780,16 @@ fastify.register(async (fastify) => {
                         // Ensure waiting music is not running for a new stream
                         stopWaitingMusic();
                         clearWaitingMusicInterval();
+
+                        // Read caller number from custom parameters passed via TwiML Parameter
+                        try {
+                            const cp = data.start?.customParameters || data.start?.custom_parameters || {};
+                            const rawCaller = cp.caller_number || cp.callerNumber || null;
+                            currentCallerE164 = normalizeUSNumberToE164(rawCaller);
+                            if (currentCallerE164) console.log('Caller (from TwiML Parameter):', rawCaller, '=>', currentCallerE164);
+                        } catch (e) {
+                            console.warn('No custom caller parameter found on start event.');
+                        }
                         break;
                     case 'mark':
                         if (markQueue.length > 0) {

@@ -147,3 +147,42 @@ Notes:
 - Twilio sends the caller number as `From` in E.164 format.
 - If both lists are empty, all incoming calls will be rejected.
 - Non-listed callers receive a brief message and the call is hung up.
+
+### Email Tool (Nodemailer service)
+
+Let the assistant send an HTML email with the latest conversation context when the caller says "email me that" or similar. The assistant composes the subject and HTML body and calls the `send_email` tool; the server selects the recipient based on the caller’s phone number. There is a single sender SMTP account used for both recipients.
+
+- The email body must be HTML-only. No plaintext.
+- A custom header `FROM-AI-ASSITANT` is included with each message.
+
+Environment variables:
+
+```
+# Optional subject prefix
+EMAIL_SUBJECT_PREFIX=[optional prefix]
+
+# Nodemailer service ID (e.g., protonmail, gmail)
+SMTP_NODEMAILER_SERVICE_ID=gmail // https://nodemailer.com/smtp/well-known-services
+
+# Single sender SMTP account
+SENDER_FROM_EMAIL=sender@example.com
+SMTP_USER=smtp_user
+SMTP_PASS=smtp_password_or_app_password
+
+# Recipient addresses per caller group
+PRIMARY_TO_EMAIL=primary.recipient@example.com
+SECONDARY_TO_EMAIL=secondary.recipient@example.com
+```
+
+Behavior:
+- The app adds a TwiML `<Parameter name="caller_number" ...>` so Twilio passes the caller number into the Media Stream `start` event.
+- If the caller is in `PRIMARY_USER_PHONE_NUMBERS`, email is sent to `PRIMARY_TO_EMAIL`; if in `SECONDARY_USER_PHONE_NUMBERS`, email is sent to `SECONDARY_TO_EMAIL`.
+- If required config is missing (`SENDER_FROM_EMAIL`, `SMTP_USER`, `SMTP_PASS`, or the matching `*_TO_EMAIL`), the assistant responds briefly that email isn’t configured for this caller.
+
+Provider notes:
+- Many providers require app passwords for SMTP.
+- For ProtonMail, set `SMTP_NODEMAILER_SERVICE_ID=protonmail` and use an app password.
+
+Usage:
+- Say "email me that" after the assistant provides information.
+- The assistant will compose a short subject (optionally prefixed by `EMAIL_SUBJECT_PREFIX`) and an HTML-only body, then confirm send status.
