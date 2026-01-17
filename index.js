@@ -7,9 +7,48 @@ import fastifyWs from '@fastify/websocket';
 import OpenAI from 'openai';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
+import redactLogsPkg from 'redact-logs';
+const { startPatchingLogs } = redactLogsPkg;
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Enable redaction of sensitive env vars from console and stdout
+function isTruthy(val) {
+    const v = String(val || '').trim().toLowerCase();
+    return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
+const DEFAULT_SECRET_ENV_KEYS = [
+    'OPENAI_API_KEY',
+    'NGROK_AUTHTOKEN',
+    'SMTP_NODEMAILER_SERVICE_ID',
+    'SMTP_PASS',
+    'SMTP_USER',
+    'SENDER_FROM_EMAIL',
+    'PRIMARY_TO_EMAIL',
+    'SECONDARY_TO_EMAIL',
+    'TWILIO_AUTH_TOKEN',
+    'TWILIO_ACCOUNT_SID',
+    'TWILIO_API_KEY',
+    'TWILIO_API_SECRET',
+];
+
+let disableLogRedaction = null;
+try {
+    const extraKeys = (process.env.REDACT_ENV_KEYS || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
+    if (!isTruthy(process.env.DISABLE_LOG_REDACTION)) {
+        disableLogRedaction = startPatchingLogs(keys);
+        // Optional: brief confirmation without leaking values
+        console.log('Log redaction enabled for env keys:', keys);
+    }
+} catch (e) {
+    console.warn('Failed to initialize log redaction:', e?.message || e);
+}
 
 // Retrieve required environment variables.
 const { OPENAI_API_KEY, NGROK_DOMAIN, PRIMARY_USER_FIRST_NAME, SECONDARY_USER_FIRST_NAME, USER_FIRST_NAME } = process.env;

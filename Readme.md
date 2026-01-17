@@ -52,6 +52,44 @@ Open a Terminal and run:
 npm install
 ```
 
+### Redact sensitive env values in logs
+
+Prevent accidental printing of secret environment variables to `console.log` and `process.stdout`.
+
+Install the helper:
+
+```
+npm install redact-logs
+```
+
+This app enables redaction at startup, replacing any configured env values with `[secure]` when they appear in logs or CLI output.
+
+- Default redacted keys: `OPENAI_API_KEY`, `NGROK_AUTHTOKEN`, `SMTP_PASS`, `SMTP_USER`, `SENDER_FROM_EMAIL`, `PRIMARY_TO_EMAIL`, `SECONDARY_TO_EMAIL`, `TWILIO_AUTH_TOKEN`, `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET`, `SECRET_ENV_VAR`.
+- Add more via a comma-separated env: `REDACT_ENV_KEYS=MY_SECRET,ANOTHER_TOKEN`.
+- Disable globally via: `DISABLE_LOG_REDACTION=true`.
+
+Example behavior:
+
+```js
+process.env.SECRET_ENV_VAR = 'secret value';
+
+// Before enabling (if disabled):
+console.log('process.env.SECRET_ENV_VAR=', process.env.SECRET_ENV_VAR);
+// prints: process.env.SECRET_ENV_VAR=secret value
+process.stdout.write(`process.stdout.write=${process.env.SECRET_ENV_VAR}\n`);
+// prints: process.stdout.write=secret value
+
+// After redaction is enabled at startup:
+console.log('process.env.SECRET_ENV_VAR=', process.env.SECRET_ENV_VAR);
+// prints: process.env.SECRET_ENV_VAR=[secure]
+process.stdout.write(`process.stdout.write=${process.env.SECRET_ENV_VAR}\n`);
+// prints: process.stdout.write=[secure]
+
+// You can restore original logging during debugging by setting DISABLE_LOG_REDACTION=true
+```
+
+Note: Redaction only affects console output; it does not sanitize data sent to third-party services or files.
+
 ### Twilio setup
 
 In your Phone Number configuration settings, update the first **A call comes in** dropdown to **Webhook**, and paste your ngrok forwarding URL (referenced above), followed by `/incoming-call`. For example, `https://[your-ngrok-subdomain].ngrok.app/incoming-call`. Then, click **Save configuration**.
