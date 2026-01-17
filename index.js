@@ -125,7 +125,7 @@ You are a voice-only AI assistant participating in a live phone call using the O
 # Email Tool
 - When the caller says "email me that" or similar, call the tool named send_email.
 - Compose the tool args from the latest conversation context — do not invent outside facts.
-- Provide a short, clear 'subject' and 'body_html' containing an HTML-only body.
+- Provide a short, clear 'subject' and 'body_html' containing an HTML-only body. Include relevant URLs as clickable links when they are available.
 - After calling send_email and receiving the result, respond briefly confirming success or describing any error.
 
 # Speaking Style
@@ -503,11 +503,11 @@ fastify.register(async (fastify) => {
                 type: 'object',
                 properties: {
                     subject: { type: 'string', description: 'Short subject summarizing the latest context.' },
-                    body_html: { type: 'string', description: 'HTML-only email body composed from the latest conversation context.' }
+                    body_html: { type: 'string', description: 'HTML-only email body composed from the latest conversation context. Include URLs when available, formatted as clickable links.' }
                 },
                 required: ['subject', 'body_html']
             },
-            description: 'Send an HTML email with the latest context. The assistant must supply subject and HTML body.'
+            description: 'Send an HTML email with the latest context. The assistant must supply subject and HTML body that includes URLs when available.'
         };
 
         // Handle gpt_web_search tool calls
