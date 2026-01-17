@@ -7,8 +7,7 @@ import fastifyWs from '@fastify/websocket';
 import OpenAI from 'openai';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
-import redactLogsPkg from 'redact-logs';
-const { startPatchingLogs } = redactLogsPkg;
+import patchLogs from 'redact-logs';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -42,7 +41,7 @@ try {
         .filter(Boolean);
     const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
     if (!isTruthy(process.env.DISABLE_LOG_REDACTION)) {
-        disableLogRedaction = startPatchingLogs(keys);
+        disableLogRedaction = patchLogs(keys);
         // Optional: brief confirmation without leaking values
         console.log('Log redaction enabled for env keys:', keys);
     }
@@ -519,7 +518,6 @@ fastify.register(async (fastify) => {
                     country: "US",
                     region: "Washington"
                 };
-                console.log('Web search user_location:', effectiveLocation);
 
                 const result = await openaiClient.responses.create({
                     model: 'gpt-5.2',
@@ -668,7 +666,7 @@ fastify.register(async (fastify) => {
                                 const query = toolInput.query;
                                 const userLocation = toolInput.user_location;
                                 
-                                console.log(`Executing web search for query: ${query}`);
+                                console.log(`Executing web search`);
                                 handleWebSearchToolCall(query, userLocation)
                                     .then((searchResult) => {
                                         // Tool completed; stop waiting music before continuing response
