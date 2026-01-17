@@ -9,6 +9,7 @@ import fs from 'fs';
 import nodemailer from 'nodemailer';
 import patchLogs from 'redact-logs';
 import { scrub, findSensitiveValues } from '@zapier/secret-scrubber';
+import { inspect } from 'node:util';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -17,6 +18,15 @@ dotenv.config();
 function isTruthy(val) {
     const v = String(val || '').trim().toLowerCase();
     return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
+// Helper: stringify objects for logging with deep nesting
+function stringifyDeep(obj) {
+    try {
+        return inspect(obj, { depth: 10, colors: false, compact: false });
+    } catch (e) {
+        try { return JSON.stringify(obj); } catch { return String(obj); }
+    }
 }
 
 // Environment flags
@@ -645,7 +655,7 @@ fastify.register(async (fastify) => {
                 },
             };
 
-            console.log('Sending session update:', JSON.stringify(sessionUpdate));
+            console.log('Sending session update:', stringifyDeep(sessionUpdate));
             openAiWs.send(JSON.stringify(sessionUpdate));
         };
 
@@ -662,7 +672,7 @@ fastify.register(async (fastify) => {
                         content_index: 0,
                         audio_end_ms: elapsedTime
                     };
-                    if (SHOW_TIMING_MATH) console.log('Sending truncation event:', JSON.stringify(truncateEvent));
+                    if (SHOW_TIMING_MATH) console.log('Sending truncation event:', stringifyDeep(truncateEvent));
                     openAiWs.send(JSON.stringify(truncateEvent));
                 }
 
@@ -785,7 +795,7 @@ fastify.register(async (fastify) => {
                                         };
                                         openAiWs.send(JSON.stringify(toolResultEvent));
                                         openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                                        if (IS_DEV) console.log('LLM tool output sent to OpenAI');
+                                        if (IS_DEV) console.log('LLM tool output sent to OpenAI', toolResultEvent);
                                         // Cleanup: allow future tool calls with same call_id
                                         processedFunctionCalls.delete(callId);
                                     })
