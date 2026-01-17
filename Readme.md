@@ -85,7 +85,11 @@ console.log('process.env.SECRET_ENV_VAR=', process.env.SECRET_ENV_VAR);
 process.stdout.write(`process.stdout.write=${process.env.SECRET_ENV_VAR}\n`);
 // prints: process.stdout.write=[secure]
 
-// You can restore original logging during debugging by setting DISABLE_LOG_REDACTION=true
+// Or enable/disable manually in code:
+// const disableLogRedactionFunc = patchLogs(['SECRET_ENV_VAR'])
+// ... logs are redacted ...
+// disableLogRedactionFunc()
+// You can also restore original logging during debugging by setting DISABLE_LOG_REDACTION=true
 ```
 
 Note: Redaction only affects console output; it does not sanitize data sent to third-party services or files.
