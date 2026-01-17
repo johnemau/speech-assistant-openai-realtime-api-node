@@ -408,6 +408,26 @@ fastify.register(async (fastify) => {
             }
         });
 
+        // Helper to log and send tool errors to OpenAI WS
+        function sendOpenAiToolError(callId, errorLike) {
+            const msg = (typeof errorLike === 'string') ? errorLike : (errorLike?.message || String(errorLike));
+            try {
+                console.error('Sending tool error to OpenAI WS:', msg);
+                const toolErrorEvent = {
+                    type: 'conversation.item.create',
+                    item: {
+                        type: 'function_call_output',
+                        call_id: callId,
+                        output: JSON.stringify({ error: msg })
+                    }
+                };
+                openAiWs.send(JSON.stringify(toolErrorEvent));
+                openAiWs.send(JSON.stringify({ type: 'response.create' }));
+            } catch (e) {
+                console.error('Failed to send tool error to OpenAI WS:', e);
+            }
+        }
+
         // Define the GPT-web-search tool
         const gptWebSearchTool = {
             type: 'function',
@@ -631,17 +651,8 @@ fastify.register(async (fastify) => {
                                         toolCallInProgress = false;
                                         stopWaitingMusic();
                                         clearWaitingMusicInterval();
-                                        // Send error result back to OpenAI
-                                        const toolErrorEvent = {
-                                            type: 'conversation.item.create',
-                                            item: {
-                                                type: 'function_call_output',
-                                                call_id: functionCall.call_id,
-                                                output: JSON.stringify({ error: error.message })
-                                            }
-                                        };
-                                        openAiWs.send(JSON.stringify(toolErrorEvent));
-                                        openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                        // Send error result back to OpenAI (and log)
+                                        sendOpenAiToolError(functionCall.call_id, error);
                                     });
                             } catch (parseError) {
                                 console.error('Error parsing tool arguments:', parseError);
@@ -657,16 +668,7 @@ fastify.register(async (fastify) => {
 
                                 if (!subjectRaw || !bodyHtml) {
                                     const errMsg = 'Missing subject or body_html.';
-                                    const toolErrorEvent = {
-                                        type: 'conversation.item.create',
-                                        item: {
-                                            type: 'function_call_output',
-                                            call_id: functionCall.call_id,
-                                            output: JSON.stringify({ error: errMsg })
-                                        }
-                                    };
-                                    openAiWs.send(JSON.stringify(toolErrorEvent));
-                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    sendOpenAiToolError(functionCall.call_id, errMsg);
                                     return;
                                 }
 
@@ -682,16 +684,7 @@ fastify.register(async (fastify) => {
 
                                 if (!senderTransport || !fromEmail || !toEmail) {
                                     const errMsg = 'Email is not configured for this caller.';
-                                    const toolErrorEvent = {
-                                        type: 'conversation.item.create',
-                                        item: {
-                                            type: 'function_call_output',
-                                            call_id: functionCall.call_id,
-                                            output: JSON.stringify({ error: errMsg })
-                                        }
-                                    };
-                                    openAiWs.send(JSON.stringify(toolErrorEvent));
-                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    sendOpenAiToolError(functionCall.call_id, errMsg);
                                     return;
                                 }
 
@@ -721,28 +714,11 @@ fastify.register(async (fastify) => {
                                     openAiWs.send(JSON.stringify(toolResultEvent));
                                     openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                 }).catch((error) => {
-                                    const toolErrorEvent = {
-                                        type: 'conversation.item.create',
-                                        item: {
-                                            type: 'function_call_output',
-                                            call_id: functionCall.call_id,
-                                            output: JSON.stringify({ error: error?.message || String(error) })
-                                        }
-                                    };
-                                    openAiWs.send(JSON.stringify(toolErrorEvent));
-                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    console.error('Email send error:', error);
+                                    sendOpenAiToolError(functionCall.call_id, error);
                                 });
                             } catch (parseError) {
-                                const toolErrorEvent = {
-                                    type: 'conversation.item.create',
-                                    item: {
-                                        type: 'function_call_output',
-                                        call_id: functionCall.call_id,
-                                        output: JSON.stringify({ error: parseError?.message || String(parseError) })
-                                    }
-                                };
-                                openAiWs.send(JSON.stringify(toolErrorEvent));
-                                openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                sendOpenAiToolError(functionCall.call_id, parseError);
                             }
                         }
                     }
