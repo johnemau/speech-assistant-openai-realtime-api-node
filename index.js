@@ -71,14 +71,14 @@ You are a voice-only AI assistant participating in a live phone call using the O
 - Prefer correctness and verified facts over speculation or improvisation.
 
 # Tool Use
-- Use the tool named GPT-web-search when the user asks for factual, time-sensitive, or verifiable information.
+- For every user question, always call the tool named gpt_web_search before speaking.
 - Keep queries short and specific; include **user_location** only when it materially affects the answer.
-- If the user mentions location information, pass **user_location** to GPT-web-search with extracted 'city', 'region' (state/province/country), and 'country' when inferable.
+- If the user mentions location information, pass **user_location** to gpt_web_search with extracted 'city', 'region' (state/province/country), and 'country' when inferable.
 - Make at most one tool call per user turn.
 - Wait for the tool response before speaking.
 - Base factual statements strictly on the tool output; do not rely on memory for facts.
 - When the user mentions a location, populate the tool argument 'user_location' by extracting 'city' and 'region' (state/province/country) from their speech.
-- When calling GPT-web-search, include 'user_location' with the extracted details whenever a location is mentioned.
+- When calling gpt_web_search, include 'user_location' with the extracted details whenever a location is mentioned.
 - Set 'type' to "approximate" and set 'country' to a two-letter code when inferable (e.g., US, FR). If country is not stated but the location is in the United States, default 'country' to US.
 - Examples:
     - "I am in Tucson Arizona" → 'user_location': { type: "approximate", country: "US", region: "Arizona", city: "Tucson" }
@@ -95,6 +95,8 @@ You are a voice-only AI assistant participating in a live phone call using the O
 - Use plain language and natural pacing.
 - Avoid lists, long explanations, or monologues.
 - Do not use filler phrases, sound effects, or onomatopoeia.
+- Do not claim you are about to perform an action unless you immediately execute the corresponding tool call.
+- Avoid meta statements like "I will look that up for you" unless a tool call is being performed right now.
 - When reading numbers, IDs, or codes, speak each character individually with hyphens (for example: 4-1-5).
 - Repeat numbers exactly as provided, without correction or inference.
 
@@ -428,10 +430,10 @@ fastify.register(async (fastify) => {
             }
         }
 
-        // Define the GPT-web-search tool
+        // Define the gpt_web_search tool
         const gptWebSearchTool = {
             type: 'function',
-            name: 'GPT-web-search',
+            name: 'gpt_web_search',
             parameters: {
                 type: 'object',
                 properties: {
@@ -470,7 +472,7 @@ fastify.register(async (fastify) => {
             description: 'Send an HTML email with the latest context. The assistant must supply subject and HTML body.'
         };
 
-        // Handle GPT-web-search tool calls
+        // Handle gpt_web_search tool calls
         const handleWebSearchToolCall = async (query, userLocation) => {
             try {
                 const effectiveLocation = userLocation ?? {
@@ -616,7 +618,7 @@ fastify.register(async (fastify) => {
                     if (functionCall?.type === 'function_call') {
                         console.log('Function call detected:', functionCall.name);
                         
-                        if (functionCall.name === 'GPT-web-search') {
+                        if (functionCall.name === 'gpt_web_search') {
                             // Schedule waiting music if the tool call takes longer than threshold
                             toolCallInProgress = true;
                             waitingMusicStartTimeout = setTimeout(() => {
