@@ -158,9 +158,6 @@ Let the assistant send an HTML email with the latest conversation context when t
 Environment variables:
 
 ```
-# Optional subject prefix
-EMAIL_SUBJECT_PREFIX=[optional prefix]
-
 # Nodemailer service ID (e.g., protonmail, gmail)
 SMTP_NODEMAILER_SERVICE_ID=gmail // https://nodemailer.com/smtp/well-known-services
 
@@ -185,4 +182,4 @@ Provider notes:
 
 Usage:
 - Say "email me that" after the assistant provides information.
-- The assistant will compose a short subject (optionally prefixed by `EMAIL_SUBJECT_PREFIX`) and an HTML-only body, then confirm send status.
+- The assistant will compose a short subject and an HTML-only body, then confirm send status.

@@ -16,7 +16,6 @@ const { OPENAI_API_KEY, NGROK_DOMAIN, PRIMARY_USER_FIRST_NAME, SECONDARY_USER_FI
 
 // Email-related environment variables
 const {
-    EMAIL_SUBJECT_PREFIX,
     SENDER_FROM_EMAIL,
     SMTP_USER,
     SMTP_PASS,
@@ -671,7 +670,7 @@ fastify.register(async (fastify) => {
                                     return;
                                 }
 
-                                const subject = EMAIL_SUBJECT_PREFIX ? `${EMAIL_SUBJECT_PREFIX} ${subjectRaw}` : subjectRaw;
+                                const subject = subjectRaw;
 
                                 // Determine caller group
                                 let group = null;
