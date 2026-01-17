@@ -19,6 +19,9 @@ function isTruthy(val) {
     return v === '1' || v === 'true' || v === 'yes' || v === 'on';
 }
 
+// Environment flags
+const IS_DEV = String(process.env.NODE_ENV || '').toLowerCase() === 'development';
+
 const DEFAULT_SECRET_ENV_KEYS = [
     'OPENAI_API_KEY',
     'NGROK_AUTHTOKEN',
@@ -598,7 +601,7 @@ fastify.register(async (fastify) => {
                     truncation: 'auto',
                 });
 
-                console.log('Web search result:', result.output_text);
+                if (IS_DEV) console.log('Web search result:', result.output_text);
                 return result.output_text;
             } catch (error) {
                 console.error('Error calling web search:', error);
@@ -682,7 +685,8 @@ fastify.register(async (fastify) => {
                 const response = JSON.parse(data);
 
                 if (LOG_EVENT_TYPES.includes(response.type)) {
-                    console.log(`Received event: ${response.type}`, response);
+                    if (IS_DEV) console.log(`Received event: ${response.type}`, response);
+                    else console.log(`Received event: ${response.type}`);
                 }
 
                 if (response.type === 'response.output_audio.delta' && response.delta) {
@@ -717,6 +721,7 @@ fastify.register(async (fastify) => {
                 // Handle function calls from response.done event
                 if (response.type === 'response.done') {
                     const functionCall = response.response?.output?.[0];
+                    if (IS_DEV) console.log('LLM response.done received');
                     
                     if (functionCall?.type === 'function_call') {
                         console.log('Function call detected:', functionCall.name);
@@ -731,7 +736,7 @@ fastify.register(async (fastify) => {
                                 const toolInput = JSON.parse(functionCall.arguments);
                                 const query = toolInput.query;
                                 const userLocation = toolInput.user_location;
-                                
+                                if (IS_DEV) console.log('Dev tool call gpt_web_search input:', { query, user_location: userLocation });
                                 console.log(`Executing web search`);
                                 handleWebSearchToolCall(query, userLocation)
                                     .then((searchResult) => {
@@ -739,6 +744,7 @@ fastify.register(async (fastify) => {
                                         toolCallInProgress = false;
                                         stopWaitingMusic();
                                         clearWaitingMusicInterval();
+                                        if (IS_DEV) console.log('Dev tool call gpt_web_search output:', searchResult);
                                         // Send function call output back to OpenAI
                                         const toolResultEvent = {
                                             type: 'conversation.item.create',
@@ -750,6 +756,7 @@ fastify.register(async (fastify) => {
                                         };
                                         openAiWs.send(JSON.stringify(toolResultEvent));
                                         openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                        if (IS_DEV) console.log('LLM tool output sent to OpenAI');
                                     })
                                     .catch((error) => {
                                         console.error('Error handling web search tool call:', error);
@@ -770,6 +777,7 @@ fastify.register(async (fastify) => {
                                 const toolInput = JSON.parse(functionCall.arguments);
                                 const subjectRaw = String(toolInput.subject || '').trim();
                                 const bodyHtml = String(toolInput.body_html || '').trim();
+                                if (IS_DEV) console.log('Dev tool call send_email input:', { subject: subjectRaw, body_html: bodyHtml });
 
                                 if (!subjectRaw || !bodyHtml) {
                                     const errMsg = 'Missing subject or body_html.';
@@ -794,7 +802,7 @@ fastify.register(async (fastify) => {
                                 }
 
                                 // Send email
-                                senderTransport.sendMail({
+                                const mailOptions = {
                                     from: fromEmail,
                                     to: toEmail,
                                     subject,
@@ -802,12 +810,15 @@ fastify.register(async (fastify) => {
                                     headers: {
                                         'From-Ai-Assistant': 'true'
                                     }
-                                }).then((info) => {
+                                };
+                                if (IS_DEV) console.log('Dev sendMail options:', mailOptions);
+                                senderTransport.sendMail(mailOptions).then((info) => {
                                     const result = {
                                         messageId: info.messageId,
                                         accepted: info.accepted,
                                         rejected: info.rejected,
                                     };
+                                    if (IS_DEV) console.log('Dev tool call send_email output:', result);
                                     const toolResultEvent = {
                                         type: 'conversation.item.create',
                                         item: {
@@ -818,6 +829,7 @@ fastify.register(async (fastify) => {
                                     };
                                     openAiWs.send(JSON.stringify(toolResultEvent));
                                     openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    if (IS_DEV) console.log('LLM email tool output sent');
                                 }).catch((error) => {
                                     console.error('Email send error:', error);
                                     sendOpenAiToolError(functionCall.call_id, error);
