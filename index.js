@@ -50,10 +50,18 @@ try {
         .map((s) => s.trim())
         .filter(Boolean);
     const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
-    if (!isTruthy(process.env.DISABLE_LOG_REDACTION)) {
-        disableLogRedaction = patchLogs(keys);
-        // Optional: brief confirmation without leaking values
-        console.log('Log redaction enabled for env keys:', keys);
+    // Enable redaction by default
+    disableLogRedaction = patchLogs(keys);
+    // Optional: brief confirmation without leaking values
+    console.log('Log redaction enabled for env keys:', keys);
+    // If env flag is truthy, disable the redaction immediately
+    if (isTruthy(process.env.DISABLE_LOG_REDACTION)) {
+        try {
+            disableLogRedaction();
+            console.log('Log redaction disabled via DISABLE_LOG_REDACTION env flag.');
+        } catch (err) {
+            console.warn('Failed to disable log redaction:', err?.message || err);
+        }
     }
 } catch (e) {
     console.warn('Failed to initialize log redaction:', e?.message || e);
