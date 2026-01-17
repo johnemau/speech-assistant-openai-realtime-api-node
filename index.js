@@ -597,7 +597,91 @@ fastify.register(async (fastify) => {
                 type: 'object',
                 properties: {
                     subject: { type: 'string', description: 'Short subject summarizing the latest context.' },
-                    body_html: { type: 'string', description: 'HTML-only email body composed from the latest conversation context. Non-conversational (no follow-up questions); formatted for readability and concise. Include specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be provided as clickable URLs. Always conclude with a small, cute ASCII art at the end of the message.' }
+                                        body_html: {
+                                                type: 'string',
+                                                description: 'HTML-only email body composed from the latest conversation context. Non-conversational (no follow-up questions); formatted for readability and concise. Include specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be provided as clickable URLs. Always conclude with a small, cute ASCII art at the end of the message.',
+                                                examples: [
+                                                        `<html>
+    <body>
+        <h2>Bluebird Cafe — Seattle, WA</h2>
+
+        <p><strong>Address:</strong> 123 Pine St, Seattle, WA 98101</p>
+        <p><strong>Phone:</strong> <a href="tel:+12065550123">+1 (206) 555‑0123</a></p>
+        <p><strong>Email:</strong> <a href="mailto:info@bluebirdcafe.example">info@bluebirdcafe.example</a></p>
+        <p><strong>Website:</strong> <a href="https://bluebirdcafe.example">https://bluebirdcafe.example</a></p>
+        <p><strong>Google Maps:</strong> <a href="https://maps.google.com/?q=Bluebird%20Cafe%20123%20Pine%20St%20Seattle%20WA%2098101">View location</a></p>
+
+        <h3>Hours of Operation</h3>
+        <ul>
+            <li>Mon–Fri: 7:00 AM – 6:00 PM</li>
+            <li>Sat: 8:00 AM – 6:00 PM</li>
+            <li>Sun: 8:00 AM – 4:00 PM</li>
+        </ul>
+
+        <h3>Quick Highlights</h3>
+        <ul>
+            <li>Specialty: Single‑origin pour‑overs and seasonal pastries.</li>
+            <li>Amenities: Free Wi‑Fi, indoor seating, pet‑friendly patio.</li>
+        </ul>
+
+        <h3>Recent Coverage</h3>
+        <ul>
+            <li><a href="https://news.example.com/2026/bluebird-cafe-feature">Feature article on Bluebird Cafe</a></li>
+            <li><a href="https://blog.example.com/seattle-best-coffee-2026">Seattle coffee roundup (includes Bluebird)</a></li>
+        </ul>
+
+        <hr />
+
+        <pre style="font-family: monospace; line-height: 1.2; margin-top: 12px;">
+            /\_/\
+         ( •.• )  meow
+            > ^ <
+        </pre>
+    </body>
+</html>`,
+                                                        `<html>
+    <body>
+        <h2>U.S. President — Quick Fact</h2>
+        <p><strong>Current President:</strong> Example Name.</p>
+        <p><em>Source:</em> <a href="https://www.whitehouse.gov/">whitehouse.gov</a></p>
+        <hr />
+        <pre style="font-family: monospace; line-height: 1.2; margin-top: 12px;">
+            ʕ•ᴥ•ʔ
+        </pre>
+    </body>
+</html>`,
+                                                        `<html>
+    <body>
+        <h2>24‑Hour Weather — Seattle, WA</h2>
+        <p><strong>Forecast:</strong> Showers early, clearing late. High 49°F / Low 41°F. Winds SW 5–10 mph.</p>
+        <p><em>Source:</em> <a href="https://forecast.weather.gov/MapClick.php?textField1=47.61&textField2=-122.33">National Weather Service</a></p>
+        <hr />
+        <pre style="font-family: monospace; line-height: 1.2; margin-top: 12px;">
+            (•‿•)
+        </pre>
+    </body>
+</html>`,
+                                                        `<html>
+    <body>
+        <h2>Movie Showtimes — Tonight</h2>
+        <p><strong>Regal Pine Street 12</strong><br />
+             456 Pine St, Seattle, WA 98101 — <a href="https://maps.google.com/?q=Regal%20Pine%20Street%2012%20Seattle">Google Maps</a><br />
+             Phone: <a href="tel:+12065550111">+1 (206) 555‑0111</a> — Website: <a href="https://www.regal.example/pine-street-12">regal.example/pine-street-12</a></p>
+        <ul>
+            <li>Starlight Odyssey (PG‑13): 6:45 PM, 9:15 PM</li>
+            <li>City Beats (R): 7:00 PM, 9:30 PM</li>
+            <li>Green Trails (PG): 6:30 PM</li>
+        </ul>
+        <hr />
+        <pre style="font-family: monospace; line-height: 1.2; margin-top: 12px;">
+            /\_/\
+         ( •.• )
+            > ^ <
+        </pre>
+    </body>
+</html>`
+                                                ]
+                                        }
                 },
                 required: ['subject', 'body_html']
             },
