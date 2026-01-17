@@ -588,18 +588,23 @@ fastify.register(async (fastify) => {
                     region: "Washington"
                 };
 
-                const result = await openaiClient.responses.create({
+                // Build exact payload and log all values being sent to OpenAI
+                const reqPayload = {
                     model: 'gpt-5.2',
                     reasoning: { effort: 'high' },
-                    tools: [{ 
+                    tools: [{
                         type: 'web_search',
                         user_location: effectiveLocation,
-                     }],
+                    }],
                     instructions: WEB_SEARCH_INSTRUCTIONS,
                     input: query,
                     tool_choice: 'required',
                     truncation: 'auto',
-                });
+                };
+
+                if (IS_DEV) console.log('Web search request payload:', reqPayload);
+
+                const result = await openaiClient.responses.create(reqPayload);
 
                 if (IS_DEV) console.log('Web search result:', result.output_text);
                 return result.output_text;
