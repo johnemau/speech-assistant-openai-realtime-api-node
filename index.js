@@ -790,6 +790,11 @@ fastify.register(async (fastify) => {
                                 clearWaitingMusicInterval();
                             }
                         } else if (functionCall.name === 'send_email') {
+                            // Schedule waiting music in case email sending takes time
+                            toolCallInProgress = true;
+                            waitingMusicStartTimeout = setTimeout(() => {
+                                if (toolCallInProgress) startWaitingMusic();
+                            }, WAIT_MUSIC_THRESHOLD_MS);
                             try {
                                 const toolInput = JSON.parse(functionCall.arguments);
                                 const subjectRaw = String(toolInput.subject || '').trim();
@@ -798,6 +803,9 @@ fastify.register(async (fastify) => {
 
                                 if (!subjectRaw || !bodyHtml) {
                                     const errMsg = 'Missing subject or body_html.';
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, errMsg);
                                     return;
                                 }
@@ -814,6 +822,9 @@ fastify.register(async (fastify) => {
 
                                 if (!senderTransport || !fromEmail || !toEmail) {
                                     const errMsg = 'Email is not configured for this caller.';
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, errMsg);
                                     return;
                                 }
@@ -844,14 +855,23 @@ fastify.register(async (fastify) => {
                                             output: JSON.stringify(result)
                                         }
                                     };
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
                                     openAiWs.send(JSON.stringify(toolResultEvent));
                                     openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                     if (IS_DEV) console.log('LLM email tool output sent');
                                 }).catch((error) => {
                                     console.error('Email send error:', error);
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, error);
                                 });
                             } catch (parseError) {
+                                toolCallInProgress = false;
+                                stopWaitingMusic();
+                                clearWaitingMusicInterval();
                                 sendOpenAiToolError(functionCall.call_id, parseError);
                             }
                         }
