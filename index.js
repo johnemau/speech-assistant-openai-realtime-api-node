@@ -697,7 +697,7 @@ fastify.register(async (fastify) => {
                                     subject,
                                     html: bodyHtml,
                                     headers: {
-                                        'FROM-AI-ASSITANT': 'true'
+                                        'From-Ai-Assistant': 'true'
                                     }
                                 }).then((info) => {
                                     const result = {
