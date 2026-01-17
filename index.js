@@ -68,62 +68,66 @@ try {
 }
 
 // Wrap console methods to proactively scrub sensitive data in any logged objects
-// Uses secret-scrubber's heuristics and known env secret values.
-try {
-    const envSecretValues = (() => {
-        const extraKeys = (process.env.REDACT_ENV_KEYS || '')
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean);
-        const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
-        const vals = [];
-        for (const k of keys) {
-            const v = process.env[k];
-            if (typeof v === 'string' && v.length > 0) vals.push(v);
-        }
-        return vals;
-    })();
-
-    const original = {
-        log: console.log.bind(console),
-        error: console.error.bind(console),
-        warn: console.warn.bind(console),
-        info: console.info.bind(console),
-    };
-
-    const sanitizeArgs = (args) => {
-        let guessed = [];
-        try {
-            for (const a of args) {
-                if (a && typeof a === 'object') {
-                    try {
-                        guessed.push(...findSensitiveValues(a));
-                    } catch {}
-                }
+// Skip entirely if DISABLE_LOG_REDACTION is truthy
+if (!isTruthy(process.env.DISABLE_LOG_REDACTION)) {
+    try {
+        const envSecretValues = (() => {
+            const extraKeys = (process.env.REDACT_ENV_KEYS || '')
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean);
+            const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
+            const vals = [];
+            for (const k of keys) {
+                const v = process.env[k];
+                if (typeof v === 'string' && v.length > 0) vals.push(v);
             }
-        } catch {}
-        const secrets = Array.from(new Set([...
-            envSecretValues,
-            ...guessed,
-        ]));
+            return vals;
+        })();
 
-        return args.map((a) => {
+        const original = {
+            log: console.log.bind(console),
+            error: console.error.bind(console),
+            warn: console.warn.bind(console),
+            info: console.info.bind(console),
+        };
+
+        const sanitizeArgs = (args) => {
+            let guessed = [];
             try {
-                if (typeof a === 'string' || (a && typeof a === 'object') || Array.isArray(a)) {
-                    return scrub(a, secrets);
+                for (const a of args) {
+                    if (a && typeof a === 'object') {
+                        try {
+                            guessed.push(...findSensitiveValues(a));
+                        } catch {}
+                    }
                 }
             } catch {}
-            return a;
-        });
-    };
+            const secrets = Array.from(new Set([
+                ...envSecretValues,
+                ...guessed,
+            ]));
 
-    console.log = (...args) => original.log(...sanitizeArgs(args));
-    console.error = (...args) => original.error(...sanitizeArgs(args));
-    console.warn = (...args) => original.warn(...sanitizeArgs(args));
-    console.info = (...args) => original.info(...sanitizeArgs(args));
-} catch (e) {
-    // If scrubber initialization fails, leave console untouched
-    console.warn('Secret scrubber initialization failed:', e?.message || e);
+            return args.map((a) => {
+                try {
+                    if (typeof a === 'string' || (a && typeof a === 'object') || Array.isArray(a)) {
+                        return scrub(a, secrets);
+                    }
+                } catch {}
+                return a;
+            });
+        };
+
+        console.log = (...args) => original.log(...sanitizeArgs(args));
+        console.error = (...args) => original.error(...sanitizeArgs(args));
+        console.warn = (...args) => original.warn(...sanitizeArgs(args));
+        console.info = (...args) => original.info(...sanitizeArgs(args));
+    } catch (e) {
+        // If scrubber initialization fails, leave console untouched
+        console.warn('Secret scrubber initialization failed:', e?.message || e);
+    }
+} else {
+    console.warn('DISABLE_LOG_REDACTION is truthy; secret scrubber not initialized.');
 }
 
 // Retrieve required environment variables.
