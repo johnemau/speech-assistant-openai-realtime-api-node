@@ -215,7 +215,7 @@ You are a voice-only AI assistant participating in a live phone call using the O
 # Email Tool
 - When the caller says "email me that" or similar, call the tool named send_email.
 - Compose the tool args from the latest conversation context — do not invent outside facts.
-- Provide a short, clear 'subject' and 'body_html' containing an HTML-only body. Include relevant URLs as clickable links when they are available.
+ - Provide a short, clear 'subject' and 'body_html' containing an HTML-only body. Include specific details the caller requested and, when available, include links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. Links must be clickable URLs.
 - After calling send_email and receiving the result, respond briefly confirming success or describing any error.
 
 # Speaking Style
@@ -595,11 +595,11 @@ fastify.register(async (fastify) => {
                 type: 'object',
                 properties: {
                     subject: { type: 'string', description: 'Short subject summarizing the latest context.' },
-                    body_html: { type: 'string', description: 'HTML-only email body composed from the latest conversation context. Include URLs when available, formatted as clickable links.' }
+                    body_html: { type: 'string', description: 'HTML-only email body composed from the latest conversation context. Include specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be provided as clickable URLs.' }
                 },
                 required: ['subject', 'body_html']
             },
-            description: 'Send an HTML email with the latest context. The assistant must supply subject and HTML body that includes URLs when available.'
+            description: 'Send an HTML email with the latest context. The assistant must supply a subject and an HTML body that includes specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be clickable URLs.'
         };
 
         // Handle gpt_web_search tool calls
