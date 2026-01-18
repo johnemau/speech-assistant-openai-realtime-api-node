@@ -755,6 +755,13 @@ fastify.register(async (fastify) => {
         // Track response lifecycle to avoid overlapping response.create calls
         let responseActive = false;
 
+        // Post-hang-up behavior: suppress audio, continue tools, then SMS
+        let postHangupSilentMode = false; // when true, do not send any audio back to Twilio
+        let postHangupSmsSent = false;    // ensure the completion SMS is sent at most once
+        let lastWebSearchQuery = null;    // capture recent query to summarize
+        let lastEmailSubject = null;      // capture subject to summarize
+        let hangupDuringTools = false;    // true if caller hung up while tools were pending/active
+
         // Mic distance / noise reduction state & counters
         let currentNoiseReductionType = 'near_field';
         let lastMicDistanceToggleTs = 0;
@@ -1346,28 +1353,31 @@ fastify.register(async (fastify) => {
                 }
 
                 if (response.type === 'response.output_audio.delta' && response.delta) {
+                    // Suppress audio entirely after hang-up; otherwise, stream to Twilio
                     // Mark that the assistant has started speaking (first-time check)
                     if (!firstAssistantAudioReceived) firstAssistantAudioReceived = true;
                     // Assistant audio is streaming; stop any waiting music immediately
                     stopWaitingMusic('assistant_audio');
-                    const audioDelta = {
-                        event: 'media',
-                        streamSid: streamSid,
-                        media: { payload: response.delta }
-                    };
-                    connection.send(JSON.stringify(audioDelta));
+                    if (!postHangupSilentMode) {
+                        const audioDelta = {
+                            event: 'media',
+                            streamSid: streamSid,
+                            media: { payload: response.delta }
+                        };
+                        connection.send(JSON.stringify(audioDelta));
 
-                    // First delta from a new response starts the elapsed time counter
-                    if (!responseStartTimestampTwilio) {
-                        responseStartTimestampTwilio = latestMediaTimestamp;
-                        if (SHOW_TIMING_MATH) console.log(`Setting start timestamp for new response: ${responseStartTimestampTwilio}ms`);
-                    }
+                        // First delta from a new response starts the elapsed time counter
+                        if (!responseStartTimestampTwilio) {
+                            responseStartTimestampTwilio = latestMediaTimestamp;
+                            if (SHOW_TIMING_MATH) console.log(`Setting start timestamp for new response: ${responseStartTimestampTwilio}ms`);
+                        }
 
-                    if (response.item_id) {
-                        lastAssistantItem = response.item_id;
+                        if (response.item_id) {
+                            lastAssistantItem = response.item_id;
+                        }
+                        
+                        sendMark(connection, streamSid);
                     }
-                    
-                    sendMark(connection, streamSid);
                 }
 
                 // Track response lifecycle to avoid overlapping creates
@@ -1421,6 +1431,8 @@ fastify.register(async (fastify) => {
                                 const query = toolInput.query;
                                 const userLocation = toolInput.user_location;
                                 if (IS_DEV) console.log('Dev tool call gpt_web_search input:', { query, user_location: userLocation });
+                                if (postHangupSilentMode) hangupDuringTools = true;
+                                lastWebSearchQuery = query || lastWebSearchQuery;
                                 console.log(`Executing web search`);
                                 handleWebSearchToolCall(query, userLocation)
                                     .then((searchResult) => {
@@ -1470,6 +1482,7 @@ fastify.register(async (fastify) => {
                                 const subjectRaw = String(toolInput.subject || '').trim();
                                 const bodyHtml = String(toolInput.body_html || '').trim();
                                 if (IS_DEV) console.log('Dev tool call send_email input:', { subject: subjectRaw, body_html: bodyHtml });
+                                if (postHangupSilentMode) hangupDuringTools = true;
 
                                 if (!subjectRaw || !bodyHtml) {
                                     const errMsg = 'Missing subject or body_html.';
@@ -1483,6 +1496,8 @@ fastify.register(async (fastify) => {
                                 }
 
                                 const subject = subjectRaw;
+                                // Capture subject for post-hang-up SMS summary
+                                lastEmailSubject = subject;
 
                                 // Determine caller group
                                 let group = null;
@@ -1561,6 +1576,7 @@ fastify.register(async (fastify) => {
                                 const toolInput = safeParseToolArguments(functionCall.arguments);
                                 let bodyText = String(toolInput.body_text || '').trim();
                                 if (IS_DEV) console.log('Dev tool call send_sms input:', { body_text: bodyText });
+                                if (postHangupSilentMode) hangupDuringTools = true;
 
                                 if (!bodyText) {
                                     const errMsg = 'Missing body_text.';
@@ -1647,6 +1663,31 @@ fastify.register(async (fastify) => {
                                 const requestedMode = String(toolInput.mode || '').trim();
                                 const reason = typeof toolInput.reason === 'string' ? toolInput.reason.trim() : undefined;
                                 if (IS_DEV) console.log('Dev tool call update_mic_distance input:', { requestedMode, reason });
+
+                                // After hang-up, mic distance updates are no-ops
+                                if (postHangupSilentMode) {
+                                    const output = {
+                                        status: 'noop',
+                                        applied: false,
+                                        reason: 'call_ended',
+                                        mode: requestedMode || null,
+                                        current: currentNoiseReductionType,
+                                    };
+                                    const toolResultEvent = {
+                                        type: 'conversation.item.create',
+                                        item: {
+                                            type: 'function_call_output',
+                                            call_id: functionCall.call_id,
+                                            output: JSON.stringify(output)
+                                        }
+                                    };
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
+                                    openAiWs.send(JSON.stringify(toolResultEvent));
+                                    if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    return;
+                                }
 
                                 const validModes = new Set(['near_field', 'far_field']);
                                 if (!validModes.has(requestedMode)) {
@@ -1742,25 +1783,18 @@ fastify.register(async (fastify) => {
                             try {
                                 const toolInput = JSON.parse(functionCall.arguments || '{}');
                                 const reason = typeof toolInput.reason === 'string' ? toolInput.reason.trim() : undefined;
+                                // Enter silent mode: do not send any audio; allow tools to finish
+                                postHangupSilentMode = true;
                                 pendingDisconnect = true;
-                                // Fallback: ensure we close even if marks are missing
-                                if (pendingDisconnectTimeout) clearTimeout(pendingDisconnectTimeout);
-                                pendingDisconnectTimeout = setTimeout(() => {
-                                    // Attempt close; if marks still pending, force close
-                                    if (pendingDisconnect) {
-                                        pendingDisconnect = false;
-                                        stopWaitingMusic('disconnect');
-                                        clearWaitingMusicInterval();
-                                        try { connection.close(1000, 'Call ended by assistant (timeout)'); } catch {}
-                                        try { if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close(); } catch {}
-                                        console.log('Call closed after timeout fallback.');
-                                    }
-                                }, 4000);
+                                if (toolCallInProgress) hangupDuringTools = true;
+                                // Close the Twilio stream promptly; keep OpenAI WS alive for tools
+                                try { connection.close(1000, 'Call ended by assistant'); } catch {}
 
                                 const output = {
                                     status: 'ok',
                                     pending_disconnect: true,
                                     reason,
+                                    silent: true
                                 };
                                 const toolResultEvent = {
                                     type: 'conversation.item.create',
@@ -1781,6 +1815,33 @@ fastify.register(async (fastify) => {
                     } else {
                         // Non-function responses: if we were asked to end the call, close after playback finishes
                         attemptPendingDisconnectClose();
+                        // If in silent mode and no tool call is active, send a completion SMS and close OpenAI WS
+                        if (postHangupSilentMode && hangupDuringTools && !toolCallInProgress && !postHangupSmsSent) {
+                            try {
+                                const toNumber = currentCallerE164;
+                                const envFrom = normalizeUSNumberToE164(process.env.TWILIO_SMS_FROM_NUMBER || '');
+                                const fromNumber = currentTwilioNumberE164 || envFrom;
+                                if (twilioClient && toNumber && fromNumber) {
+                                    const subjectNote = lastEmailSubject ? ` Email sent: "${lastEmailSubject}".` : '';
+                                    const body = `Your request is complete.${subjectNote} Reply if you want more.`;
+                                    if (IS_DEV) console.log('Post-hang-up completion SMS:', { from: fromNumber, to: toNumber, body });
+                                    twilioClient.messages.create({ from: fromNumber, to: toNumber, body })
+                                        .then((sendRes) => {
+                                            console.info({ event: 'posthangup.sms.sent', sid: sendRes?.sid, to: toNumber });
+                                        })
+                                        .catch((e) => {
+                                            console.warn('Post-hang-up SMS send error:', e?.message || e);
+                                        });
+                                    postHangupSmsSent = true;
+                                } else {
+                                    console.warn({ event: 'posthangup.sms.unavailable', to: toNumber, from: fromNumber });
+                                }
+                            } catch (e) {
+                                console.warn('Post-hang-up SMS error:', e?.message || e);
+                            }
+                            // Close OpenAI WS after completion notification
+                            try { if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close(); } catch {}
+                        }
                     }
                 }
             } catch (error) {
@@ -1871,7 +1932,9 @@ fastify.register(async (fastify) => {
 
         // Handle connection close
         connection.on('close', () => {
-            if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close();
+            // Enter silent mode and continue tool execution without streaming audio
+            postHangupSilentMode = true;
+            if (toolCallInProgress) hangupDuringTools = true;
             if (pendingDisconnectTimeout) {
                 clearTimeout(pendingDisconnectTimeout);
                 pendingDisconnectTimeout = null;
@@ -1881,7 +1944,7 @@ fastify.register(async (fastify) => {
             pendingOpenAiMessages.length = 0;
             stopWaitingMusic();
             clearWaitingMusicInterval();
-            console.log('Client disconnected.');
+            console.log('Client disconnected; silent mode enabled. Continuing tools and will notify via SMS.');
         });
 
         // Handle WebSocket close and errors
