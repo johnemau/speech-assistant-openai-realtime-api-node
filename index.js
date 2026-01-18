@@ -1743,7 +1743,6 @@ fastify.register(async (fastify) => {
                 switch (data.event) {
                     case 'media':
                         latestMediaTimestamp = data.media.timestamp;
-                        if (SHOW_TIMING_MATH) console.log(`Received media message with timestamp: ${latestMediaTimestamp}ms`);
                         if (openAiWs.readyState === WebSocket.OPEN) {
                             const audioAppend = {
                                 type: 'input_audio_buffer.append',
