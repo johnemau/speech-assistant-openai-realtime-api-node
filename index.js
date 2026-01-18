@@ -10,6 +10,7 @@ import nodemailer from 'nodemailer';
 import patchLogs from 'redact-logs';
 import { scrub, findSensitiveValues } from '@zapier/secret-scrubber';
 import { inspect } from 'node:util';
+import twilio from 'twilio';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -378,6 +379,20 @@ fastify.get('/', async (request, reply) => {
 fastify.get('/healthz', async (request, reply) => {
     // Respond quickly with a 2xx to indicate instance is healthy
     reply.code(200).send({ status: 'ok' });
+});
+
+// SMS Webhook Route
+// Responds with simple TwiML via Twilio MessagingResponse
+fastify.post('/sms', async (request, reply) => {
+    try {
+        const { MessagingResponse } = twilio.twiml;
+        const twiml = new MessagingResponse();
+        twiml.message('The Robots are coming! Head for the hills!');
+        reply.type('text/xml').send(twiml.toString());
+    } catch (e) {
+        console.error('Error handling /sms webhook:', e?.message || e);
+        reply.code(500).send('');
+    }
 });
 
 // Route for Twilio to handle incoming calls
