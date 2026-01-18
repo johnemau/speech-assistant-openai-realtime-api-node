@@ -12,7 +12,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Install and run:
   - `npm install`
   - `npm start`
-- Port: `PORT` env var controls Fastify; default in code is `10000` (README mentions `8080` — prefer the code’s default or set `PORT`).
+- Port: `PORT` env var controls Fastify; default in code is `10000`.
 - Public ingress: bind ngrok domain via `NGROK_DOMAIN` and optional `NGROK_AUTHTOKEN`. The server also runs locally without ngrok.
 - Minimal health checks: GET `/` and `/healthz`.
 
@@ -34,7 +34,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Session initialization sets `type: realtime`, `model: gpt-realtime`, audio I/O formats (`audio/pcmu`), `voice: cedar`, and concatenated `SYSTEM_MESSAGE` policy.
 - Tools declared in session:
   - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
-  - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`.
+  - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.
 - Dedupe: tool executions tracked by `call_id` to prevent duplicates. Always send `function_call_output` followed by `response.create`.
 
 ## Voice & Interruption Patterns
@@ -52,8 +52,8 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Phone normalization is US‑focused: inputs normalized to E.164 with a leading `+1` when missing.
 - Allowlist empty → all calls rejected.
 - Startup test email: sends a one‑time message to the PRIMARY user if email is configured.
-- Known mismatch: README shows `/health`; server exposes `/healthz`. Prefer `/healthz`.
-- Undefined symbol note: `USER_FIRST_NAME` appears in greeting logic but isn’t defined; use `PRIMARY_USER_FIRST_NAME`/`SECONDARY_USER_FIRST_NAME` only.
+- Health endpoint: `/healthz` (not `/health`).
+- Greeting uses `PRIMARY_USER_FIRST_NAME`/`SECONDARY_USER_FIRST_NAME` only; there is no `USER_FIRST_NAME` env.
 
 ## Extending
 - Add a new tool: declare it in the session `tools`, then in `response.done` handle the `function_call` by parsing `arguments`, performing work, sending `function_call_output`, and following with `response.create`. Reuse the `call_id` dedupe pattern.

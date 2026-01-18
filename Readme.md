@@ -36,14 +36,14 @@ When developing & testing locally, you'll need to open a tunnel to forward reque
 
 Open a Terminal and run:
 ```
-ngrok http 8080
+ngrok http 10000
 ```
-Once the tunnel has been opened, copy the `Forwarding` URL. It will look something like: `https://[your-ngrok-subdomain].ngrok.app`. You will
+Once the tunnel has been opened, copy the Forwarding URL. It will look something like: `https://[your-ngrok-subdomain].ngrok.app`. You will
 need this when configuring your Twilio number setup.
 
 Notes:
-- The app defaults to `PORT=8080`. If you change the port via the `PORT` environment variable, update the `ngrok http` command accordingly.
-- If you use a custom domain, ensure it's reserved in your ngrok account and set `NGROK_DOMAIN` to that domain.
+- The app defaults to `PORT=10000`. If you change the port via the `PORT` environment variable, update the `ngrok http` command accordingly.
+- If you use a custom domain, ensure it's reserved in your ngrok account and set `NGROK_DOMAIN` to that domain. When `NGROK_DOMAIN` is set, the server binds that domain automatically at startup.
 
 ### Install required packages
 
@@ -55,12 +55,6 @@ npm install
 ### Redact sensitive env values in logs
 
 Prevent accidental printing of secret environment variables to `console.log` and `process.stdout`.
-
-Install the helper:
-
-```
-npm install redact-logs
-```
 
 This app enables redaction at startup, replacing any configured env values with `[secure]` when they appear in logs or CLI output.
 
@@ -106,7 +100,7 @@ Create a `.env` file with the required variables:
 OPENAI_API_KEY=sk-...
 NGROK_AUTHTOKEN=...
 NGROK_DOMAIN=your-subdomain.ngrok.app
-PORT=8080
+PORT=10000
 ```
 
 Then start the server:
@@ -119,14 +113,13 @@ You should see logs similar to:
 
 ```
 Starting server...
-HTTP server listening at http://localhost:8080
-Server is listening on port 8080
-Ingress established at: https://your-subdomain.ngrok.app
+HTTP server listening on 0.0.0.0:10000
+ngrok forwarding active on domain your-subdomain.ngrok.app
 ```
 
 Quick local checks:
-- Visit http://localhost:8080/ to confirm the root endpoint.
-- Visit http://localhost:8080/health for a simple healthcheck.
+- Visit http://localhost:10000/ to confirm the root endpoint.
+- Visit http://localhost:10000/healthz for a simple health check.
 ## Personalized Greeting
 
 - **Env vars:** `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`
@@ -145,8 +138,8 @@ With the development server running, call the phone number you purchased in the 
 
 ## Special features
 
-### Have the AI speak first
-To have the AI voice assistant talk before the user, uncomment the line `// sendInitialConversationItem();`. The initial greeting is controlled in `sendInitialConversationItem`.
+### Assistant speaks first (default)
+The assistant sends a short greeting on stream start and then speaks first. To customize the greeting, edit the `sendInitialConversationItem` helper in [index.js](index.js). The TwiML webhook also greets the caller by name before connecting the media stream.
 
 ### Interrupt handling/AI preemption
 When the user speaks and OpenAI sends `input_audio_buffer.speech_started`, the code will clear the Twilio Media Streams buffer and send OpenAI `conversation.item.truncate`.
@@ -170,7 +163,7 @@ Notes:
 - Music starts after `WAIT_MUSIC_THRESHOLD_MS` when a tool call begins and stops on the first assistant `response.output_audio.delta`, on `input_audio_buffer.speech_started`, and at cleanup.
 - Adjust `WAIT_MUSIC_VOLUME` to taste. Keep volume low to avoid distraction and clipping.
 
-Provide a `.wav` file; the app parses WAV directly (PCM 16-bit) and downmixes/resamples to 8 kHz mono in-process, then streams PCMU frames. Non-WAV files are not supported.
+Provide a `.wav` file; the app parses WAV directly (PCM 16-bit) and downmixes/resamples to 8 kHz mono in-process, then streams PCMU frames. Non-WAV files are supported only via WAV; ffmpeg is not used.
 
 ### Speakerphone Mic Distance Toggle
 
@@ -234,6 +227,7 @@ SECONDARY_TO_EMAIL=secondary.recipient@example.com
 Behavior:
 - The app adds a TwiML `<Parameter name="caller_number" ...>` so Twilio passes the caller number into the Media Stream `start` event.
 - If the caller is in `PRIMARY_USER_PHONE_NUMBERS`, email is sent to `PRIMARY_TO_EMAIL`; if in `SECONDARY_USER_PHONE_NUMBERS`, email is sent to `SECONDARY_TO_EMAIL`.
+- A custom header `X-From-Ai-Assistant: true` is included with each message.
 - If required config is missing (`SENDER_FROM_EMAIL`, `SMTP_USER`, `SMTP_PASS`, or the matching `*_TO_EMAIL`), the assistant responds briefly that email isn’t configured for this caller.
 
 Provider notes:
