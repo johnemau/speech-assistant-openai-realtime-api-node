@@ -409,7 +409,7 @@ fastify.all('/incoming-call', async (request, reply) => {
             : 'Good evening';
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Charon">${timeGreeting}, ${callerName}. Connecting to your AI assistant momentarily.</Say>
+                              <Say voice="Google.en-US-Chirp3-HD-Charon">${timeGreeting} ${callerName}. Connecting to your AI assistant momentarily.</Say>
                               <Connect>
                                   <Stream url="wss://${request.headers.host}/media-stream">
                                       <Parameter name="caller_number" value="${fromE164}" />
