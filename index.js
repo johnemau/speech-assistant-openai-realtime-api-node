@@ -1043,11 +1043,11 @@ fastify.register(async (fastify) => {
             try {
                 // First attempt: strict JSON
                 return JSON.parse(str);
-            } catch (e1) {
+            } catch {
                 // Second attempt: relaxed JSON (JSON5) for single quotes, unquoted keys, etc.
                 try {
                     return JSON5.parse(str);
-                } catch (e2) {
+                } catch {
                     // Final attempt: minimal repairs + quoting bare keys, then JSON5 parse
                     try {
                         let repaired = str
