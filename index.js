@@ -336,7 +336,7 @@ const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 10000; // Render default PORT is 10000
 
 // Instructions tailored for SMS replies
-const SMS_REPLY_INSTRUCTIONS = 'You are an SMS assistant. Take the latest user message and compose a single concise reply. Always call the web_search tool first to check for up-to-date facts relevant to the query, and base any factual content strictly on its results. Prefer brevity and clarity. Keep the reply ≤320 characters, friendly, and actionable. Include at most one short source label (e.g., "Source: Reuters"). Include URLs only when they are directly helpful (e.g., official page, business website, specific article). Avoid filler and preambles. Output only the SMS body text, no quotes.';
+const SMS_REPLY_INSTRUCTIONS = 'You are an SMS assistant. Take the latest user message and compose a single concise reply. If a recent SMS thread is provided, it may include messages unrelated to the latest user message; focus on the latest user message. Always call the web_search tool first to check for up-to-date facts relevant to the query, and base any factual content strictly on its results. Prefer brevity and clarity. Keep the reply ≤320 characters, friendly, and actionable. Include at most one short source label (e.g., "Source: Reuters"). Include URLs only when they are directly helpful (e.g., official page, business website, specific article). Avoid filler and preambles. Output only the SMS body text, no quotes.';
 
 // Allowed callers (E.164). Configure via env `PRIMARY_USER_PHONE_NUMBERS` and `SECONDARY_USER_PHONE_NUMBERS` as comma-separated numbers.
 function normalizeUSNumberToE164(input) {
@@ -537,7 +537,7 @@ fastify.post('/sms', async (request, reply) => {
             return `${who} [${ts}]: ${m.body || ''}`;
         }).join('\n');
 
-        const smsPrompt = `Recent SMS thread (last 12 hours):\n${threadText}\n\nLatest user message:\n${String(bodyRaw || '').trim()}\n\nTask: Compose a concise, friendly SMS reply. Keep it under 320 characters. Use live web facts via the web_search tool if topical. Output only the reply text.`;
+        const smsPrompt = `Recent SMS thread (last 12 hours):\n${threadText}\n\nLatest user message:\n${String(bodyRaw || '').trim()}\n\nNote: The thread messages above may be unrelated to the latest user message; focus on the latest user message.\n\nTask: Compose a concise, friendly SMS reply. Keep it under 320 characters. Use live web facts via the web_search tool if topical. Output only the reply text.`;
 
         // Dev-only: log the full SMS prompt for debugging
         if (IS_DEV) {
