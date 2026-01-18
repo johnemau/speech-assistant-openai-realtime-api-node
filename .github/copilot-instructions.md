@@ -5,7 +5,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 ## Big Picture
 - Twilio inbound call → TwiML webhook → Media Stream WebSocket → OpenAI Realtime WebSocket → audio round‑trip.
 - Core entry point: [index.js](../index.js). Reference [Readme.md](../Readme.md) for setup and behavior.
-- Fastify HTTP server exposes: `/` (root), `/healthz` (uptime), `/incoming-call` (TwiML), and `/media-stream` (WebSocket for Twilio audio).
+- Fastify HTTP server exposes: `/` (root), `/healthz` (uptime), `/incoming-call` (TwiML), `/media-stream` (WebSocket for Twilio audio), and `/sms` (Twilio Messaging webhook for auto‑replies).
 - Audio from Twilio is forwarded to OpenAI via `input_audio_buffer.append`; assistant audio returns via `response.output_audio.delta` and is streamed back to Twilio.
 
 ## Developer Workflow
@@ -32,6 +32,11 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
   - Streams assistant audio deltas back to Twilio `media`.
   - Handles interruption with `input_audio_buffer.speech_started` by truncating the current assistant item and clearing Twilio’s buffer.
   - Uses “mark” messages to detect end of assistant playback for pacing.
+- `/sms` (Messaging webhook):
+  - Restricts usage to allowlisted numbers (`PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS`).
+  - Builds a 12‑hour recent thread (up to 10 messages, inbound+outbound) and composes a concise reply (≤320 chars).
+  - Calls OpenAI `responses.create` with `model: gpt-5.2`, `tools: [{ type: 'web_search' }]`, `tool_choice: 'required'`, and tailored SMS instructions.
+  - Sends the reply via Twilio REST API; falls back to TwiML with concise error text when send fails.
 
 ## OpenAI Session & Tools
 - Session initialization sets `type: realtime`, `model: gpt-realtime`, audio I/O formats (`audio/pcmu`), `voice: cedar`, and concatenated `SYSTEM_MESSAGE` policy.
@@ -39,6 +44,14 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
   - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
   - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.
 - Dedupe: tool executions tracked by `call_id` to prevent duplicates. Always send `function_call_output` followed by `response.create`.
+
+## SMS Auto‑Reply
+- Webhook: `/sms` — configure in Twilio Console under Messaging → “A message comes in”.
+- Allowlist: only numbers listed in `PRIMARY_USER_PHONE_NUMBERS` or `SECONDARY_USER_PHONE_NUMBERS` are allowed.
+- Context: fetches last 12 hours of messages (inbound/outbound), merges and includes up to 10 in the prompt.
+- Model & tools: OpenAI `responses.create` with `model: gpt-5.2` and `tools: [{ type: 'web_search' }]` (`tool_choice: 'required'`).
+- Style: reply ≤320 chars, friendly and actionable; at most one short source label; URLs only when directly helpful.
+- Errors: returns concise user texts — AI error → “Sorry—SMS reply error.”; send error → “Sorry—SMS send error.” with brief details.
 
 ## Voice & Interruption Patterns
 - Keep answers voice‑friendly and concise; system prompts enforce style.

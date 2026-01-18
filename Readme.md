@@ -143,6 +143,10 @@ Let the assistant auto‑reply to SMS using GPT‑5.2 with the `web_search` tool
 - Model and tools: calls OpenAI `responses.create` with `model: gpt-5.2` and `tools: [{ type: 'web_search' }]` (tool_choice=`required`).
 - Reply style: concise, friendly SMS (≤320 chars), at most one short source label when facts are used.
 
+Error handling:
+- AI reply failure → returns a concise message: “Sorry—SMS reply error.” with brief details.
+- Twilio send failure → falls back to TwiML: “Sorry—SMS send error.” with brief details.
+
 Required environment variables for SMS:
 
 ```
