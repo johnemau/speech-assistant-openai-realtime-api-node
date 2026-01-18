@@ -24,7 +24,7 @@ function isTruthy(val) {
 function stringifyDeep(obj) {
     try {
         return inspect(obj, { depth: 10, colors: false, compact: false });
-    } catch (e) {
+    } catch {
         try { return JSON.stringify(obj); } catch { return String(obj); }
     }
 }
@@ -1233,7 +1233,7 @@ fastify.register(async (fastify) => {
                             }
                             // Send the personalized greeting to OpenAI to speak first
                             sendInitialConversationItem(callerName);
-                        } catch (e) {
+                        } catch {
                             console.warn('No custom caller parameter found on start event.');
                             // Fallback greeting without a personalized name
                             sendInitialConversationItem('legend');

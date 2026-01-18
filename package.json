@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint .",
+    "test": "npm run lint"
   },
   "keywords": [],
   "author": "",
@@ -22,5 +23,8 @@
     "openai": "^6.16.0",
     "redact-logs": "^1.0.0",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2"
   }
 }
