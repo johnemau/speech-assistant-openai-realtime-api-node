@@ -480,6 +480,17 @@ fastify.post('/sms', async (request, reply) => {
         let outbound = [];
         try {
             // Inbound: from caller → our Twilio number
+            // Log Twilio API request details
+            console.info(redactLog({
+                event: 'twilio.messages.list.request',
+                direction: 'inbound',
+                params: {
+                    dateSentAfter: startWindow.toISOString(),
+                    from: fromE164,
+                    to: toE164,
+                    limit: 20,
+                }
+            }));
             inbound = await twilioClient.messages.list({
                 dateSentAfter: startWindow,
                 from: fromE164,
@@ -491,6 +502,17 @@ fastify.post('/sms', async (request, reply) => {
         }
         try {
             // Outbound: from our Twilio number → caller
+            // Log Twilio API request details
+            console.info(redactLog({
+                event: 'twilio.messages.list.request',
+                direction: 'outbound',
+                params: {
+                    dateSentAfter: startWindow.toISOString(),
+                    from: toE164,
+                    to: fromE164,
+                    limit: 20,
+                }
+            }));
             outbound = await twilioClient.messages.list({
                 dateSentAfter: startWindow,
                 from: toE164,
@@ -516,6 +538,14 @@ fastify.post('/sms', async (request, reply) => {
         }).join('\n');
 
         const smsPrompt = `Recent SMS thread (last 12 hours):\n${threadText}\n\nLatest user message:\n${String(bodyRaw || '').trim()}\n\nTask: Compose a concise, friendly SMS reply. Keep it under 320 characters. Use live web facts via the web_search tool if topical. Output only the reply text.`;
+
+        // Dev-only: log the full SMS prompt for debugging
+        if (IS_DEV) {
+            console.log(redactLog({
+                event: 'sms.prompt.debug',
+                prompt: smsPrompt
+            }));
+        }
 
         // Prepare OpenAI request with web_search tool
         const reqPayload = {
@@ -576,6 +606,16 @@ fastify.post('/sms', async (request, reply) => {
 
         // Send the reply via Twilio API (from the same Twilio number the webhook hit)
         try {
+            // Log Twilio API request details for SMS send
+            console.info(redactLog({
+                event: 'twilio.messages.create.request',
+                params: {
+                    from: toE164,
+                    to: fromE164,
+                    length: String(aiText || '').length,
+                    preview: String(aiText || '').slice(0, 160),
+                }
+            }));
             const sendRes = await twilioClient.messages.create({
                 from: toE164,
                 to: fromE164,
