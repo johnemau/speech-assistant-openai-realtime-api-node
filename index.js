@@ -331,7 +331,7 @@ const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 10000; // Render default PORT is 10000
 
 // Instructions tailored for SMS replies
-const SMS_REPLY_INSTRUCTIONS = 'Prepare a single, SMS-ready reply. Keep it concise (≤320 chars), friendly, and actionable. If you use facts, include at most one short source label (e.g., "Source: Reuters"). Avoid filler and preambles. Output only the SMS body text, no quotes.';
+const SMS_REPLY_INSTRUCTIONS = 'Prepare a single, SMS-ready reply. Keep it concise (≤320 chars), friendly, and actionable. If you use facts, include at most one short source label (e.g., "Source: Reuters"). Include URLs only when they are directly relevant and helpful for the user to find more information (e.g., a business website, official page, or the specific news article). Avoid filler and preambles. Output only the SMS body text, no quotes.';
 
 // Allowed callers (E.164). Configure via env `PRIMARY_USER_PHONE_NUMBERS` and `SECONDARY_USER_PHONE_NUMBERS` as comma-separated numbers.
 function normalizeUSNumberToE164(input) {
