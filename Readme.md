@@ -52,6 +52,15 @@ Open a Terminal and run:
 npm install
 ```
 
+### Run tests
+
+Quickly verify code changes and linting:
+```
+npm test
+```
+Notes:
+- The default test script runs ESLint to catch issues early.
+
 ### Redact sensitive env values in logs
 
 Prevent accidental printing of secret environment variables to `console.log` and `process.stdout`.
@@ -120,6 +129,7 @@ ngrok forwarding active on domain your-subdomain.ngrok.app
 Quick local checks:
 - Visit http://localhost:10000/ to confirm the root endpoint.
 - Visit http://localhost:10000/healthz for a simple health check.
+- Run `npm test` to lint and verify code changes.
 ## Personalized Greeting
 
 - **Env vars:** `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`

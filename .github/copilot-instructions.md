@@ -12,6 +12,8 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Install and run:
   - `npm install`
   - `npm start`
+- Verify changes:
+  - `npm test` to lint and validate code before pushing.
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
 - Public ingress: bind ngrok domain via `NGROK_DOMAIN` and optional `NGROK_AUTHTOKEN`. The server also runs locally without ngrok.
 - Minimal health checks: GET `/` and `/healthz`.
