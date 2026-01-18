@@ -401,8 +401,6 @@ fastify.all('/incoming-call', async (request, reply) => {
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
                               <Say voice="Google.en-US-Chirp3-HD-Charon">${timeGreeting}, ${callerName}. Connecting to your AI assistant momentarily.</Say>
-                              <Pause length="1"/>
-                              <Say voice="Google.en-US-Chirp3-HD-Charon">At your service, ${callerName}. How may I help?</Say>
                               <Connect>
                                   <Stream url="wss://${request.headers.host}/media-stream">
                                       <Parameter name="caller_number" value="${fromE164}" />
@@ -592,6 +590,27 @@ fastify.register(async (fastify) => {
                 Authorization: `Bearer ${OPENAI_API_KEY}`,
             }
         });
+
+        // Send initial conversation item if AI talks first
+        const sendInitialConversationItem = () => {
+            const initialConversationItem = {
+                type: 'conversation.item.create',
+                item: {
+                    type: 'message',
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'input_text',
+                            text: 'Greet the user with "Hello there! I am an AI voice assistant powered by Twilio and the OpenAI Realtime API. You can ask me for facts, jokes, or anything you can imagine. How can I help you?"'
+                        }
+                    ]
+                }
+            };
+
+            if (SHOW_TIMING_MATH) console.log('Sending initial conversation item:', JSON.stringify(initialConversationItem));
+            openAiWs.send(JSON.stringify(initialConversationItem));
+            openAiWs.send(JSON.stringify({ type: 'response.create' }));
+        };
 
         // Helper to log and send tool errors to OpenAI WS
         function sendOpenAiToolError(callId, errorLike) {
@@ -816,6 +835,8 @@ fastify.register(async (fastify) => {
 
             console.log('Sending session update:', stringifyDeep(sessionUpdate));
             openAiWs.send(JSON.stringify(sessionUpdate));
+
+            sendInitialConversationItem();
         };
 
         // Handle interruption when the caller's speech starts
