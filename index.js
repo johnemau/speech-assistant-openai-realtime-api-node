@@ -600,6 +600,32 @@ fastify.register(async (fastify) => {
             }
         });
 
+        // Queue outbound OpenAI messages until the WS is OPEN
+        const pendingOpenAiMessages = [];
+        function openAiSend(obj) {
+            try {
+                const payload = JSON.stringify(obj);
+                if (openAiWs.readyState === WebSocket.OPEN) {
+                    openAiWs.send(payload);
+                } else {
+                    pendingOpenAiMessages.push(payload);
+                }
+            } catch (e) {
+                console.error('Failed to send/queue OpenAI message:', e);
+            }
+        }
+        function flushPendingOpenAiMessages() {
+            if (openAiWs.readyState !== WebSocket.OPEN) return;
+            try {
+                while (pendingOpenAiMessages.length > 0) {
+                    const msg = pendingOpenAiMessages.shift();
+                    openAiWs.send(msg);
+                }
+            } catch (e) {
+                console.error('Failed to flush OpenAI queued messages:', e);
+            }
+        }
+
         // Send initial conversation item using the caller's name once available
         const sendInitialConversationItem = (callerNameValue = 'legend') => {
             const initialConversationItem = {
@@ -617,8 +643,8 @@ fastify.register(async (fastify) => {
             };
 
             if (SHOW_TIMING_MATH) console.log('Sending initial conversation item:', JSON.stringify(initialConversationItem));
-            openAiWs.send(JSON.stringify(initialConversationItem));
-            openAiWs.send(JSON.stringify({ type: 'response.create' }));
+            openAiSend(initialConversationItem);
+            openAiSend({ type: 'response.create' });
         };
 
         // Helper to log and send tool errors to OpenAI WS
@@ -844,6 +870,8 @@ fastify.register(async (fastify) => {
 
             console.log('Sending session update:', stringifyDeep(sessionUpdate));
             openAiWs.send(JSON.stringify(sessionUpdate));
+            // After updating session, flush any queued messages (e.g., initial greeting)
+            flushPendingOpenAiMessages();
 
             // Initial greeting will be sent after Twilio 'start' event once caller name is known
         };
@@ -1265,6 +1293,8 @@ fastify.register(async (fastify) => {
         // Handle connection close
         connection.on('close', () => {
             if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close();
+            // Clear any queued messages on close
+            pendingOpenAiMessages.length = 0;
             stopWaitingMusic();
             clearWaitingMusicInterval();
             console.log('Client disconnected.');
@@ -1273,6 +1303,8 @@ fastify.register(async (fastify) => {
         // Handle WebSocket close and errors
         openAiWs.on('close', () => {
             console.log('Disconnected from the OpenAI Realtime API');
+            // Clear queued messages on WS close
+            pendingOpenAiMessages.length = 0;
             stopWaitingMusic();
             clearWaitingMusicInterval();
         });
