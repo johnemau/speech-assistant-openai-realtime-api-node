@@ -423,8 +423,6 @@ fastify.register(async (fastify) => {
         let lastAssistantItem = null;
         let markQueue = [];
         let responseStartTimestampTwilio = null;
-        // Track processed function calls to avoid duplicate executions (e.g., double emails)
-        let processedFunctionCalls = new Set();
 
         // Mic distance / noise reduction state & counters
         let currentNoiseReductionType = 'near_field';
@@ -938,12 +936,7 @@ fastify.register(async (fastify) => {
                             console.warn('Function call missing call_id; skipping to prevent duplicate execution.');
                             return;
                         }
-                        if (processedFunctionCalls.has(callId)) {
-                            if (IS_DEV) console.log('Duplicate function call detected; skipping:', functionCall.name, callId);
-                            return;
-                        }
-                        // Mark this call_id as processed to ensure single execution
-                        processedFunctionCalls.add(callId);
+                        
                         
                         if (functionCall.name === 'gpt_web_search') {
                             // Schedule waiting music if the tool call takes longer than threshold
@@ -976,8 +969,7 @@ fastify.register(async (fastify) => {
                                         openAiWs.send(JSON.stringify(toolResultEvent));
                                         openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                         if (IS_DEV) console.log('LLM tool output sent to OpenAI', toolResultEvent);
-                                        // Cleanup: allow future tool calls with same call_id
-                                        processedFunctionCalls.delete(callId);
+                                        // Tool call completed
                                     })
                                     .catch((error) => {
                                         console.error('Error handling web search tool call:', error);
@@ -986,16 +978,14 @@ fastify.register(async (fastify) => {
                                         clearWaitingMusicInterval();
                                         // Send error result back to OpenAI (and log)
                                         sendOpenAiToolError(functionCall.call_id, error);
-                                        // Cleanup on error
-                                        processedFunctionCalls.delete(callId);
+                                        // Tool call errored
                                     });
                             } catch (parseError) {
                                 console.error('Error parsing tool arguments:', parseError);
                                 toolCallInProgress = false;
                                 stopWaitingMusic();
                                 clearWaitingMusicInterval();
-                                // Cleanup on parse error
-                                processedFunctionCalls.delete(callId);
+                                // Tool call parse error
                             }
                         } else if (functionCall.name === 'send_email') {
                             // Schedule waiting music in case email sending takes time
@@ -1016,7 +1006,7 @@ fastify.register(async (fastify) => {
                                     clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, errMsg);
                                     // Cleanup on validation error
-                                    processedFunctionCalls.delete(callId);
+                                    
                                     return;
                                 }
 
@@ -1037,7 +1027,7 @@ fastify.register(async (fastify) => {
                                     clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, errMsg);
                                     // Cleanup when email configuration prevents sending
-                                    processedFunctionCalls.delete(callId);
+                                    
                                     return;
                                 }
 
@@ -1073,24 +1063,21 @@ fastify.register(async (fastify) => {
                                     openAiWs.send(JSON.stringify(toolResultEvent));
                                     openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                     if (IS_DEV) console.log('LLM email tool output sent');
-                                    // Cleanup after successful send
-                                    processedFunctionCalls.delete(callId);
+                                    // Email tool call completed
                                 }).catch((error) => {
                                     console.error('Email send error:', error);
                                     toolCallInProgress = false;
                                     stopWaitingMusic();
                                     clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, error);
-                                    // Cleanup on send error
-                                    processedFunctionCalls.delete(callId);
+                                    // Email tool call errored
                                 });
                             } catch (parseError) {
                                 toolCallInProgress = false;
                                 stopWaitingMusic();
                                 clearWaitingMusicInterval();
                                 sendOpenAiToolError(functionCall.call_id, parseError);
-                                // Cleanup on parse error
-                                processedFunctionCalls.delete(callId);
+                                // Email tool call parse error
                             }
                         } else if (functionCall.name === 'update_mic_distance') {
                             try {
@@ -1103,7 +1090,6 @@ fastify.register(async (fastify) => {
                                 if (!validModes.has(requestedMode)) {
                                     const err = `Invalid mode: ${requestedMode}. Expected near_field or far_field.`;
                                     sendOpenAiToolError(functionCall.call_id, err);
-                                    processedFunctionCalls.delete(callId);
                                     return;
                                 }
 
@@ -1131,7 +1117,7 @@ fastify.register(async (fastify) => {
                                     };
                                     openAiWs.send(JSON.stringify(toolResultEvent));
                                     openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                                    processedFunctionCalls.delete(callId);
+                                    
                                     return;
                                 }
 
@@ -1171,11 +1157,9 @@ fastify.register(async (fastify) => {
                                 openAiWs.send(JSON.stringify(toolResultEvent));
                                 openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                 if (IS_DEV) console.log('Noise reduction updated:', output);
-                                processedFunctionCalls.delete(callId);
                             } catch (parseError) {
                                 console.error('Error parsing update_mic_distance args:', parseError);
                                 sendOpenAiToolError(functionCall.call_id, parseError);
-                                processedFunctionCalls.delete(callId);
                             }
                         }
                     }
