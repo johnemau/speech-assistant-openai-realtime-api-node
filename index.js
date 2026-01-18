@@ -747,6 +747,8 @@ fastify.register(async (fastify) => {
         let waitingMusicInterval = null;
         let waitingMusicStartTimeout = null;
         let toolCallInProgress = false;
+        // Track the very first assistant audio to stop initial wait music
+        let firstAssistantAudioReceived = false;
         // ffmpeg removed; we only support WAV files; no tone fallback
         let waitingMusicUlawBuffer = null;
         let waitingMusicOffset = 0;
@@ -1288,6 +1290,8 @@ fastify.register(async (fastify) => {
                 }
 
                 if (response.type === 'response.output_audio.delta' && response.delta) {
+                    // Mark that the assistant has started speaking (first-time check)
+                    if (!firstAssistantAudioReceived) firstAssistantAudioReceived = true;
                     // Assistant audio is streaming; stop any waiting music immediately
                     stopWaitingMusic();
                     const audioDelta = {
@@ -1754,10 +1758,22 @@ fastify.register(async (fastify) => {
                             }
                             // Send the personalized greeting to OpenAI to speak first
                             sendInitialConversationItem(callerName);
+                            // Start initial wait music until first assistant audio, after a small threshold
+                            if (!firstAssistantAudioReceived) {
+                                waitingMusicStartTimeout = setTimeout(() => {
+                                    if (!firstAssistantAudioReceived && !isWaitingMusic) startWaitingMusic();
+                                }, WAIT_MUSIC_THRESHOLD_MS);
+                            }
                         } catch {
                             console.warn('No custom caller parameter found on start event.');
                             // Fallback greeting without a personalized name
                             sendInitialConversationItem('legend');
+                            // Start initial wait music even without a personalized name
+                            if (!firstAssistantAudioReceived) {
+                                waitingMusicStartTimeout = setTimeout(() => {
+                                    if (!firstAssistantAudioReceived && !isWaitingMusic) startWaitingMusic();
+                                }, WAIT_MUSIC_THRESHOLD_MS);
+                            }
                         }
                         break;
                     case 'mark':
