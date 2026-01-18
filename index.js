@@ -337,7 +337,7 @@ const ALL_ALLOWED_CALLERS_SET = new Set([...PRIMARY_CALLERS_SET, ...SECONDARY_CA
 // Waiting music configuration (optional)
 const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 500);
 const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
-const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.mp3
+const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.wav
 
 // List of Event Types to log to the console. See the OpenAI Realtime API Documentation: https://platform.openai.com/docs/api-reference/realtime
 const LOG_EVENT_TYPES = [
@@ -383,7 +383,7 @@ fastify.all('/incoming-call', async (request, reply) => {
     }
 
     // Choose greeting based on caller list membership
-    const primaryName = (PRIMARY_USER_FIRST_NAME || USER_FIRST_NAME || '').trim();
+    const primaryName = (PRIMARY_USER_FIRST_NAME || '').trim();
     const secondaryName = (SECONDARY_USER_FIRST_NAME || '').trim();
     let callerName = 'legend';
     if (PRIMARY_CALLERS_SET.has(fromE164) && primaryName) {
@@ -436,7 +436,7 @@ fastify.register(async (fastify) => {
         let waitingMusicInterval = null;
         let waitingMusicStartTimeout = null;
         let toolCallInProgress = false;
-        // ffmpeg removed; we only support WAV files and tone fallback
+        // ffmpeg removed; we only support WAV files; no tone fallback
         let waitingMusicUlawBuffer = null;
         let waitingMusicOffset = 0;
         // Parse a WAV file and convert to µ-law (PCMU) 8kHz mono bytes
@@ -553,10 +553,10 @@ fastify.register(async (fastify) => {
                             }, 20);
                         }
                     } else {
-                        // Non-WAV files are not supported without ffmpeg; will fall back to tone
+                        // Non-WAV files are not supported without ffmpeg; waiting music disabled
                     }
                 } catch (e) {
-                    console.error('Failed to load waiting music file, falling back to tone:', e);
+                    console.error('Failed to load waiting music file; disabling waiting music:', e);
                 }
             }
 
@@ -574,6 +574,8 @@ fastify.register(async (fastify) => {
             // Remove unused buffer since ffmpeg is not used
             waitingMusicUlawBuffer = null;
             waitingMusicOffset = 0;
+            // Ensure any playback interval is cleared
+            clearWaitingMusicInterval();
         }
 
         function clearWaitingMusicInterval() {
