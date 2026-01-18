@@ -142,7 +142,7 @@ if (!isTruthy(process.env.DISABLE_LOG_REDACTION)) {
 
 // Retrieve required environment variables.
 const { OPENAI_API_KEY, NGROK_DOMAIN, PRIMARY_USER_FIRST_NAME, SECONDARY_USER_FIRST_NAME } = process.env;
-const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN } = process.env;
+const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_API_KEY, TWILIO_API_SECRET } = process.env;
 
 // Email-related environment variables
 const {
@@ -168,15 +168,20 @@ const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // Initialize Twilio REST client (for SMS send/list). This is separate from the TwiML helper usage.
 let twilioClient = null;
-if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
-    try {
+try {
+    // Prefer API Key + Secret with Account SID (recommended by Twilio for production)
+    if (TWILIO_API_KEY && TWILIO_API_SECRET && TWILIO_ACCOUNT_SID) {
+        twilioClient = twilio(TWILIO_API_KEY, TWILIO_API_SECRET, { accountSid: TWILIO_ACCOUNT_SID });
+        console.log('Twilio REST client initialized with API Key + Secret.');
+    } else if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
+        // Fallback: Account SID + Auth Token (best for local testing)
         twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-        console.log('Twilio REST client initialized.');
-    } catch (e) {
-        console.warn('Failed to initialize Twilio REST client:', e?.message || e);
+        console.log('Twilio REST client initialized with Account SID + Auth Token.');
+    } else {
+        console.warn('Twilio credentials missing; provide API Key + Secret + Account SID or Account SID + Auth Token. SMS auto-reply will be unavailable.');
     }
-} else {
-    console.warn('TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN missing; SMS auto-reply feature will be unavailable.');
+} catch (e) {
+    console.warn('Failed to initialize Twilio REST client:', e?.message || e);
 }
 
 let senderTransport = null;

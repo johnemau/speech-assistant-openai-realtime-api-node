@@ -114,6 +114,25 @@ NGROK_DOMAIN=your-subdomain.ngrok.app
 PORT=10000
 ```
 
+Twilio credentials (choose one auth method):
+
+Option A — Recommended for production (API Key + Secret, with Account SID):
+
+```
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_API_KEY=SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_API_SECRET=your_api_key_secret
+```
+
+Option B — Local testing (Account SID + Auth Token):
+
+```
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+```
+
+Note: Do not set `TWILIO_ACCOUNT_SID` to an API Key (values starting with `SK`). If you use an API Key, pass `TWILIO_ACCOUNT_SID` separately as shown above.
+
 Then start the server:
 
 ```
@@ -151,6 +170,11 @@ Required environment variables for SMS:
 
 ```
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# One of the following auth methods:
+# A) API Key + Secret (recommended for production)
+TWILIO_API_KEY=SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_API_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# B) Auth Token (for local testing)
 TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 PRIMARY_USER_PHONE_NUMBERS=+12065551234
 SECONDARY_USER_PHONE_NUMBERS=+14255550123,+14255550124
