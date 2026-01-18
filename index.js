@@ -407,28 +407,8 @@ fastify.get('/healthz', async (request, reply) => {
 // Responds with simple TwiML via Twilio MessagingResponse
 fastify.post('/sms', async (request, reply) => {
     try {
-        // Helper: redact log payload unless running in development
-        const redactLog = (val) => {
-            if (IS_DEV) return val;
-            try {
-                const extraKeys = (process.env.REDACT_ENV_KEYS || '')
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean);
-                const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
-                const envVals = [];
-                for (const k of keys) {
-                    const v = process.env[k];
-                    if (typeof v === 'string' && v.length > 0) envVals.push(v);
-                }
-                let guessed = [];
-                try { guessed = findSensitiveValues(val); } catch {}
-                const secrets = Array.from(new Set([...envVals, ...guessed]));
-                return scrub(val, secrets);
-            } catch {
-                return val;
-            }
-        };
+        // Note: Global console wrappers already scrub sensitive data in logs.
+        // No additional per-call redaction wrapper needed in this route.
 
         const { MessagingResponse } = twilio.twiml;
         const twiml = new MessagingResponse();
@@ -440,34 +420,34 @@ fastify.post('/sms', async (request, reply) => {
         const fromE164 = normalizeUSNumberToE164(fromRaw);
         const toE164 = normalizeUSNumberToE164(toRaw);
         // Concise incoming log
-        console.info(redactLog({
+        console.info({
             event: 'sms.incoming',
             from: fromE164 || fromRaw || '',
             to: toE164 || toRaw || '',
             length: String(bodyRaw || '').length,
             preview: String(bodyRaw || '').slice(0, 160)
-        }));
+        });
 
         // Allowlist check: only PRIMARY or SECONDARY callers may use SMS auto-reply
         const isAllowed = !!fromE164 && (PRIMARY_CALLERS_SET.has(fromE164) || SECONDARY_CALLERS_SET.has(fromE164));
         if (!isAllowed) {
             // Concise log for restricted access
-            console.warn(redactLog({
+            console.warn({
                 event: 'sms.reply.restricted_twiml',
                 from: fromE164,
                 to: toE164
-            }));
+            });
             twiml.message('Sorry, this SMS line is restricted.');
             return reply.type('text/xml').send(twiml.toString());
         }
 
         if (!twilioClient) {
             // Concise log for missing Twilio client
-            console.warn(redactLog({
+            console.warn({
                 event: 'sms.reply.unconfigured_twiml',
                 from: toE164,
                 to: fromE164
-            }));
+            });
             twiml.message('SMS auto-reply is not configured.');
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -481,7 +461,7 @@ fastify.post('/sms', async (request, reply) => {
         try {
             // Inbound: from caller → our Twilio number
             // Log Twilio API request details
-            console.info(redactLog({
+            console.info({
                 event: 'twilio.messages.list.request',
                 direction: 'inbound',
                 params: {
@@ -490,7 +470,7 @@ fastify.post('/sms', async (request, reply) => {
                     to: toE164,
                     limit: 20,
                 }
-            }));
+            });
             inbound = await twilioClient.messages.list({
                 dateSentAfter: startWindow,
                 from: fromE164,
@@ -503,7 +483,7 @@ fastify.post('/sms', async (request, reply) => {
         try {
             // Outbound: from our Twilio number → caller
             // Log Twilio API request details
-            console.info(redactLog({
+            console.info({
                 event: 'twilio.messages.list.request',
                 direction: 'outbound',
                 params: {
@@ -512,7 +492,7 @@ fastify.post('/sms', async (request, reply) => {
                     to: fromE164,
                     limit: 20,
                 }
-            }));
+            });
             outbound = await twilioClient.messages.list({
                 dateSentAfter: startWindow,
                 from: toE164,
@@ -541,10 +521,10 @@ fastify.post('/sms', async (request, reply) => {
 
         // Dev-only: log the full SMS prompt for debugging
         if (IS_DEV) {
-            console.log(redactLog({
+            console.log({
                 event: 'sms.prompt.debug',
                 prompt: smsPrompt
-            }));
+            });
         }
 
         // Prepare OpenAI request with web_search tool
@@ -562,12 +542,12 @@ fastify.post('/sms', async (request, reply) => {
         };
 
         // Concise log of AI request (dev-friendly, but short)
-        console.info(redactLog({
+        console.info({
             event: 'sms.ai.request',
             model: 'gpt-5.2',
             tools: ['web_search'],
             prompt_len: String(smsPrompt || '').length
-        }));
+        });
 
         let aiText = '';
         try {
@@ -595,19 +575,19 @@ fastify.post('/sms', async (request, reply) => {
                 } catch {}
             }
             // Structured error log (redacted unless development)
-            console.error(redactLog({
+            console.error({
                 event: 'sms.reply.ai_error',
                 from: fromE164,
                 to: toE164,
                 error: String(detail || '').slice(0, 220)
-            }));
+            });
             aiText = `Sorry—SMS reply error. Details: ${String(detail || '').slice(0, 220)}.`;
         }
 
         // Send the reply via Twilio API (from the same Twilio number the webhook hit)
         try {
             // Log Twilio API request details for SMS send
-            console.info(redactLog({
+            console.info({
                 event: 'twilio.messages.create.request',
                 params: {
                     from: toE164,
@@ -615,7 +595,7 @@ fastify.post('/sms', async (request, reply) => {
                     length: String(aiText || '').length,
                     preview: String(aiText || '').slice(0, 160),
                 }
-            }));
+            });
             const sendRes = await twilioClient.messages.create({
                 from: toE164,
                 to: fromE164,
@@ -623,14 +603,14 @@ fastify.post('/sms', async (request, reply) => {
             });
             // Always log SMS sends (with redaction unless development)
             const preview = String(aiText || '').slice(0, 160);
-            console.info(redactLog({
+            console.info({
                 event: 'sms.reply.sent',
                 sid: sendRes?.sid,
                 from: toE164,
                 to: fromE164,
                 length: String(aiText || '').length,
                 preview,
-            }));
+            });
         } catch (e) {
             console.error('Failed to send Twilio SMS:', e?.message || e);
             // Fallback: reply via TwiML with redacted error details to ensure the user gets context
@@ -654,37 +634,37 @@ fastify.post('/sms', async (request, reply) => {
                 } catch {}
             }
             // Structured error log (redacted unless development)
-            console.error(redactLog({
+            console.error({
                 event: 'sms.reply.send_error',
                 from: toE164,
                 to: fromE164,
                 error: String(detail || '').slice(0, 220)
-            }));
+            });
             const fallbackMsg = `Sorry—SMS send error. Details: ${String(detail || '').slice(0, 220)}.`;
             // Log fallback TwiML generation
-            console.warn(redactLog({
+            console.warn({
                 event: 'sms.reply.fallback_twiml',
                 from: toE164,
                 to: fromE164,
                 preview: String(fallbackMsg).slice(0, 160)
-            }));
+            });
             twiml.message(fallbackMsg);
             return reply.type('text/xml').send(twiml.toString());
         }
 
         // Return empty TwiML to avoid duplicate auto-replies
-        console.info(redactLog({
+        console.info({
             event: 'sms.webhook.completed',
             from: toE164,
             to: fromE164
-        }));
+        });
         return reply.type('text/xml').send(twiml.toString());
     } catch (e) {
         // Concise structured unhandled error
-        console.error(redactLog({
+        console.error({
             event: 'sms.webhook.unhandled_error',
             error: (e?.message || String(e || '')).slice(0, 220)
-        }));
+        });
         return reply.code(500).send('');
     }
 });
