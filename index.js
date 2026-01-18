@@ -335,7 +335,7 @@ const SECONDARY_CALLERS_SET = new Set(
 const ALL_ALLOWED_CALLERS_SET = new Set([...PRIMARY_CALLERS_SET, ...SECONDARY_CALLERS_SET]);
 
 // Waiting music configuration (optional)
-const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 700);
+const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 500);
 const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
 const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.mp3
 
@@ -1080,6 +1080,11 @@ fastify.register(async (fastify) => {
                                 // Email tool call parse error
                             }
                         } else if (functionCall.name === 'update_mic_distance') {
+                            // Schedule waiting music in case this tool call takes time
+                            toolCallInProgress = true;
+                            waitingMusicStartTimeout = setTimeout(() => {
+                                if (toolCallInProgress) startWaitingMusic();
+                            }, WAIT_MUSIC_THRESHOLD_MS);
                             try {
                                 const toolInput = JSON.parse(functionCall.arguments);
                                 const requestedMode = String(toolInput.mode || '').trim();
@@ -1089,6 +1094,9 @@ fastify.register(async (fastify) => {
                                 const validModes = new Set(['near_field', 'far_field']);
                                 if (!validModes.has(requestedMode)) {
                                     const err = `Invalid mode: ${requestedMode}. Expected near_field or far_field.`;
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, err);
                                     return;
                                 }
@@ -1115,6 +1123,9 @@ fastify.register(async (fastify) => {
                                             output: JSON.stringify(output)
                                         }
                                     };
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
                                     openAiWs.send(JSON.stringify(toolResultEvent));
                                     openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                     
@@ -1154,11 +1165,17 @@ fastify.register(async (fastify) => {
                                         output: JSON.stringify(output)
                                     }
                                 };
+                                toolCallInProgress = false;
+                                stopWaitingMusic();
+                                clearWaitingMusicInterval();
                                 openAiWs.send(JSON.stringify(toolResultEvent));
                                 openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                 if (IS_DEV) console.log('Noise reduction updated:', output);
                             } catch (parseError) {
                                 console.error('Error parsing update_mic_distance args:', parseError);
+                                toolCallInProgress = false;
+                                stopWaitingMusic();
+                                clearWaitingMusicInterval();
                                 sendOpenAiToolError(functionCall.call_id, parseError);
                             }
                         }
