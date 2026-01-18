@@ -353,7 +353,7 @@ const LOG_EVENT_TYPES = [
 ];
 
 // Show AI response elapsed timing calculations
-const SHOW_TIMING_MATH = false;
+const SHOW_TIMING_MATH = IS_DEV;
 
 // Root Route
 fastify.get('/', async (request, reply) => {
@@ -591,8 +591,8 @@ fastify.register(async (fastify) => {
             }
         });
 
-        // Send initial conversation item if AI talks first
-        const sendInitialConversationItem = () => {
+        // Send initial conversation item using the caller's name once available
+        const sendInitialConversationItem = (callerNameValue = 'legend') => {
             const initialConversationItem = {
                 type: 'conversation.item.create',
                 item: {
@@ -601,7 +601,7 @@ fastify.register(async (fastify) => {
                     content: [
                         {
                             type: 'input_text',
-                            text: 'Greet the user with "Hello there! I am an AI voice assistant powered by Twilio and the OpenAI Realtime API. You can ask me for facts, jokes, or anything you can imagine. How can I help you?"'
+                            text: `Greet the user with "At your service ${callerNameValue}, how may I help?"`
                         }
                     ]
                 }
@@ -836,7 +836,7 @@ fastify.register(async (fastify) => {
             console.log('Sending session update:', stringifyDeep(sessionUpdate));
             openAiWs.send(JSON.stringify(sessionUpdate));
 
-            sendInitialConversationItem();
+            // Initial greeting will be sent after Twilio 'start' event once caller name is known
         };
 
         // Handle interruption when the caller's speech starts
@@ -1219,8 +1219,21 @@ fastify.register(async (fastify) => {
                             const rawCaller = cp.caller_number || cp.callerNumber || null;
                             currentCallerE164 = normalizeUSNumberToE164(rawCaller);
                             if (currentCallerE164) console.log('Caller (from TwiML Parameter):', rawCaller, '=>', currentCallerE164);
+                            // Compute caller name based on group and send initial greeting
+                            const primaryName = String(PRIMARY_USER_FIRST_NAME || '').trim();
+                            const secondaryName = String(SECONDARY_USER_FIRST_NAME || '').trim();
+                            let callerName = 'legend';
+                            if (currentCallerE164 && PRIMARY_CALLERS_SET.has(currentCallerE164) && primaryName) {
+                                callerName = primaryName;
+                            } else if (currentCallerE164 && SECONDARY_CALLERS_SET.has(currentCallerE164) && secondaryName) {
+                                callerName = secondaryName;
+                            }
+                            // Send the personalized greeting to OpenAI to speak first
+                            sendInitialConversationItem(callerName);
                         } catch (e) {
                             console.warn('No custom caller parameter found on start event.');
+                            // Fallback greeting without a personalized name
+                            sendInitialConversationItem('legend');
                         }
                         break;
                     case 'mark':
