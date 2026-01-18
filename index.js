@@ -566,7 +566,7 @@ fastify.post('/sms', async (request, reply) => {
                 to: toE164,
                 error: String(detail || '').slice(0, 220)
             }));
-            aiText = `Sorry—there was an error while creating your AI SMS reply using GPT-5.2 with web_search. Details: ${String(detail || '').slice(0, 220)}. Please try again shortly.`;
+            aiText = `Sorry—SMS reply error. Details: ${String(detail || '').slice(0, 220)}.`;
         }
 
         // Send the reply via Twilio API (from the same Twilio number the webhook hit)
@@ -615,7 +615,7 @@ fastify.post('/sms', async (request, reply) => {
                 to: fromE164,
                 error: String(detail || '').slice(0, 220)
             }));
-            const fallbackMsg = `Sorry—there was an error sending your SMS reply via Twilio API. Details: ${String(detail || '').slice(0, 220)}.`;
+            const fallbackMsg = `Sorry—SMS send error. Details: ${String(detail || '').slice(0, 220)}.`;
             // Log fallback TwiML generation
             console.warn(redactLog({
                 event: 'sms.reply.fallback_twiml',
