@@ -172,6 +172,23 @@ Notes:
 
 Provide a `.wav` file; the app parses WAV directly (PCM 16-bit) and downmixes/resamples to 8 kHz mono in-process, then streams PCMU frames. Non-WAV files are not supported.
 
+### Speakerphone Mic Distance Toggle
+
+Optimize input noise reduction when the caller switches to/from speakerphone.
+
+- Tool: `update_mic_distance(mode: near_field | far_field, reason?: string)`
+- Behavior: The assistant listens for phrases like “you’re on speaker” → switches to `far_field`, and “taking you off speaker” → switches to `near_field`.
+- Debounce: Repeated requests within ~2s are ignored; no-ops are skipped when the requested mode equals the current mode.
+
+Implementation details:
+- The Realtime session initializes with `audio.input.noise_reduction.type = near_field`.
+- On tool call, the server sends a partial `session.update` that sets `audio.input.noise_reduction.type` to the requested mode.
+- After the tool result is sent, the model speaks a brief confirmation.
+
+Notes:
+- `noise_reduction` improves VAD/turn detection and input clarity. Use `near_field` for close-talking mics (headsets) and `far_field` for speakerphone/laptop mics.
+- Events: `session.updated` is logged for visibility.
+
 ### Allowlist Inbound Callers
 
 Restrict who can call into the assistant via allowlists and greet them differently based on group.

@@ -286,6 +286,13 @@ You are a voice-only AI assistant participating in a live phone call using the O
 # Safety
 - If the user requests harmful, hateful, racist, sexist, lewd, or violent content, reply exactly:
   “Sorry, I can’t assist with that.”
+ 
+# Speakerphone Handling
+- If the caller says “you’re on speaker”, “putting you on speaker phone”, or similar → call the tool update_mic_distance with mode="far_field".
+- If the caller says “taking you off speaker phone” or “off speaker” → call update_mic_distance with mode="near_field".
+- Make at most one tool call per user turn; avoid repeating the same mode.
+- After receiving the tool result, speak one brief confirmation (e.g., “Optimizing for speakerphone.” or “Back to near‑field.”).
+- Respect negations or corrections (e.g., “not on speaker”, “no, keep it near”).
 `;
 // Instructions for web-search `responses.create` to produce detailed, voice-friendly output
 const WEB_SEARCH_INSTRUCTIONS = 'Prepare a voice-ready answer for a live call using gpt-realtime. Provide a detailed, fact-rich response that is easy to follow over the phone. Prioritize useful, actionable facts and omit filler. When relevant (e.g., a business), include the name, address, phone number, hours (if available), and review score. Present information in clear, short sentences or brief phrases that are easy to hear. Do not include URLs. Include concise source labels only (for example: "Source: Yelp" or "Source: Reuters"). Use natural phrasing and readable pacing for speech.';
@@ -419,6 +426,13 @@ fastify.register(async (fastify) => {
         let responseStartTimestampTwilio = null;
         // Track processed function calls to avoid duplicate executions (e.g., double emails)
         let processedFunctionCalls = new Set();
+
+        // Mic distance / noise reduction state & counters
+        let currentNoiseReductionType = 'near_field';
+        let lastMicDistanceToggleTs = 0;
+        let farToggles = 0;
+        let nearToggles = 0;
+        let skippedNoOp = 0;
 
         // Waiting music state
         let isWaitingMusic = false;
@@ -724,6 +738,28 @@ fastify.register(async (fastify) => {
             description: 'Send an HTML email with the latest context. The assistant must supply a subject and a non-conversational, concise HTML body that includes specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be clickable URLs. Always conclude the email with a small, cute ASCII art at the end.'
         };
 
+        // Define update_mic_distance tool (near_field | far_field)
+        const updateMicDistanceTool = {
+            type: 'function',
+            name: 'update_mic_distance',
+            parameters: {
+                type: 'object',
+                properties: {
+                    mode: {
+                        type: 'string',
+                        enum: ['near_field', 'far_field'],
+                        description: 'Set input noise_reduction.type to near_field or far_field.'
+                    },
+                    reason: {
+                        type: 'string',
+                        description: 'Optional short note about why (e.g., caller phrase).'
+                    }
+                },
+                required: ['mode']
+            },
+            description: 'Toggle mic processing based on caller phrases: speakerphone-on → far_field; off-speakerphone → near_field. Debounce and avoid redundant toggles; one tool call per turn.'
+        };
+
         // Handle gpt_web_search tool calls
         const handleWebSearchToolCall = async (query, userLocation) => {
             try {
@@ -768,11 +804,11 @@ fastify.register(async (fastify) => {
                     model: 'gpt-realtime',
                     output_modalities: ['audio'],
                     audio: {
-                        input: { format: { type: 'audio/pcmu' }, turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: true } },
+                        input: { format: { type: 'audio/pcmu' }, turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: true }, noise_reduction: { type: currentNoiseReductionType } },
                         output: { format: { type: 'audio/pcmu' }, voice: VOICE },
                     },
                     instructions: SYSTEM_MESSAGE,
-                    tools: [ gptWebSearchTool, sendEmailTool ],
+                    tools: [ gptWebSearchTool, sendEmailTool, updateMicDistanceTool ],
                     tool_choice: 'auto',
                 },
             };
@@ -1032,6 +1068,91 @@ fastify.register(async (fastify) => {
                                 clearWaitingMusicInterval();
                                 sendOpenAiToolError(functionCall.call_id, parseError);
                                 // Cleanup on parse error
+                                processedFunctionCalls.delete(callId);
+                            }
+                        } else if (functionCall.name === 'update_mic_distance') {
+                            try {
+                                const toolInput = JSON.parse(functionCall.arguments);
+                                const requestedMode = String(toolInput.mode || '').trim();
+                                const reason = typeof toolInput.reason === 'string' ? toolInput.reason.trim() : undefined;
+                                if (IS_DEV) console.log('Dev tool call update_mic_distance input:', { requestedMode, reason });
+
+                                const validModes = new Set(['near_field', 'far_field']);
+                                if (!validModes.has(requestedMode)) {
+                                    const err = `Invalid mode: ${requestedMode}. Expected near_field or far_field.`;
+                                    sendOpenAiToolError(functionCall.call_id, err);
+                                    processedFunctionCalls.delete(callId);
+                                    return;
+                                }
+
+                                const now = Date.now();
+                                const withinDebounce = (now - lastMicDistanceToggleTs) < 2000;
+                                const isNoOp = requestedMode === currentNoiseReductionType;
+
+                                if (withinDebounce || isNoOp) {
+                                    if (isNoOp) skippedNoOp++;
+                                    const output = {
+                                        status: 'noop',
+                                        applied: false,
+                                        reason: withinDebounce ? 'debounced' : 'already-set',
+                                        mode: requestedMode,
+                                        current: currentNoiseReductionType,
+                                        counters: { farToggles, nearToggles, skippedNoOp }
+                                    };
+                                    const toolResultEvent = {
+                                        type: 'conversation.item.create',
+                                        item: {
+                                            type: 'function_call_output',
+                                            call_id: functionCall.call_id,
+                                            output: JSON.stringify(output)
+                                        }
+                                    };
+                                    openAiWs.send(JSON.stringify(toolResultEvent));
+                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    processedFunctionCalls.delete(callId);
+                                    return;
+                                }
+
+                                // Apply session.update with the requested mode
+                                const sessionUpdate = {
+                                    type: 'session.update',
+                                    session: {
+                                        audio: {
+                                            input: {
+                                                noise_reduction: { type: requestedMode }
+                                            }
+                                        }
+                                    }
+                                };
+                                console.log('Applying noise_reduction change:', sessionUpdate);
+                                openAiWs.send(JSON.stringify(sessionUpdate));
+                                currentNoiseReductionType = requestedMode;
+                                lastMicDistanceToggleTs = now;
+                                if (requestedMode === 'far_field') farToggles++; else nearToggles++;
+
+                                const output = {
+                                    status: 'ok',
+                                    applied: true,
+                                    mode: requestedMode,
+                                    current: currentNoiseReductionType,
+                                    reason,
+                                    counters: { farToggles, nearToggles, skippedNoOp }
+                                };
+                                const toolResultEvent = {
+                                    type: 'conversation.item.create',
+                                    item: {
+                                        type: 'function_call_output',
+                                        call_id: functionCall.call_id,
+                                        output: JSON.stringify(output)
+                                    }
+                                };
+                                openAiWs.send(JSON.stringify(toolResultEvent));
+                                openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                if (IS_DEV) console.log('Noise reduction updated:', output);
+                                processedFunctionCalls.delete(callId);
+                            } catch (parseError) {
+                                console.error('Error parsing update_mic_distance args:', parseError);
+                                sendOpenAiToolError(functionCall.call_id, parseError);
                                 processedFunctionCalls.delete(callId);
                             }
                         }
