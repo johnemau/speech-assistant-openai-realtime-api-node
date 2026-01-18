@@ -837,9 +837,18 @@ fastify.register(async (fastify) => {
             return mu & 0xFF;
         }
 
-        function startWaitingMusic() {
+        function startWaitingMusic(reason = 'unknown') {
             if (!streamSid || isWaitingMusic) return;
             isWaitingMusic = true;
+            try {
+                console.info({
+                    event: 'wait_music.start',
+                    reason,
+                    streamSid,
+                    threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
+                    file: WAIT_MUSIC_FILE || null
+                });
+            } catch {}
             // If audio file is provided and exists
             if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
                 try {
@@ -867,22 +876,26 @@ fastify.register(async (fastify) => {
                         }
                     } else {
                         // Non-WAV files are not supported without ffmpeg; waiting music disabled
+                        console.warn({ event: 'wait_music.unsupported_file', file: WAIT_MUSIC_FILE });
                     }
                 } catch (e) {
-                    console.error('Failed to load waiting music file; disabling waiting music:', e);
+                    console.error('Failed to load waiting music file; disabling waiting music:', e?.message || e);
                 }
             }
 
             // No fallback tone; only WAV file is supported for waiting music.
         }
 
-        function stopWaitingMusic() {
+        function stopWaitingMusic(reason = 'unknown') {
             if (waitingMusicStartTimeout) {
                 clearTimeout(waitingMusicStartTimeout);
                 waitingMusicStartTimeout = null;
             }
             if (isWaitingMusic) {
                 isWaitingMusic = false;
+                try {
+                    console.info({ event: 'wait_music.stop', reason, streamSid });
+                } catch {}
             }
             // Remove unused buffer since ffmpeg is not used
             waitingMusicUlawBuffer = null;
@@ -1293,7 +1306,7 @@ fastify.register(async (fastify) => {
                     // Mark that the assistant has started speaking (first-time check)
                     if (!firstAssistantAudioReceived) firstAssistantAudioReceived = true;
                     // Assistant audio is streaming; stop any waiting music immediately
-                    stopWaitingMusic();
+                    stopWaitingMusic('assistant_audio');
                     const audioDelta = {
                         event: 'media',
                         streamSid: streamSid,
@@ -1316,7 +1329,7 @@ fastify.register(async (fastify) => {
 
                 if (response.type === 'input_audio_buffer.speech_started') {
                     // Caller barged in; stop waiting music and handle truncation
-                    stopWaitingMusic();
+                    stopWaitingMusic('caller_speech');
                     handleSpeechStartedEvent();
                 }
 
@@ -1350,7 +1363,7 @@ fastify.register(async (fastify) => {
                                     .then((searchResult) => {
                                         // Tool completed; stop waiting music before continuing response
                                         toolCallInProgress = false;
-                                        stopWaitingMusic();
+                                        stopWaitingMusic('tool_call_complete');
                                         clearWaitingMusicInterval();
                                         if (IS_DEV) console.log('Dev tool call gpt_web_search output:', searchResult);
                                         // Send function call output back to OpenAI
@@ -1370,7 +1383,7 @@ fastify.register(async (fastify) => {
                                     .catch((error) => {
                                         console.error('Error handling web search tool call:', error);
                                         toolCallInProgress = false;
-                                        stopWaitingMusic();
+                                        stopWaitingMusic('tool_error');
                                         clearWaitingMusicInterval();
                                         // Send error result back to OpenAI (and log)
                                         sendOpenAiToolError(functionCall.call_id, error);
@@ -1379,7 +1392,7 @@ fastify.register(async (fastify) => {
                             } catch (parseError) {
                                 console.error('Error parsing tool arguments:', parseError);
                                 toolCallInProgress = false;
-                                stopWaitingMusic();
+                                stopWaitingMusic('tool_error');
                                 clearWaitingMusicInterval();
                                 // Tool call parse error
                             }
@@ -1398,7 +1411,7 @@ fastify.register(async (fastify) => {
                                 if (!subjectRaw || !bodyHtml) {
                                     const errMsg = 'Missing subject or body_html.';
                                     toolCallInProgress = false;
-                                    stopWaitingMusic();
+                                    stopWaitingMusic('tool_call_complete');
                                     clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, errMsg);
                                     // Cleanup on validation error
@@ -1419,7 +1432,7 @@ fastify.register(async (fastify) => {
                                 if (!senderTransport || !fromEmail || !toEmail) {
                                     const errMsg = 'Email is not configured for this caller.';
                                     toolCallInProgress = false;
-                                    stopWaitingMusic();
+                                    stopWaitingMusic('tool_error');
                                     clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, errMsg);
                                     // Cleanup when email configuration prevents sending
@@ -1470,7 +1483,7 @@ fastify.register(async (fastify) => {
                                 });
                             } catch (parseError) {
                                 toolCallInProgress = false;
-                                stopWaitingMusic();
+                                stopWaitingMusic('tool_error');
                                 clearWaitingMusicInterval();
                                 sendOpenAiToolError(functionCall.call_id, parseError);
                                 // Email tool call parse error
@@ -1489,7 +1502,7 @@ fastify.register(async (fastify) => {
                                 if (!bodyText) {
                                     const errMsg = 'Missing body_text.';
                                     toolCallInProgress = false;
-                                    stopWaitingMusic();
+                                    stopWaitingMusic('tool_call_complete');
                                     clearWaitingMusicInterval();
                                     sendOpenAiToolError(functionCall.call_id, errMsg);
                                     return;
@@ -1555,7 +1568,7 @@ fastify.register(async (fastify) => {
                                 });
                             } catch (parseError) {
                                 toolCallInProgress = false;
-                                stopWaitingMusic();
+                                stopWaitingMusic('tool_error');
                                 clearWaitingMusicInterval();
                                 sendOpenAiToolError(functionCall.call_id, parseError);
                                 // SMS tool call parse error
@@ -1647,7 +1660,7 @@ fastify.register(async (fastify) => {
                                     }
                                 };
                                 toolCallInProgress = false;
-                                stopWaitingMusic();
+                                stopWaitingMusic('tool_call_complete');
                                 clearWaitingMusicInterval();
                                 openAiWs.send(JSON.stringify(toolResultEvent));
                                 openAiWs.send(JSON.stringify({ type: 'response.create' }));
@@ -1655,7 +1668,7 @@ fastify.register(async (fastify) => {
                             } catch (parseError) {
                                 console.error('Error parsing update_mic_distance args:', parseError);
                                 toolCallInProgress = false;
-                                stopWaitingMusic();
+                                stopWaitingMusic('tool_error');
                                 clearWaitingMusicInterval();
                                 sendOpenAiToolError(functionCall.call_id, parseError);
                             }
@@ -1671,7 +1684,7 @@ fastify.register(async (fastify) => {
                                     // Attempt close; if marks still pending, force close
                                     if (pendingDisconnect) {
                                         pendingDisconnect = false;
-                                        stopWaitingMusic();
+                                        stopWaitingMusic('disconnect');
                                         clearWaitingMusicInterval();
                                         try { connection.close(1000, 'Call ended by assistant (timeout)'); } catch {}
                                         try { if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close(); } catch {}
@@ -1735,7 +1748,7 @@ fastify.register(async (fastify) => {
                         responseStartTimestampTwilio = null; 
                         latestMediaTimestamp = 0;
                         // Ensure waiting music is not running for a new stream
-                        stopWaitingMusic();
+                        stopWaitingMusic('new_stream');
                         clearWaitingMusicInterval();
 
                         // Read caller number from custom parameters passed via TwiML Parameter
@@ -1761,7 +1774,7 @@ fastify.register(async (fastify) => {
                             // Start initial wait music until first assistant audio, after a small threshold
                             if (!firstAssistantAudioReceived) {
                                 waitingMusicStartTimeout = setTimeout(() => {
-                                    if (!firstAssistantAudioReceived && !isWaitingMusic) startWaitingMusic();
+                                    if (!firstAssistantAudioReceived && !isWaitingMusic) startWaitingMusic('initial');
                                 }, WAIT_MUSIC_THRESHOLD_MS);
                             }
                         } catch {
@@ -1771,7 +1784,7 @@ fastify.register(async (fastify) => {
                             // Start initial wait music even without a personalized name
                             if (!firstAssistantAudioReceived) {
                                 waitingMusicStartTimeout = setTimeout(() => {
-                                    if (!firstAssistantAudioReceived && !isWaitingMusic) startWaitingMusic();
+                                    if (!firstAssistantAudioReceived && !isWaitingMusic) startWaitingMusic('initial');
                                 }, WAIT_MUSIC_THRESHOLD_MS);
                             }
                         }
