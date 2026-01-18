@@ -333,5 +333,5 @@ Usage:
 Politely end the call on common goodbye phrases.
 
 - Phrases: "hang up", "goodbye", "bye now", "disconnect", "end the call".
-- Tool: `end_call` — the assistant calls this, then speaks one brief goodbye.
+- Tool: `end_call` — the assistant calls this, then speaks one brief, context‑aware witty farewell or warm compliment related to the conversation (e.g., "Have a nice day.", "Enjoy your dinner if you get one.", "I hope I was helpful.", "Enjoy the movie if you end up seeing it.", "Good evening, Mr. President.", "Remember you are a wonderful person.").
 - Behavior: The server closes the Twilio Media Stream and the OpenAI WebSocket immediately after the goodbye audio finishes.
