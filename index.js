@@ -286,6 +286,7 @@ You are a voice-only AI assistant participating in a live phone call using the O
 - Avoid meta statements like "I will look that up for you" unless a tool call is being performed right now.
 - When reading numbers, IDs, or codes, speak each character individually with hyphens (for example: 4-1-5).
 - Repeat numbers exactly as provided, without correction or inference.
+ - When helpful, include one short follow-up question directly related to the user’s request (for example: "Would you like me to get the hours of operation?", "Would you like me to text or email you the article?", "Would you like me to get additional details?", or "Would you like me to find the business’s phone number?"). Only ask a follow-up when it clearly adds value; otherwise, omit it.
 
 # Personality & Tone
 ## Personality
@@ -327,7 +328,7 @@ You are a voice-only AI assistant participating in a live phone call using the O
 
 # Call Ending
 - If the caller says “hang up”, “goodbye”, “bye now”, “disconnect”, or “end the call” → call the tool named end_call.
-- After receiving the tool result, speak one brief goodbye (e.g., “Goodbye.”). The server will end the call immediately after playback finishes.
+- After receiving the tool result, speak one brief, context‑aware farewell — a witty line or warm compliment related to the conversation (e.g., “Have a nice day.”, “Enjoy your dinner if you get one.”, “I hope I was helpful.”, “Enjoy the movie if you end up seeing it.”, “Good evening, Mr. President.”, “Remember you are a wonderful person.”). The server will end the call immediately after playback finishes.
 - Make at most one tool call per user turn and respect negations (e.g., “don’t hang up”).
 `;
 // Instructions for web-search `responses.create` to produce detailed, voice-friendly output
@@ -1115,7 +1116,7 @@ fastify.register(async (fastify) => {
             description: 'Send an HTML email with the latest context. The assistant must supply a subject and a non-conversational, concise HTML body that includes specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be clickable URLs. Always conclude the email with a small, cute ASCII art at the end.'
         };
 
-        // Define send_sms tool (concise SMS, no hard length limit)
+        // Define send_sms tool (concise, actionable SMS; no filler)
         const sendSmsTool = {
             type: 'function',
             name: 'send_sms',
@@ -1124,12 +1125,12 @@ fastify.register(async (fastify) => {
                 properties: {
                     body_text: {
                         type: 'string',
-                        description: 'Concise SMS body. Friendly and actionable; include specific details requested by the caller, at most one short source label, and a URL only if directly helpful.'
+                        description: 'Concise, actionable SMS body with no filler or preamble. Include only the information requested and any sources as short labels with URLs (e.g., official page, business website, article). Keep wording tight and direct. You may add a single, short follow-up question (e.g., "Would you like me to get the hours of operation?") when helpful.'
                     }
                 },
                 required: ['body_text']
             },
-            description: 'Send a concise SMS to the caller with the latest discussed info and the specific details the caller requested. The assistant supplies a single body text with no hard character limit.'
+            description: 'Send an SMS that contains only the requested information and brief source labels with URLs. Keep it actionable and free of preamble or unnecessary words. A single short follow-up question is allowed when helpful (e.g., asking if you should get hours or more details).'
         };
 
         // Define update_mic_distance tool (near_field | far_field)

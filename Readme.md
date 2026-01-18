@@ -248,6 +248,13 @@ Notes:
 
 Provide a `.wav` file; the app parses WAV directly (PCM 16-bit) and downmixes/resamples to 8 kHz mono in-process, then streams PCMU frames. Non-WAV files are supported only via WAV; ffmpeg is not used.
 
+### Follow-up Questions (optional)
+
+The assistant may include one short, relevant follow‑up question in a voice response when it clearly adds value to the caller.
+
+- Examples: “Would you like me to get the hours of operation?”, “Would you like me to text or email you the article?”, “Would you like me to get additional details?”, “Would you like me to find the business’s phone number?”
+- Behavior: The assistant only asks a follow‑up when helpful; otherwise it omits it. Questions remain brief and voice‑friendly.
+
 ### Speakerphone Mic Distance Toggle
 
 Optimize input noise reduction when the caller switches to/from speakerphone.
