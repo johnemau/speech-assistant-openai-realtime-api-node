@@ -6,7 +6,7 @@ The application opens websockets with the OpenAI Realtime API and Twilio, and se
 
 See [here](https://www.twilio.com/en-us/blog/voice-ai-assistant-openai-realtime-api-node) for a tutorial overview of the code.
 
-This application uses the following Twilio products in conjuction with OpenAI's Realtime API:
+This application uses the following Twilio products in conjunction with OpenAI's Realtime API:
 - Voice (and TwiML, Media Streams)
 - Phone Numbers
 
@@ -67,7 +67,7 @@ Prevent accidental printing of secret environment variables to `console.log` and
 
 This app enables redaction at startup, replacing any configured env values with `[secure]` when they appear in logs or CLI output.
 
-- Default redacted keys: `OPENAI_API_KEY`, `NGROK_AUTHTOKEN`, `SMTP_PASS`, `SMTP_USER`, `SENDER_FROM_EMAIL`, `PRIMARY_TO_EMAIL`, `SECONDARY_TO_EMAIL`, `TWILIO_AUTH_TOKEN`, `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET`, `SECRET_ENV_VAR`.
+- Default redacted keys: `OPENAI_API_KEY`, `NGROK_AUTHTOKEN`, `SMTP_NODEMAILER_SERVICE_ID`, `SMTP_PASS`, `SMTP_USER`, `SENDER_FROM_EMAIL`, `PRIMARY_TO_EMAIL`, `SECONDARY_TO_EMAIL`, `PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS`, `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`, `TWILIO_AUTH_TOKEN`, `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET`.
 - Add more via a comma-separated env: `REDACT_ENV_KEYS=MY_SECRET,ANOTHER_TOKEN`.
 - Disable globally via: `DISABLE_LOG_REDACTION=true`.
 
@@ -270,7 +270,7 @@ Notes:
 Let the assistant send an HTML email with the latest conversation context when the caller says "email me that" or similar. The assistant composes the subject and HTML body and calls the `send_email` tool; the server selects the recipient based on the caller’s phone number. There is a single sender SMTP account used for both recipients.
 
 - The email body must be HTML-only. No plaintext.
-- A custom header `FROM-AI-ASSITANT` is included with each message.
+- A custom header `X-From-Ai-Assistant: true` is included with each message.
 
 Environment variables:
 
