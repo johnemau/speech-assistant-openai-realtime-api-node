@@ -178,6 +178,7 @@ Optimize input noise reduction when the caller switches to/from speakerphone.
 
 - Tool: `update_mic_distance(mode: near_field | far_field, reason?: string)`
 - Behavior: The assistant listens for phrases like “you’re on speaker” → switches to `far_field`, and “taking you off speaker” → switches to `near_field`.
+- Also handles car/Bluetooth phrasing: “connected to car bluetooth”, “you are on the car”, “car speakers” → `far_field`; and “taking off car”, “off bluetooth” → `near_field`.
 - Debounce: Repeated requests within ~2s are ignored; no-ops are skipped when the requested mode equals the current mode.
 
 Implementation details:
