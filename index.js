@@ -42,6 +42,7 @@ const DEFAULT_SECRET_ENV_KEYS = [
     'SENDER_FROM_EMAIL',
     'PRIMARY_TO_EMAIL',
     'SECONDARY_TO_EMAIL',
+    'TWILIO_SMS_FROM_NUMBER',
     // Caller-related environment variables
     'PRIMARY_USER_PHONE_NUMBERS',
     'SECONDARY_USER_PHONE_NUMBERS',
@@ -674,6 +675,8 @@ fastify.post('/sms', async (request, reply) => {
 fastify.all('/incoming-call', async (request, reply) => {
     const fromRaw = request.body?.From || request.body?.from || request.body?.Caller;
     const fromE164 = normalizeUSNumberToE164(fromRaw);
+    const toRaw = request.body?.To || request.body?.to || '';
+    const toE164 = normalizeUSNumberToE164(toRaw);
     console.log('Incoming call from:', fromRaw, '=>', fromE164);
 
     if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
@@ -707,6 +710,7 @@ fastify.all('/incoming-call', async (request, reply) => {
                               <Connect>
                                   <Stream url="wss://${request.headers.host}/media-stream">
                                       <Parameter name="caller_number" value="${fromE164}" />
+                                      <Parameter name="twilio_number" value="${toE164 || ''}" />
                                   </Stream>
                               </Connect>
                           </Response>`;
@@ -722,6 +726,7 @@ fastify.register(async (fastify) => {
         // Connection-specific state
         let streamSid = null;
         let currentCallerE164 = null;
+        let currentTwilioNumberE164 = null;
         let latestMediaTimestamp = 0;
         let lastAssistantItem = null;
         let markQueue = [];
@@ -1110,6 +1115,23 @@ fastify.register(async (fastify) => {
             description: 'Send an HTML email with the latest context. The assistant must supply a subject and a non-conversational, concise HTML body that includes specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be clickable URLs. Always conclude the email with a small, cute ASCII art at the end.'
         };
 
+        // Define send_sms tool (concise SMS, no hard length limit)
+        const sendSmsTool = {
+            type: 'function',
+            name: 'send_sms',
+            parameters: {
+                type: 'object',
+                properties: {
+                    body_text: {
+                        type: 'string',
+                        description: 'Concise SMS body. Friendly and actionable; include specific details requested by the caller, at most one short source label, and a URL only if directly helpful.'
+                    }
+                },
+                required: ['body_text']
+            },
+            description: 'Send a concise SMS to the caller with the latest discussed info and the specific details the caller requested. The assistant supplies a single body text with no hard character limit.'
+        };
+
         // Define update_mic_distance tool (near_field | far_field)
         const updateMicDistanceTool = {
             type: 'function',
@@ -1193,7 +1215,7 @@ fastify.register(async (fastify) => {
                         output: { format: { type: 'audio/pcmu' }, voice: VOICE },
                     },
                     instructions: SYSTEM_MESSAGE,
-                    tools: [ gptWebSearchTool, sendEmailTool, updateMicDistanceTool, endCallTool ],
+                    tools: [ gptWebSearchTool, sendEmailTool, sendSmsTool, updateMicDistanceTool, endCallTool ],
                     tool_choice: 'auto',
                 },
             };
@@ -1448,6 +1470,91 @@ fastify.register(async (fastify) => {
                                 sendOpenAiToolError(functionCall.call_id, parseError);
                                 // Email tool call parse error
                             }
+                        } else if (functionCall.name === 'send_sms') {
+                            // SMS sending is usually quick; still tie in waiting music for consistency
+                            toolCallInProgress = true;
+                            waitingMusicStartTimeout = setTimeout(() => {
+                                if (toolCallInProgress) startWaitingMusic();
+                            }, WAIT_MUSIC_THRESHOLD_MS);
+                            try {
+                                const toolInput = JSON.parse(functionCall.arguments);
+                                let bodyText = String(toolInput.body_text || '').trim();
+                                if (IS_DEV) console.log('Dev tool call send_sms input:', { body_text: bodyText });
+
+                                if (!bodyText) {
+                                    const errMsg = 'Missing body_text.';
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
+                                    sendOpenAiToolError(functionCall.call_id, errMsg);
+                                    return;
+                                }
+
+                                // Normalize whitespace without enforcing a hard length limit
+                                bodyText = bodyText.replace(/\s+/g, ' ').trim();
+
+                                if (!twilioClient) {
+                                    const errMsg = 'Twilio client unavailable.';
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
+                                    sendOpenAiToolError(functionCall.call_id, errMsg);
+                                    return;
+                                }
+
+                                const toNumber = currentCallerE164;
+                                const envFrom = normalizeUSNumberToE164(process.env.TWILIO_SMS_FROM_NUMBER || '');
+                                const fromNumber = currentTwilioNumberE164 || envFrom;
+
+                                if (!toNumber || !fromNumber) {
+                                    const errMsg = 'SMS is not configured: missing caller or from number.';
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
+                                    sendOpenAiToolError(functionCall.call_id, errMsg);
+                                    return;
+                                }
+
+                                // Send SMS via Twilio
+                                if (IS_DEV) console.log('Dev Twilio SMS send request:', { from: fromNumber, to: toNumber, length: bodyText.length, preview: bodyText.slice(0, 160) });
+                                twilioClient.messages.create({
+                                    from: fromNumber,
+                                    to: toNumber,
+                                    body: bodyText,
+                                }).then((sendRes) => {
+                                    const result = {
+                                        sid: sendRes?.sid,
+                                        status: sendRes?.status,
+                                        length: bodyText.length,
+                                    };
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
+                                    const toolResultEvent = {
+                                        type: 'conversation.item.create',
+                                        item: {
+                                            type: 'function_call_output',
+                                            call_id: functionCall.call_id,
+                                            output: JSON.stringify(result)
+                                        }
+                                    };
+                                    openAiWs.send(JSON.stringify(toolResultEvent));
+                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    if (IS_DEV) console.log('LLM SMS tool output sent');
+                                }).catch((error) => {
+                                    console.error('Twilio SMS send error:', error);
+                                    toolCallInProgress = false;
+                                    stopWaitingMusic();
+                                    clearWaitingMusicInterval();
+                                    sendOpenAiToolError(functionCall.call_id, error);
+                                });
+                            } catch (parseError) {
+                                toolCallInProgress = false;
+                                stopWaitingMusic();
+                                clearWaitingMusicInterval();
+                                sendOpenAiToolError(functionCall.call_id, parseError);
+                                // SMS tool call parse error
+                            }
                         } else if (functionCall.name === 'update_mic_distance') {
                             // Schedule waiting music in case this tool call takes time
                             toolCallInProgress = true;
@@ -1632,6 +1739,9 @@ fastify.register(async (fastify) => {
                             const rawCaller = cp.caller_number || cp.callerNumber || null;
                             currentCallerE164 = normalizeUSNumberToE164(rawCaller);
                             if (currentCallerE164) console.log('Caller (from TwiML Parameter):', rawCaller, '=>', currentCallerE164);
+                            const rawTwilioNum = cp.twilio_number || cp.twilioNumber || null;
+                            currentTwilioNumberE164 = normalizeUSNumberToE164(rawTwilioNum);
+                            if (currentTwilioNumberE164) console.log('Twilio number (from TwiML Parameter):', rawTwilioNum, '=>', currentTwilioNumberE164);
                             // Compute caller name based on group and send initial greeting
                             const primaryName = String(PRIMARY_USER_FIRST_NAME || '').trim();
                             const secondaryName = String(SECONDARY_USER_FIRST_NAME || '').trim();

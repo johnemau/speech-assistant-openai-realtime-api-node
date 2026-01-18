@@ -184,6 +184,25 @@ Notes:
 - Replies are sent via Twilio REST API from the same Twilio number that received the message.
 - The SMS webhook responds with empty TwiML to avoid duplicate replies.
 - If credentials are missing or the number is not allowed, the webhook returns a short TwiML message.
+
+### Send SMS Tool (Voice Assistant)
+
+Let the assistant send you a concise SMS during the call.
+
+- Tool: `send_sms(body_text: string)`
+- Behavior: Formats the text to summarize the latest discussed info and include the specific details the caller requested; friendly and actionable; at most one short source label and include a URL only when directly helpful.
+- Sender: Uses the Twilio number for the current call (passed via TwiML) or falls back to `TWILIO_SMS_FROM_NUMBER`.
+
+Configuration:
+
+```
+TWILIO_SMS_FROM_NUMBER=+12065551234   # Fallback if TwiML param is missing
+```
+
+Implementation details:
+- The `/incoming-call` TwiML now includes `<Parameter name="twilio_number" value="[To]" />`.
+- The media stream stores this number on `start` and the tool sends via the shared Twilio REST client.
+- Tool execution returns `sid/status/length` via `function_call_output`, then the assistant briefly confirms.
 ## Personalized Greeting
 
 - **Env vars:** `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`
