@@ -101,6 +101,8 @@ Note: Redaction only affects console output; it does not sanitize data sent to t
 
 In your Phone Number configuration settings, update the first **A call comes in** dropdown to **Webhook**, and paste your ngrok forwarding URL (referenced above), followed by `/incoming-call`. For example, `https://[your-ngrok-subdomain].ngrok.app/incoming-call`. Then, click **Save configuration**.
 
+For SMS auto-replies, set the **A message comes in** webhook to your forwarding URL followed by `/sms`, for example: `https://[your-ngrok-subdomain].ngrok.app/sms`.
+
 ### Update the .env file
 
 Create a `.env` file with the required variables:
@@ -130,6 +132,30 @@ Quick local checks:
 - Visit http://localhost:10000/ to confirm the root endpoint.
 - Visit http://localhost:10000/healthz for a simple health check.
 - Run `npm test` to lint and verify code changes.
+
+### SMS Auto‑Reply
+
+Let the assistant auto‑reply to SMS using GPT‑5.2 with the `web_search` tool.
+
+- Webhook: `/sms` (configure in Twilio Console under Messaging → “A message comes in”)
+- Allowlist: only numbers listed in `PRIMARY_USER_PHONE_NUMBERS` or `SECONDARY_USER_PHONE_NUMBERS` are allowed.
+- Thread context: the app fetches up to the last 10 messages exchanged with the caller in the past 12 hours (both inbound and outbound), merges them, and includes this thread in the prompt.
+- Model and tools: calls OpenAI `responses.create` with `model: gpt-5.2` and `tools: [{ type: 'web_search' }]` (tool_choice=`required`).
+- Reply style: concise, friendly SMS (≤320 chars), at most one short source label when facts are used.
+
+Required environment variables for SMS:
+
+```
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PRIMARY_USER_PHONE_NUMBERS=+12065551234
+SECONDARY_USER_PHONE_NUMBERS=+14255550123,+14255550124
+```
+
+Notes:
+- Replies are sent via Twilio REST API from the same Twilio number that received the message.
+- The SMS webhook responds with empty TwiML to avoid duplicate replies.
+- If credentials are missing or the number is not allowed, the webhook returns a short TwiML message.
 ## Personalized Greeting
 
 - **Env vars:** `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`

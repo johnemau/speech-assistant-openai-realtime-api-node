@@ -142,6 +142,7 @@ if (!isTruthy(process.env.DISABLE_LOG_REDACTION)) {
 
 // Retrieve required environment variables.
 const { OPENAI_API_KEY, NGROK_DOMAIN, PRIMARY_USER_FIRST_NAME, SECONDARY_USER_FIRST_NAME } = process.env;
+const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN } = process.env;
 
 // Email-related environment variables
 const {
@@ -164,6 +165,19 @@ if (!NGROK_DOMAIN) {
 
 // Initialize OpenAI client
 const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+// Initialize Twilio REST client (for SMS send/list). This is separate from the TwiML helper usage.
+let twilioClient = null;
+if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
+    try {
+        twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+        console.log('Twilio REST client initialized.');
+    } catch (e) {
+        console.warn('Failed to initialize Twilio REST client:', e?.message || e);
+    }
+} else {
+    console.warn('TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN missing; SMS auto-reply feature will be unavailable.');
+}
 
 let senderTransport = null;
 
@@ -316,6 +330,9 @@ const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 10000; // Render default PORT is 10000
 
+// Instructions tailored for SMS replies
+const SMS_REPLY_INSTRUCTIONS = 'Prepare a single, SMS-ready reply. Keep it concise (≤320 chars), friendly, and actionable. If you use facts, include at most one short source label (e.g., "Source: Reuters"). Avoid filler and preambles. Output only the SMS body text, no quotes.';
+
 // Allowed callers (E.164). Configure via env `PRIMARY_USER_PHONE_NUMBERS` and `SECONDARY_USER_PHONE_NUMBERS` as comma-separated numbers.
 function normalizeUSNumberToE164(input) {
     if (!input) return null;
@@ -387,11 +404,156 @@ fastify.post('/sms', async (request, reply) => {
     try {
         const { MessagingResponse } = twilio.twiml;
         const twiml = new MessagingResponse();
-        twiml.message('The Robots are coming! Head for the hills!');
-        reply.type('text/xml').send(twiml.toString());
+
+        const bodyRaw = request.body?.Body || request.body?.body || '';
+        const fromRaw = request.body?.From || request.body?.from || '';
+        const toRaw = request.body?.To || request.body?.to || '';
+
+        const fromE164 = normalizeUSNumberToE164(fromRaw);
+        const toE164 = normalizeUSNumberToE164(toRaw);
+        if (IS_DEV) console.log('Incoming SMS:', { from: fromRaw, to: toRaw, body: bodyRaw, fromE164, toE164 });
+
+        // Allowlist check: only PRIMARY or SECONDARY callers may use SMS auto-reply
+        const isAllowed = !!fromE164 && (PRIMARY_CALLERS_SET.has(fromE164) || SECONDARY_CALLERS_SET.has(fromE164));
+        if (!isAllowed) {
+            twiml.message('Sorry, this SMS line is restricted.');
+            return reply.type('text/xml').send(twiml.toString());
+        }
+
+        if (!twilioClient) {
+            twiml.message('SMS auto-reply is not configured.');
+            return reply.type('text/xml').send(twiml.toString());
+        }
+
+        // Build a recent thread: last 12 hours, up to 10 combined messages (inbound/outbound)
+        const now = new Date();
+        const startWindow = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+
+        let inbound = [];
+        let outbound = [];
+        try {
+            // Inbound: from caller → our Twilio number
+            inbound = await twilioClient.messages.list({
+                dateSentAfter: startWindow,
+                from: fromE164,
+                to: toE164,
+                limit: 20,
+            });
+        } catch (e) {
+            console.warn('Failed to list inbound messages:', e?.message || e);
+        }
+        try {
+            // Outbound: from our Twilio number → caller
+            outbound = await twilioClient.messages.list({
+                dateSentAfter: startWindow,
+                from: toE164,
+                to: fromE164,
+                limit: 20,
+            });
+        } catch (e) {
+            console.warn('Failed to list outbound messages:', e?.message || e);
+        }
+
+        const combined = [...inbound, ...outbound];
+        combined.sort((a, b) => {
+            const ta = new Date(a.dateSent || a.dateCreated).getTime();
+            const tb = new Date(b.dateSent || b.dateCreated).getTime();
+            return tb - ta; // newest first
+        });
+        const lastTen = combined.slice(0, 10);
+
+        const threadText = lastTen.map((m) => {
+            const ts = new Date(m.dateSent || m.dateCreated).toISOString();
+            const who = (m.from === fromE164) ? 'User' : 'Assistant';
+            return `${who} [${ts}]: ${m.body || ''}`;
+        }).join('\n');
+
+        const smsPrompt = `Recent SMS thread (last 12 hours):\n${threadText}\n\nLatest user message:\n${String(bodyRaw || '').trim()}\n\nTask: Compose a concise, friendly SMS reply. Keep it under 320 characters. Use live web facts via the web_search tool if topical. Output only the reply text.`;
+
+        // Prepare OpenAI request with web_search tool
+        const reqPayload = {
+            model: 'gpt-5.2',
+            reasoning: { effort: 'high' },
+            tools: [{
+                type: 'web_search',
+                user_location: { type: 'approximate', country: 'US', region: 'Washington' },
+            }],
+            instructions: SMS_REPLY_INSTRUCTIONS,
+            input: smsPrompt,
+            tool_choice: 'required',
+            truncation: 'auto',
+        };
+
+        if (IS_DEV) console.log('SMS OpenAI payload:', reqPayload);
+
+        let aiText = '';
+        try {
+            const aiResult = await openaiClient.responses.create(reqPayload);
+            aiText = String(aiResult?.output_text || '').trim();
+        } catch (e) {
+            console.error('OpenAI SMS reply error:', e?.message || e);
+            let detail = e?.message || stringifyDeep(e);
+            if (!IS_DEV) {
+                try {
+                    const extraKeys = (process.env.REDACT_ENV_KEYS || '')
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                    const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
+                    const envVals = [];
+                    for (const k of keys) {
+                        const v = process.env[k];
+                        if (typeof v === 'string' && v.length > 0) envVals.push(v);
+                    }
+                    let guessed = [];
+                    try { guessed = findSensitiveValues(e); } catch {}
+                    const secrets = Array.from(new Set([...envVals, ...guessed]));
+                    detail = scrub(detail, secrets);
+                } catch {}
+            }
+            aiText = `Sorry—there was an error while creating your AI SMS reply using GPT-5.2 with web_search. Details: ${String(detail || '').slice(0, 220)}. Please try again shortly.`;
+        }
+
+        // Send the reply via Twilio API (from the same Twilio number the webhook hit)
+        try {
+            const sendRes = await twilioClient.messages.create({
+                from: toE164,
+                to: fromE164,
+                body: aiText,
+            });
+            if (IS_DEV) console.log('Twilio SMS sent:', { sid: sendRes?.sid });
+        } catch (e) {
+            console.error('Failed to send Twilio SMS:', e?.message || e);
+            // Fallback: reply via TwiML with redacted error details to ensure the user gets context
+            let detail = e?.message || stringifyDeep(e);
+            if (!IS_DEV) {
+                try {
+                    const extraKeys = (process.env.REDACT_ENV_KEYS || '')
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                    const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
+                    const envVals = [];
+                    for (const k of keys) {
+                        const v = process.env[k];
+                        if (typeof v === 'string' && v.length > 0) envVals.push(v);
+                    }
+                    let guessed = [];
+                    try { guessed = findSensitiveValues(e); } catch {}
+                    const secrets = Array.from(new Set([...envVals, ...guessed]));
+                    detail = scrub(detail, secrets);
+                } catch {}
+            }
+            const fallbackMsg = `Sorry—there was an error sending your SMS reply via Twilio API. Details: ${String(detail || '').slice(0, 220)}.`;
+            twiml.message(fallbackMsg);
+            return reply.type('text/xml').send(twiml.toString());
+        }
+
+        // Return empty TwiML to avoid duplicate auto-replies
+        return reply.type('text/xml').send(twiml.toString());
     } catch (e) {
         console.error('Error handling /sms webhook:', e?.message || e);
-        reply.code(500).send('');
+        return reply.code(500).send('');
     }
 });
 
