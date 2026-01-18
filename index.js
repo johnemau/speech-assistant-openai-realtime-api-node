@@ -434,16 +434,35 @@ fastify.post('/sms', async (request, reply) => {
 
         const fromE164 = normalizeUSNumberToE164(fromRaw);
         const toE164 = normalizeUSNumberToE164(toRaw);
-        if (IS_DEV) console.log('Incoming SMS:', { from: fromRaw, to: toRaw, body: bodyRaw, fromE164, toE164 });
+        // Concise incoming log
+        console.info(redactLog({
+            event: 'sms.incoming',
+            from: fromE164 || fromRaw || '',
+            to: toE164 || toRaw || '',
+            length: String(bodyRaw || '').length,
+            preview: String(bodyRaw || '').slice(0, 160)
+        }));
 
         // Allowlist check: only PRIMARY or SECONDARY callers may use SMS auto-reply
         const isAllowed = !!fromE164 && (PRIMARY_CALLERS_SET.has(fromE164) || SECONDARY_CALLERS_SET.has(fromE164));
         if (!isAllowed) {
+            // Concise log for restricted access
+            console.warn(redactLog({
+                event: 'sms.reply.restricted_twiml',
+                from: fromE164,
+                to: toE164
+            }));
             twiml.message('Sorry, this SMS line is restricted.');
             return reply.type('text/xml').send(twiml.toString());
         }
 
         if (!twilioClient) {
+            // Concise log for missing Twilio client
+            console.warn(redactLog({
+                event: 'sms.reply.unconfigured_twiml',
+                from: toE164,
+                to: fromE164
+            }));
             twiml.message('SMS auto-reply is not configured.');
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -507,7 +526,13 @@ fastify.post('/sms', async (request, reply) => {
             truncation: 'auto',
         };
 
-        if (IS_DEV) console.log('SMS OpenAI payload:', reqPayload);
+        // Concise log of AI request (dev-friendly, but short)
+        console.info(redactLog({
+            event: 'sms.ai.request',
+            model: 'gpt-5.2',
+            tools: ['web_search'],
+            prompt_len: String(smsPrompt || '').length
+        }));
 
         let aiText = '';
         try {
@@ -603,9 +628,18 @@ fastify.post('/sms', async (request, reply) => {
         }
 
         // Return empty TwiML to avoid duplicate auto-replies
+        console.info(redactLog({
+            event: 'sms.webhook.completed',
+            from: toE164,
+            to: fromE164
+        }));
         return reply.type('text/xml').send(twiml.toString());
     } catch (e) {
-        console.error('Error handling /sms webhook:', e?.message || e);
+        // Concise structured unhandled error
+        console.error(redactLog({
+            event: 'sms.webhook.unhandled_error',
+            error: (e?.message || String(e || '')).slice(0, 220)
+        }));
         return reply.code(500).send('');
     }
 });
