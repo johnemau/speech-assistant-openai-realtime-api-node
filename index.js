@@ -255,16 +255,18 @@ You are a voice-only AI assistant participating in a live phone call using the O
 - Optimize for low latency, clarity, and clean turn-taking.
 - Prefer correctness and verified facts over speculation or improvisation.
 
-# Tool Use
+-# Tool Use
 - For every user question, always call the tool named gpt_web_search before speaking.
 - Keep queries short and specific; include **user_location** only when it materially affects the answer.
 - If the user mentions location information, pass **user_location** to gpt_web_search with extracted 'city', 'region' (state/province/country), and 'country' when inferable.
-- Make at most one tool call per user turn.
 - Wait for the tool response before speaking.
 - Base factual statements strictly on the tool output; do not rely on memory for facts.
 - When the user mentions a location, populate the tool argument 'user_location' by extracting 'city' and 'region' (state/province/country) from their speech.
 - When calling gpt_web_search, include 'user_location' with the extracted details whenever a location is mentioned.
 - Set 'type' to "approximate" and set 'country' to a two-letter code when inferable (e.g., US, FR). If country is not stated but the location is in the United States, default 'country' to US.
+- Tool-call limits: default to one tool per user turn, except the following explicit exceptions where chaining is allowed in the same turn:
+    1) web_search + send_email or web_search + send_sms (verification then send).
+    2) update_mic_distance may be combined with other tools and does not count toward the one-tool limit (at most one mic toggle per turn).
 - Examples:
     - "I am in Tucson Arizona" → 'user_location': { type: "approximate", country: "US", region: "Arizona", city: "Tucson" }
     - "I will be in Paris, France" → 'user_location': { type: "approximate", country: "FR", region: "Île-de-France", city: "Paris" }
@@ -272,8 +274,10 @@ You are a voice-only AI assistant participating in a live phone call using the O
 ## Requests to Send Texts or Emails (Exception)
 - When the caller explicitly asks to send content via SMS or email (e.g., "send me a text with …", "sms me the answer to …", "email me …"), first call gpt_web_search to ensure facts are current, then immediately call the appropriate tool (send_sms or send_email) in the same turn.
 - This sequence (web_search → send tool) is an explicit exception to the one-tool-per-turn rule.
-- After the tool finishes, briefly confirm success or the error in voice.
- - Example combined request: "Search the web for Seattle coffee and email me the results." → Call gpt_web_search with query "Seattle coffee" (include user_location when available), then call send_email with a short subject and an HTML body summarizing verified details (business names, addresses, phone numbers, hours, and one or two concise source labels). Conclude with ASCII art, then confirm send with a one-sentence summary.
+- If the utterance also includes a mic-distance change (e.g., "you’re on speaker"), call update_mic_distance first, then proceed with web_search → send tool, all in the same user turn (max one mic toggle).
+- After the tool(s) finish, briefly confirm success or the error in voice.
+ - Example combined request A: "Search the web for Seattle coffee and email me the results." → Call gpt_web_search with query "Seattle coffee" (include user_location when available), then call send_email with a short subject and an HTML body summarizing verified details (business names, addresses, phone numbers, hours, and one or two concise source labels). Conclude with ASCII art, then confirm send with a one-sentence summary.
+ - Example combined request B: "You are on speaker. Search the web for good restaurants in Seattle and text me the results." → Call update_mic_distance(mode="far_field") → Call gpt_web_search(query="good restaurants in Seattle", include user_location if available) → Call send_sms(body_text with concise verified results and at most one short source label).
 
 # Email Tool
 - When the caller says "email me that" or similar, call the tool named send_email.
@@ -335,7 +339,7 @@ You are a voice-only AI assistant participating in a live phone call using the O
 - If the caller says “you’re on speaker”, “putting you on speaker phone”, or similar → call the tool update_mic_distance with mode="far_field".
 - If the caller says “connected to car bluetooth”, “you are on the car”, “car speakers”, or similar → call update_mic_distance with mode="far_field".
 - If the caller says “taking you off speaker phone”, “off speaker”, “taking off car”, “off bluetooth”, or similar → call update_mic_distance with mode="near_field".
-- Make at most one tool call per user turn; avoid repeating the same mode.
+- At most one mic toggle per user turn; mic toggles may be combined with other tools in the same turn (e.g., web_search, send_sms/send_email).
 - After receiving the tool result, speak one brief confirmation (e.g., “Optimizing for speakerphone.” or “Back to near‑field.”).
 - Respect negations or corrections (e.g., “not on speaker”, “no, keep it near”).
 
@@ -748,6 +752,9 @@ fastify.register(async (fastify) => {
         let pendingDisconnect = false;
         let pendingDisconnectTimeout = null;
 
+        // Track response lifecycle to avoid overlapping response.create calls
+        let responseActive = false;
+
         // Mic distance / noise reduction state & counters
         let currentNoiseReductionType = 'near_field';
         let lastMicDistanceToggleTs = 0;
@@ -1012,9 +1019,32 @@ fastify.register(async (fastify) => {
                     }
                 };
                 openAiWs.send(JSON.stringify(toolErrorEvent));
-                openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
             } catch (e) {
                 console.error('Failed to send tool error to OpenAI WS:', e);
+            }
+        }
+
+        // Helper: robustly parse tool arguments coming from the model
+        function safeParseToolArguments(args) {
+            if (args == null) return {};
+            if (typeof args === 'object') return args;
+            let str = String(args);
+            try {
+                return JSON.parse(str);
+            } catch (e1) {
+                // Attempt minimal repairs for common issues: smart quotes, newlines in strings, trailing commas
+                try {
+                    let repaired = str
+                        .replace(/[\u201C\u201D]/g, '"') // smart double quotes → standard
+                        .replace(/[\u2018\u2019]/g, "'") // smart single quotes → standard
+                        .replace(/\r\n/g, '\n')
+                        .replace(/\n/g, '\\n') // escape literal newlines within strings
+                        .replace(/,\s*([}\]])/g, '$1'); // remove trailing commas
+                    return JSON.parse(repaired);
+                } catch (e2) {
+                    throw e2;
+                }
             }
         }
 
@@ -1240,7 +1270,7 @@ fastify.register(async (fastify) => {
                     model: 'gpt-realtime',
                     output_modalities: ['audio'],
                     audio: {
-                        input: { format: { type: 'audio/pcmu' }, turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: true }, noise_reduction: { type: currentNoiseReductionType } },
+                        input: { format: { type: 'audio/pcmu' }, turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false }, noise_reduction: { type: currentNoiseReductionType } },
                         output: { format: { type: 'audio/pcmu' }, voice: VOICE },
                     },
                     instructions: SYSTEM_MESSAGE,
@@ -1340,6 +1370,26 @@ fastify.register(async (fastify) => {
                     sendMark(connection, streamSid);
                 }
 
+                // Track response lifecycle to avoid overlapping creates
+                if (response.type === 'response.created') {
+                    responseActive = true;
+                }
+                if (response.type === 'response.done') {
+                    responseActive = false;
+                }
+
+                // When VAD ends a user turn, we must explicitly create a response (auto-create disabled)
+                if (response.type === 'input_audio_buffer.speech_stopped') {
+                    stopWaitingMusic('speech_stopped');
+                    if (!responseActive) {
+                        try {
+                            openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                        } catch (e) {
+                            console.warn('Failed to request response.create after speech_stopped:', e?.message || e);
+                        }
+                    }
+                }
+
                 if (response.type === 'input_audio_buffer.speech_started') {
                     // Caller barged in; stop waiting music and handle truncation
                     stopWaitingMusic('caller_speech');
@@ -1367,7 +1417,7 @@ fastify.register(async (fastify) => {
                                 if (toolCallInProgress) startWaitingMusic();
                             }, WAIT_MUSIC_THRESHOLD_MS);
                             try {
-                                const toolInput = JSON.parse(functionCall.arguments);
+                                const toolInput = safeParseToolArguments(functionCall.arguments);
                                 const query = toolInput.query;
                                 const userLocation = toolInput.user_location;
                                 if (IS_DEV) console.log('Dev tool call gpt_web_search input:', { query, user_location: userLocation });
@@ -1389,7 +1439,7 @@ fastify.register(async (fastify) => {
                                             }
                                         };
                                         openAiWs.send(JSON.stringify(toolResultEvent));
-                                        openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                        if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                         if (IS_DEV) console.log('LLM tool output sent to OpenAI', toolResultEvent);
                                         // Tool call completed
                                     })
@@ -1416,7 +1466,7 @@ fastify.register(async (fastify) => {
                                 if (toolCallInProgress) startWaitingMusic();
                             }, WAIT_MUSIC_THRESHOLD_MS);
                             try {
-                                const toolInput = JSON.parse(functionCall.arguments);
+                                const toolInput = safeParseToolArguments(functionCall.arguments);
                                 const subjectRaw = String(toolInput.subject || '').trim();
                                 const bodyHtml = String(toolInput.body_html || '').trim();
                                 if (IS_DEV) console.log('Dev tool call send_email input:', { subject: subjectRaw, body_html: bodyHtml });
@@ -1483,7 +1533,7 @@ fastify.register(async (fastify) => {
                                     stopWaitingMusic();
                                     clearWaitingMusicInterval();
                                     openAiWs.send(JSON.stringify(toolResultEvent));
-                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                     if (IS_DEV) console.log('LLM email tool output sent');
                                     // Email tool call completed
                                 }).catch((error) => {
@@ -1508,7 +1558,7 @@ fastify.register(async (fastify) => {
                                 if (toolCallInProgress) startWaitingMusic();
                             }, WAIT_MUSIC_THRESHOLD_MS);
                             try {
-                                const toolInput = JSON.parse(functionCall.arguments);
+                                const toolInput = safeParseToolArguments(functionCall.arguments);
                                 let bodyText = String(toolInput.body_text || '').trim();
                                 if (IS_DEV) console.log('Dev tool call send_sms input:', { body_text: bodyText });
 
@@ -1570,7 +1620,7 @@ fastify.register(async (fastify) => {
                                         }
                                     };
                                     openAiWs.send(JSON.stringify(toolResultEvent));
-                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                     if (IS_DEV) console.log('LLM SMS tool output sent');
                                 }).catch((error) => {
                                     console.error('Twilio SMS send error:', error);
@@ -1593,7 +1643,7 @@ fastify.register(async (fastify) => {
                                 if (toolCallInProgress) startWaitingMusic();
                             }, WAIT_MUSIC_THRESHOLD_MS);
                             try {
-                                const toolInput = JSON.parse(functionCall.arguments);
+                                const toolInput = safeParseToolArguments(functionCall.arguments);
                                 const requestedMode = String(toolInput.mode || '').trim();
                                 const reason = typeof toolInput.reason === 'string' ? toolInput.reason.trim() : undefined;
                                 if (IS_DEV) console.log('Dev tool call update_mic_distance input:', { requestedMode, reason });
@@ -1634,7 +1684,7 @@ fastify.register(async (fastify) => {
                                     stopWaitingMusic();
                                     clearWaitingMusicInterval();
                                     openAiWs.send(JSON.stringify(toolResultEvent));
-                                    openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                    if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                     
                                     return;
                                 }
@@ -1676,7 +1726,7 @@ fastify.register(async (fastify) => {
                                 stopWaitingMusic('tool_call_complete');
                                 clearWaitingMusicInterval();
                                 openAiWs.send(JSON.stringify(toolResultEvent));
-                                openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                 if (IS_DEV) console.log('Noise reduction updated:', output);
                             } catch (parseError) {
                                 console.error('Error parsing update_mic_distance args:', parseError);
@@ -1719,7 +1769,7 @@ fastify.register(async (fastify) => {
                                     }
                                 };
                                 openAiWs.send(JSON.stringify(toolResultEvent));
-                                openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
                                 if (IS_DEV) console.log('end_call tool acknowledged; awaiting goodbye playback.');
                             } catch (parseError) {
                                 console.error('Error parsing end_call args:', parseError);
@@ -1824,6 +1874,7 @@ fastify.register(async (fastify) => {
                 clearTimeout(pendingDisconnectTimeout);
                 pendingDisconnectTimeout = null;
             }
+            responseActive = false;
             // Clear any queued messages on close
             pendingOpenAiMessages.length = 0;
             stopWaitingMusic();
