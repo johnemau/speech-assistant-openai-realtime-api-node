@@ -247,3 +247,11 @@ Provider notes:
 Usage:
 - Say "email me that" after the assistant provides information.
 - The assistant will compose a short subject and an HTML-only body, then confirm send status.
+
+### End Call (Goodbye)
+
+Politely end the call on common goodbye phrases.
+
+- Phrases: "hang up", "goodbye", "bye now", "disconnect", "end the call".
+- Tool: `end_call` — the assistant calls this, then speaks one brief goodbye.
+- Behavior: The server closes the Twilio Media Stream and the OpenAI WebSocket immediately after the goodbye audio finishes.

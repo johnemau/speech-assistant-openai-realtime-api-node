@@ -303,6 +303,11 @@ You are a voice-only AI assistant participating in a live phone call using the O
 - Make at most one tool call per user turn; avoid repeating the same mode.
 - After receiving the tool result, speak one brief confirmation (e.g., “Optimizing for speakerphone.” or “Back to near‑field.”).
 - Respect negations or corrections (e.g., “not on speaker”, “no, keep it near”).
+
+# Call Ending
+- If the caller says “hang up”, “goodbye”, “bye now”, “disconnect”, or “end the call” → call the tool named end_call.
+- After receiving the tool result, speak one brief goodbye (e.g., “Goodbye.”). The server will end the call immediately after playback finishes.
+- Make at most one tool call per user turn and respect negations (e.g., “don’t hang up”).
 `;
 // Instructions for web-search `responses.create` to produce detailed, voice-friendly output
 const WEB_SEARCH_INSTRUCTIONS = 'Prepare a voice-ready answer for a live call using gpt-realtime. Provide a detailed, fact-rich response that is easy to follow over the phone. Prioritize useful, actionable facts and omit filler. When relevant (e.g., a business), include the name, address, phone number, hours (if available), and review score. Present information in clear, short sentences or brief phrases that are easy to hear. Do not include URLs. Include concise source labels only (for example: "Source: Yelp" or "Source: Reuters"). Use natural phrasing and readable pacing for speech.';
@@ -432,6 +437,8 @@ fastify.register(async (fastify) => {
         let lastAssistantItem = null;
         let markQueue = [];
         let responseStartTimestampTwilio = null;
+        let pendingDisconnect = false;
+        let pendingDisconnectTimeout = null;
 
         // Mic distance / noise reduction state & counters
         let currentNoiseReductionType = 'near_field';
@@ -591,6 +598,27 @@ fastify.register(async (fastify) => {
             if (waitingMusicInterval) {
                 clearInterval(waitingMusicInterval);
                 waitingMusicInterval = null;
+            }
+        }
+
+        function attemptPendingDisconnectClose() {
+            try {
+                if (!pendingDisconnect) return;
+                // Prefer closing after Twilio marks catch up (no queued marks)
+                if (markQueue.length === 0) {
+                    pendingDisconnect = false;
+                    if (pendingDisconnectTimeout) {
+                        clearTimeout(pendingDisconnectTimeout);
+                        pendingDisconnectTimeout = null;
+                    }
+                    stopWaitingMusic();
+                    clearWaitingMusicInterval();
+                    try { connection.close(1000, 'Call ended by assistant'); } catch {}
+                    try { if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close(); } catch {}
+                    console.log('Call closed after goodbye playback.');
+                }
+            } catch (e) {
+                console.warn('Attempt to close pending disconnect failed:', e?.message || e);
             }
         }
 
@@ -815,6 +843,19 @@ fastify.register(async (fastify) => {
             description: 'Toggle mic processing based on caller phrases: speakerphone-on → far_field; off-speakerphone → near_field. Debounce and avoid redundant toggles; one tool call per turn.'
         };
 
+        // Define end_call tool
+        const endCallTool = {
+            type: 'function',
+            name: 'end_call',
+            parameters: {
+                type: 'object',
+                properties: {
+                    reason: { type: 'string', description: 'Optional short phrase indicating why the caller wants to end.' }
+                }
+            },
+            description: 'Politely end the call. The server will close the Twilio media-stream and OpenAI WebSocket after the assistant says a brief goodbye.'
+        };
+
         // Handle gpt_web_search tool calls
         const handleWebSearchToolCall = async (query, userLocation) => {
             try {
@@ -863,7 +904,7 @@ fastify.register(async (fastify) => {
                         output: { format: { type: 'audio/pcmu' }, voice: VOICE },
                     },
                     instructions: SYSTEM_MESSAGE,
-                    tools: [ gptWebSearchTool, sendEmailTool, updateMicDistanceTool ],
+                    tools: [ gptWebSearchTool, sendEmailTool, updateMicDistanceTool, endCallTool ],
                     tool_choice: 'auto',
                 },
             };
@@ -1217,7 +1258,50 @@ fastify.register(async (fastify) => {
                                 clearWaitingMusicInterval();
                                 sendOpenAiToolError(functionCall.call_id, parseError);
                             }
+                        } else if (functionCall.name === 'end_call') {
+                            // No waiting music needed; we will end promptly after goodbye.
+                            try {
+                                const toolInput = JSON.parse(functionCall.arguments || '{}');
+                                const reason = typeof toolInput.reason === 'string' ? toolInput.reason.trim() : undefined;
+                                pendingDisconnect = true;
+                                // Fallback: ensure we close even if marks are missing
+                                if (pendingDisconnectTimeout) clearTimeout(pendingDisconnectTimeout);
+                                pendingDisconnectTimeout = setTimeout(() => {
+                                    // Attempt close; if marks still pending, force close
+                                    if (pendingDisconnect) {
+                                        pendingDisconnect = false;
+                                        stopWaitingMusic();
+                                        clearWaitingMusicInterval();
+                                        try { connection.close(1000, 'Call ended by assistant (timeout)'); } catch {}
+                                        try { if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close(); } catch {}
+                                        console.log('Call closed after timeout fallback.');
+                                    }
+                                }, 4000);
+
+                                const output = {
+                                    status: 'ok',
+                                    pending_disconnect: true,
+                                    reason,
+                                };
+                                const toolResultEvent = {
+                                    type: 'conversation.item.create',
+                                    item: {
+                                        type: 'function_call_output',
+                                        call_id: functionCall.call_id,
+                                        output: JSON.stringify(output)
+                                    }
+                                };
+                                openAiWs.send(JSON.stringify(toolResultEvent));
+                                openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                                if (IS_DEV) console.log('end_call tool acknowledged; awaiting goodbye playback.');
+                            } catch (parseError) {
+                                console.error('Error parsing end_call args:', parseError);
+                                sendOpenAiToolError(functionCall.call_id, parseError);
+                            }
                         }
+                    } else {
+                        // Non-function responses: if we were asked to end the call, close after playback finishes
+                        attemptPendingDisconnectClose();
                     }
                 }
             } catch (error) {
@@ -1280,6 +1364,8 @@ fastify.register(async (fastify) => {
                         if (markQueue.length > 0) {
                             markQueue.shift();
                         }
+                        // If a disconnect was requested, attempt closing once marks drain
+                        attemptPendingDisconnectClose();
                         break;
                     default:
                         console.log('Received non-media event:', data.event);
@@ -1293,6 +1379,10 @@ fastify.register(async (fastify) => {
         // Handle connection close
         connection.on('close', () => {
             if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close();
+            if (pendingDisconnectTimeout) {
+                clearTimeout(pendingDisconnectTimeout);
+                pendingDisconnectTimeout = null;
+            }
             // Clear any queued messages on close
             pendingOpenAiMessages.length = 0;
             stopWaitingMusic();
