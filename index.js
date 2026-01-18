@@ -402,6 +402,29 @@ fastify.get('/healthz', async (request, reply) => {
 // Responds with simple TwiML via Twilio MessagingResponse
 fastify.post('/sms', async (request, reply) => {
     try {
+        // Helper: redact log payload unless running in development
+        const redactLog = (val) => {
+            if (IS_DEV) return val;
+            try {
+                const extraKeys = (process.env.REDACT_ENV_KEYS || '')
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
+                const envVals = [];
+                for (const k of keys) {
+                    const v = process.env[k];
+                    if (typeof v === 'string' && v.length > 0) envVals.push(v);
+                }
+                let guessed = [];
+                try { guessed = findSensitiveValues(val); } catch {}
+                const secrets = Array.from(new Set([...envVals, ...guessed]));
+                return scrub(val, secrets);
+            } catch {
+                return val;
+            }
+        };
+
         const { MessagingResponse } = twilio.twiml;
         const twiml = new MessagingResponse();
 
@@ -511,6 +534,13 @@ fastify.post('/sms', async (request, reply) => {
                     detail = scrub(detail, secrets);
                 } catch {}
             }
+            // Structured error log (redacted unless development)
+            console.error(redactLog({
+                event: 'sms.reply.ai_error',
+                from: fromE164,
+                to: toE164,
+                error: String(detail || '').slice(0, 220)
+            }));
             aiText = `Sorry—there was an error while creating your AI SMS reply using GPT-5.2 with web_search. Details: ${String(detail || '').slice(0, 220)}. Please try again shortly.`;
         }
 
@@ -521,7 +551,16 @@ fastify.post('/sms', async (request, reply) => {
                 to: fromE164,
                 body: aiText,
             });
-            if (IS_DEV) console.log('Twilio SMS sent:', { sid: sendRes?.sid });
+            // Always log SMS sends (with redaction unless development)
+            const preview = String(aiText || '').slice(0, 160);
+            console.info(redactLog({
+                event: 'sms.reply.sent',
+                sid: sendRes?.sid,
+                from: toE164,
+                to: fromE164,
+                length: String(aiText || '').length,
+                preview,
+            }));
         } catch (e) {
             console.error('Failed to send Twilio SMS:', e?.message || e);
             // Fallback: reply via TwiML with redacted error details to ensure the user gets context
@@ -544,7 +583,21 @@ fastify.post('/sms', async (request, reply) => {
                     detail = scrub(detail, secrets);
                 } catch {}
             }
+            // Structured error log (redacted unless development)
+            console.error(redactLog({
+                event: 'sms.reply.send_error',
+                from: toE164,
+                to: fromE164,
+                error: String(detail || '').slice(0, 220)
+            }));
             const fallbackMsg = `Sorry—there was an error sending your SMS reply via Twilio API. Details: ${String(detail || '').slice(0, 220)}.`;
+            // Log fallback TwiML generation
+            console.warn(redactLog({
+                event: 'sms.reply.fallback_twiml',
+                from: toE164,
+                to: fromE164,
+                preview: String(fallbackMsg).slice(0, 160)
+            }));
             twiml.message(fallbackMsg);
             return reply.type('text/xml').send(twiml.toString());
         }
