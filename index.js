@@ -11,6 +11,7 @@ import patchLogs from 'redact-logs';
 import { scrub, findSensitiveValues } from '@zapier/secret-scrubber';
 import { inspect } from 'node:util';
 import twilio from 'twilio';
+import JSON5 from 'json5';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -1037,20 +1038,33 @@ fastify.register(async (fastify) => {
             if (args == null) return {};
             if (typeof args === 'object') return args;
             let str = String(args);
+            // Normalize and trim possible BOMs/whitespace
+            str = str.replace(/^\uFEFF/, '').trim();
             try {
+                // First attempt: strict JSON
                 return JSON.parse(str);
             } catch (e1) {
-                // Attempt minimal repairs for common issues: smart quotes, newlines in strings, trailing commas
+                // Second attempt: relaxed JSON (JSON5) for single quotes, unquoted keys, etc.
                 try {
-                    let repaired = str
-                        .replace(/[\u201C\u201D]/g, '"') // smart double quotes → standard
-                        .replace(/[\u2018\u2019]/g, "'") // smart single quotes → standard
-                        .replace(/\r\n/g, '\n')
-                        .replace(/\n/g, '\\n') // escape literal newlines within strings
-                        .replace(/,\s*([}\]])/g, '$1'); // remove trailing commas
-                    return JSON.parse(repaired);
+                    return JSON5.parse(str);
                 } catch (e2) {
-                    throw e2;
+                    // Final attempt: minimal repairs + quoting bare keys, then JSON5 parse
+                    try {
+                        let repaired = str
+                            .replace(/^\uFEFF/, '')
+                            .replace(/[\u201C\u201D]/g, '"') // smart double quotes → standard
+                            .replace(/[\u2018\u2019]/g, "'") // smart single quotes → standard
+                            .replace(/\r\n/g, '\n')
+                            .replace(/\n/g, '\\n') // escape literal newlines within strings
+                            .replace(/,\s*([}\]])/g, '$1'); // remove trailing commas
+
+                        // Add quotes around unquoted property names at object boundaries
+                        repaired = repaired.replace(/([{|,]\s*)([A-Za-z_][A-Za-z0-9_\-]*)(\s*):/g, '$1"$2"$3:');
+
+                        return JSON5.parse(repaired);
+                    } catch (e3) {
+                        throw e3;
+                    }
                 }
             }
         }
