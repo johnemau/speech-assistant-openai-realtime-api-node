@@ -1693,6 +1693,8 @@ fastify.register(async (fastify) => {
                                 const sessionUpdate = {
                                     type: 'session.update',
                                     session: {
+                                        // Include required session.type on every session.update
+                                        type: 'realtime',
                                         audio: {
                                             input: {
                                                 noise_reduction: { type: requestedMode }
