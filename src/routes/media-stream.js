@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import fs from 'fs';
 import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
 import { createAssistantSession, safeParseToolArguments } from '../assistant/session.js';
-import { parseWavToUlaw } from '../media/audio.js';
+import { parseWavToUlaw } from '../utils/audio.js';
 import { getToolDefinitions, executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';

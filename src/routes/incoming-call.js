@@ -1,4 +1,4 @@
-import { getTimeGreeting, resolveCallerName } from '../calls/utils.js';
+import { getTimeGreeting, resolveCallerName } from '../utils/calls.js';
 import {
     ALL_ALLOWED_CALLERS_SET,
     PRIMARY_CALLERS_SET,
