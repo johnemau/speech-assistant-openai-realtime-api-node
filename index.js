@@ -70,7 +70,6 @@ const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 10000; // Render default PORT is 10000
 
-
 // Show AI response elapsed timing calculations
 const SHOW_TIMING_MATH = IS_DEV;
 
