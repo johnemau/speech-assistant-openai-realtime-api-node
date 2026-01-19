@@ -20,7 +20,6 @@ function linearToMuLaw(s16) {
     return mu & 0xFF;
 }
 
-// Parse a WAV file and convert to µ-law (PCMU) 8kHz mono bytes
 /**
  * Parse a WAV file and convert to µ-law (PCMU) 8kHz mono bytes.
  *
