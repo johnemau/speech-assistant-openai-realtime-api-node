@@ -13,15 +13,13 @@ import {
 } from '../env.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
-import { redactErrorDetail } from '../utils/redaction.js';
+import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
 
 export function registerSmsRoute({ fastify, deps }) {
     const {
         twilioClient,
         openaiClient,
         isDev,
-        env,
-        redactionKeys,
     } = deps;
 
     fastify.post('/sms', async (request, reply) => {
@@ -166,8 +164,8 @@ export function registerSmsRoute({ fastify, deps }) {
                     detail = redactErrorDetail({
                         errorLike: e,
                         detail,
-                        env,
-                        secretKeys: redactionKeys
+                        env: process.env,
+                        secretKeys: REDACTION_KEYS
                     });
                 }
                 // Structured error log (redacted unless development)
@@ -215,8 +213,8 @@ export function registerSmsRoute({ fastify, deps }) {
                     detail = redactErrorDetail({
                         errorLike: e,
                         detail,
-                        env,
-                        secretKeys: redactionKeys
+                        env: process.env,
+                        secretKeys: REDACTION_KEYS
                     });
                 }
                 // Structured error log (redacted unless development)

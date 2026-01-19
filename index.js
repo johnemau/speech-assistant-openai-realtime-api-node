@@ -15,7 +15,7 @@ dotenv.config();
 // Environment flags
 const IS_DEV = String(process.env.NODE_ENV || '').toLowerCase() === 'development';
 // Enable redaction of sensitive env vars from console and stdout
-const { secretKeys: REDACTION_KEYS } = setupConsoleRedaction(process.env);
+setupConsoleRedaction(process.env);
 
 // Retrieve required environment variables.
 const { OPENAI_API_KEY, NGROK_DOMAIN } = process.env;
@@ -90,8 +90,6 @@ registerSmsRoute({
         twilioClient,
         openaiClient,
         isDev: IS_DEV,
-        env: process.env,
-        redactionKeys: REDACTION_KEYS,
     }
 });
 

@@ -23,6 +23,8 @@ export const DEFAULT_SECRET_ENV_KEYS = [
     'TWILIO_API_SECRET',
 ];
 
+export const REDACTION_KEYS = getSecretEnvKeys(process.env, DEFAULT_SECRET_ENV_KEYS);
+
 export function setupConsoleRedaction(env = process.env) {
     let disableLogRedaction = null;
     let secretKeys = [];
