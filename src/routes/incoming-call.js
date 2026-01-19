@@ -5,7 +5,7 @@ import {
     PRIMARY_USER_FIRST_NAME,
     SECONDARY_CALLERS_SET,
     SECONDARY_USER_FIRST_NAME,
-} from '../env/index.js';
+} from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
 export function registerIncomingCallRoute({ fastify, deps }) {

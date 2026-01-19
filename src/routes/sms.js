@@ -10,7 +10,7 @@ import {
     DEFAULT_SMS_USER_LOCATION,
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
-} from '../env/index.js';
+} from '../env.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { redactErrorDetail } from '../utils/redaction.js';

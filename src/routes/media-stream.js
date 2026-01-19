@@ -15,7 +15,7 @@ import {
     WAIT_MUSIC_VOLUME,
     PRIMARY_USER_FIRST_NAME,
     SECONDARY_USER_FIRST_NAME,
-} from '../env/index.js';
+} from '../env.js';
 
 export function registerMediaStreamRoute({ fastify, deps }) {
     const {
