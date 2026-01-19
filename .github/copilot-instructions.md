@@ -13,8 +13,8 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
   - `npm install`
   - `npm start`
 - Verify changes:
-  - `npm test` to lint and validate code before pushing.
-  - Always run `npm test` immediately after every change to catch issues early.
+  - `npm test` (unit tests), `npm run lint`, and `npm run typecheck` as needed.
+  - Prefer `npm ci` to run lint, typecheck, and unit tests sequentially.
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
 - Public ingress: bind ngrok domain via `NGROK_DOMAIN` and optional `NGROK_AUTHTOKEN`. The server also runs locally without ngrok.
 - Minimal health checks: GET `/` and `/healthz`.
@@ -43,6 +43,9 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Tools declared in session:
   - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
   - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.
+  - `send_sms`: Sends a concise SMS from the call’s Twilio number (or fallback) and returns `sid/status/length` as `function_call_output`.
+  - `update_mic_distance`: Toggles input noise reduction between `near_field` and `far_field`.
+  - `end_call`: Ends the Twilio stream after a brief farewell.
 - Dedupe: tool executions tracked by `call_id` to prevent duplicates. Always send `function_call_output` followed by `response.create`.
 
 ## SMS Auto‑Reply
@@ -60,7 +63,8 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 
 ## Waiting Music (Optional)
 - Controlled via `WAIT_MUSIC_THRESHOLD_MS`, `WAIT_MUSIC_VOLUME`, `WAIT_MUSIC_FILE`.
-- Only WAV files are supported; the app parses WAV PCM 16‑bit, downmixes/resamples to 8 kHz mono, and encodes PCMU frames (~20 ms, 160 bytes).
+- Only raw PCMU (G.711 µ‑law) files are supported; frames are sent at ~20 ms (160 bytes).
+- Use the conversion script when needed (requires `ffmpeg`): `npm run convert:wav -- input.wav output.pcmu --format=mulaw`.
 - Waiting music starts after the threshold when a tool call begins and stops on first assistant audio delta or caller speech.
 
 ## Conventions & Gotchas
