@@ -1,9 +1,10 @@
+import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
 import dotenv from 'dotenv';
 import { createAssistantSession, safeParseToolArguments } from '../src/assistant/session.js';
 import { getToolDefinitions, executeToolCall } from '../src/tools/index.js';
 import { judgeResponse } from '../src/testing/judge.js';
 import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../src/assistant/prompts.js';
-import { callerTurns, expectedAssistant } from '../tests/voice-tests.js';
 import { isTruthy } from '../src/utils/env.js';
 import { normalizeUSNumberToE164 } from '../src/utils/phone.js';
 import { createOpenAIClient, createTwilioClient, createEmailTransport } from '../src/utils/clients.js';
@@ -11,10 +12,7 @@ import { createOpenAIClient, createTwilioClient, createEmailTransport } from '..
 dotenv.config();
 
 const { OPENAI_API_KEY } = process.env;
-if (!OPENAI_API_KEY) {
-    console.error('Missing OPENAI_API_KEY.');
-    process.exit(1);
-}
+assert.ok(OPENAI_API_KEY, 'Missing OPENAI_API_KEY.');
 
 const openaiClient = createOpenAIClient({ apiKey: OPENAI_API_KEY });
 
@@ -174,18 +172,30 @@ async function runTurn({ callerTurn, index, timeoutMs = 90000 }) {
     return Promise.race([turnPromise, timeoutPromise]);
 }
 
-(async () => {
-    if (callerTurns.length !== expectedAssistant.length) {
-        console.error('callerTurns and expectedAssistant length mismatch.');
-        process.exit(1);
-    }
+function formatFailureSummary(failedResults = []) {
+    if (!failedResults.length) return 'All voice test turns passed.';
+    const lines = failedResults.map((res) => {
+        const turnNumber = Number.isFinite(res.turnIndex) ? res.turnIndex + 1 : '?';
+        const toolLine = res.toolError ? ` Tool error: ${res.toolError}` : '';
+        const rationale = res.judge?.rationale ? ` Rationale: ${res.judge.rationale}` : '';
+        return `Turn ${turnNumber}: FAIL.${toolLine}${rationale}`.trim();
+    });
+    return `${failedResults.length} turn(s) failed.\n${lines.join('\n')}`;
+}
+
+export async function runVoiceTests({ callerTurns = [], expectedAssistant = [], timeoutMs = 90000 } = {}) {
+    assert.equal(
+        callerTurns.length,
+        expectedAssistant.length,
+        'callerTurns and expectedAssistant length mismatch.'
+    );
 
     const results = [];
     for (let i = 0; i < callerTurns.length; i += 1) {
         const callerTurn = callerTurns[i];
         const expectation = expectedAssistant[i];
         try {
-            const { assistantText, toolError } = await runTurn({ callerTurn, index: i });
+            const { assistantText, toolError } = await runTurn({ callerTurn, index: i, timeoutMs });
             const judge = await judgeResponse({
                 openaiClient,
                 callerTurn,
@@ -195,27 +205,41 @@ async function runTurn({ callerTurn, index, timeoutMs = 90000 }) {
             });
             const score = Number(judge?.score || 0);
             const pass = Boolean(judge?.pass) && score >= passScoreThreshold && !toolError;
-            results.push({ callerTurn, expectation, assistantText, judge, pass, toolError });
+            results.push({
+                turnIndex: i,
+                callerTurn,
+                expectation,
+                assistantText,
+                judge,
+                pass,
+                toolError
+            });
         } catch (error) {
-            results.push({ callerTurn, expectation, assistantText: '', judge: null, pass: false, toolError: error?.message || String(error) });
+            results.push({
+                turnIndex: i,
+                callerTurn,
+                expectation,
+                assistantText: '',
+                judge: null,
+                pass: false,
+                toolError: error?.message || String(error)
+            });
         }
     }
 
     const failed = results.filter((r) => !r.pass);
-    for (const [idx, res] of results.entries()) {
-        const status = res.pass ? 'PASS' : 'FAIL';
-        console.log(`Turn ${idx + 1}: ${status}`);
-        if (!res.pass) {
-            if (res.toolError) console.log(`  Tool error: ${res.toolError}`);
-            if (res.judge?.rationale) console.log(`  Rationale: ${res.judge.rationale}`);
-        }
-    }
+    assert.equal(failed.length, 0, formatFailureSummary(failed));
+    return results;
+}
 
-    if (failed.length > 0) {
-        console.error(`\n${failed.length} turn(s) failed.`);
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+    try {
+        const { callerTurns, expectedAssistant } = await import('../tests/voice-tests.js');
+        await runVoiceTests({ callerTurns, expectedAssistant });
+        console.log('All voice test turns passed.');
+    } catch (error) {
+        console.error(error?.message || error);
         process.exit(1);
     }
-
-    console.log('\nAll voice test turns passed.');
-    process.exit(0);
+}
 })();
