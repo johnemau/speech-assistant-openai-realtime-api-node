@@ -10,6 +10,12 @@ export const definition = {
     description: 'Politely end the call. The server will close the Twilio media-stream and OpenAI WebSocket after the assistant says a brief goodbye.'
 };
 
+/**
+ *
+ * @param root0
+ * @param root0.args
+ * @param root0.context
+ */
 export async function execute({ args, context }) {
     const { onEndCall } = context;
     const reason = typeof args?.reason === 'string' ? args.reason.trim() : undefined;

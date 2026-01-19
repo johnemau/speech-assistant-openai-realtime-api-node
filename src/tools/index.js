@@ -12,6 +12,9 @@ const toolExecutors = new Map([
     ['end_call', executeEndCall],
 ]);
 
+/**
+ *
+ */
 export function getToolDefinitions() {
     return [
         gptWebSearchDefinition,
@@ -22,6 +25,13 @@ export function getToolDefinitions() {
     ];
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.name
+ * @param root0.args
+ * @param root0.context
+ */
 export async function executeToolCall({ name, args, context }) {
     const executor = toolExecutors.get(name);
     if (!executor) throw new Error(`Unknown tool: ${name}`);

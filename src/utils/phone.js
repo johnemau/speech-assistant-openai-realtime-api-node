@@ -1,4 +1,8 @@
 // Allowed callers (E.164). Configure via env `PRIMARY_USER_PHONE_NUMBERS` and `SECONDARY_USER_PHONE_NUMBERS` as comma-separated numbers.
+/**
+ *
+ * @param input
+ */
 export function normalizeUSNumberToE164(input) {
     if (!input) return null;
     // Remove non-digits except leading +

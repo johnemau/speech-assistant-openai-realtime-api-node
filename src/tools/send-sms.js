@@ -14,6 +14,12 @@ export const definition = {
     description: 'Send an SMS that contains only the requested information and brief source labels with URLs. Keep it actionable and free of preamble or unnecessary words. A single short follow-up question is allowed when helpful (e.g., asking if you should get hours or more details).'
 };
 
+/**
+ *
+ * @param root0
+ * @param root0.args
+ * @param root0.context
+ */
 export async function execute({ args, context }) {
     const {
         twilioClient,

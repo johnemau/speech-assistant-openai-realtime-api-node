@@ -177,6 +177,13 @@ function formatFailureSummary(failedResults = []) {
     return `${failedResults.length} turn(s) failed.\n${lines.join('\n')}`;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.callerTurns
+ * @param root0.expectedAssistant
+ * @param root0.timeoutMs
+ */
 export async function runVoiceTests({ callerTurns = [], expectedAssistant = [], timeoutMs = 90000 } = {}) {
     assert.equal(
         callerTurns.length,

@@ -15,6 +15,12 @@ export const definition = {
     description: 'Send an HTML email with the latest context. The assistant must supply a subject and a non-conversational, concise HTML body that includes specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be clickable URLs. Always conclude the email with a small, cute ASCII art at the end.'
 };
 
+/**
+ *
+ * @param root0
+ * @param root0.args
+ * @param root0.context
+ */
 export async function execute({ args, context }) {
     const {
         senderTransport,

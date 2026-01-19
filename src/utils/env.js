@@ -1,8 +1,17 @@
+/**
+ *
+ * @param val
+ */
 export function isTruthy(val) {
     const v = String(val || '').trim().toLowerCase();
     return v === '1' || v === 'true' || v === 'yes' || v === 'on';
 }
 
+/**
+ *
+ * @param env
+ * @param defaultKeys
+ */
 export function getSecretEnvKeys(env, defaultKeys = []) {
     const extraKeys = (env.REDACT_ENV_KEYS || '')
         .split(',')
@@ -11,6 +20,11 @@ export function getSecretEnvKeys(env, defaultKeys = []) {
     return Array.from(new Set([...defaultKeys, ...extraKeys]));
 }
 
+/**
+ *
+ * @param env
+ * @param keys
+ */
 export function getSecretEnvValues(env, keys = []) {
     const values = [];
     for (const key of keys) {

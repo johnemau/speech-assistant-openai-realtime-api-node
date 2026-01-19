@@ -1,6 +1,10 @@
 import { inspect } from 'node:util';
 
 // Helper: stringify objects for logging with deep nesting
+/**
+ *
+ * @param obj
+ */
 export function stringifyDeep(obj) {
     try {
         return inspect(obj, { depth: 10, colors: false, compact: false });

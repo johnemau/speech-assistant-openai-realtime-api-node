@@ -1,6 +1,10 @@
 import WebSocket from 'ws';
 import JSON5 from 'json5';
 
+/**
+ *
+ * @param args
+ */
 export function safeParseToolArguments(args) {
     if (args == null) return {};
     if (typeof args === 'object') return args;
@@ -32,6 +36,25 @@ export function safeParseToolArguments(args) {
     }
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.apiKey
+ * @param root0.model
+ * @param root0.temperature
+ * @param root0.voice
+ * @param root0.instructions
+ * @param root0.tools
+ * @param root0.outputModalities
+ * @param root0.audioConfig
+ * @param root0.toolChoice
+ * @param root0.onEvent
+ * @param root0.onAssistantOutput
+ * @param root0.onToolCall
+ * @param root0.onOpen
+ * @param root0.onClose
+ * @param root0.onError
+ */
 export function createAssistantSession({
     apiKey,
     model = 'gpt-realtime',

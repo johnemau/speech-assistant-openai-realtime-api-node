@@ -25,6 +25,10 @@ export const DEFAULT_SECRET_ENV_KEYS = [
 
 export const REDACTION_KEYS = getSecretEnvKeys(process.env, DEFAULT_SECRET_ENV_KEYS);
 
+/**
+ *
+ * @param env
+ */
 export function setupConsoleRedaction(env = process.env) {
     let disableLogRedaction = null;
     let secretKeys = [];
@@ -115,6 +119,14 @@ export function setupConsoleRedaction(env = process.env) {
     return { redactionDisabled, secretKeys, envSecretValues };
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.errorLike
+ * @param root0.detail
+ * @param root0.env
+ * @param root0.secretKeys
+ */
 export function redactErrorDetail({ errorLike, detail, env = process.env, secretKeys = [] }) {
     let redacted = detail;
     try {

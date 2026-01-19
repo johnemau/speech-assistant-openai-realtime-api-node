@@ -24,6 +24,12 @@ export const definition = {
     description: 'Comprehensive web search'
 };
 
+/**
+ *
+ * @param root0
+ * @param root0.args
+ * @param root0.context
+ */
 export async function execute({ args, context }) {
     const { openaiClient, webSearchInstructions, defaultUserLocation } = context;
     const query = String(args?.query || '').trim();

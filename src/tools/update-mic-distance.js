@@ -19,6 +19,12 @@ export const definition = {
     description: 'Toggle mic processing based on caller phrases: speakerphone-on → far_field; off-speakerphone → near_field. Debounce and avoid redundant toggles; one tool call per turn.'
 };
 
+/**
+ *
+ * @param root0
+ * @param root0.args
+ * @param root0.context
+ */
 export async function execute({ args, context }) {
     const { micState, applyNoiseReduction } = context;
     const requestedMode = String(args?.mode || '').trim();

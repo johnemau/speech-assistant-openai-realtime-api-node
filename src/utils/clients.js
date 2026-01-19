@@ -2,6 +2,11 @@ import OpenAI from 'openai';
 import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 
+/**
+ *
+ * @param root0
+ * @param root0.apiKey
+ */
 export function createOpenAIClient({ apiKey }) {
     if (!apiKey) {
         throw new Error('Missing OpenAI API key.');
@@ -9,6 +14,15 @@ export function createOpenAIClient({ apiKey }) {
     return new OpenAI({ apiKey });
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.accountSid
+ * @param root0.authToken
+ * @param root0.apiKey
+ * @param root0.apiSecret
+ * @param root0.logger
+ */
 export function createTwilioClient({
     accountSid,
     authToken,
@@ -37,6 +51,14 @@ export function createTwilioClient({
     }
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.user
+ * @param root0.pass
+ * @param root0.serviceId
+ * @param root0.logger
+ */
 export function createEmailTransport({ user, pass, serviceId, logger = console }) {
     if (!user || !pass) {
         logger.warn('SMTP credentials missing; send_email will be unavailable.');

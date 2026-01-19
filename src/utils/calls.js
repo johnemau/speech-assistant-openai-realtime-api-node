@@ -1,3 +1,13 @@
+/**
+ *
+ * @param root0
+ * @param root0.callerE164
+ * @param root0.primaryCallersSet
+ * @param root0.secondaryCallersSet
+ * @param root0.primaryName
+ * @param root0.secondaryName
+ * @param root0.fallbackName
+ */
 export function resolveCallerName({
     callerE164,
     primaryCallersSet,
@@ -11,6 +21,12 @@ export function resolveCallerName({
     return fallbackName;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.timeZone
+ * @param root0.now
+ */
 export function getTimeGreeting({
     timeZone = 'America/Los_Angeles',
     now = new Date(),
