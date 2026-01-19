@@ -1,3 +1,4 @@
+import twilio from 'twilio';
 import { getTimeGreeting, resolveCallerName } from '../utils/calls.js';
 import {
     ALL_ALLOWED_CALLERS_SET,
@@ -24,12 +25,14 @@ export async function incomingCallHandler(request, reply) {
     console.log('Incoming call from:', fromRaw, '=>', fromE164);
 
         if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
-            const denyTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-                          <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Charon">Sorry, this line is restricted. Goodbye.</Say>
-                              <Hangup/>
-                          </Response>`;
-            return reply.type('text/xml').send(denyTwiml);
+            const { VoiceResponse } = twilio.twiml;
+            const denyTwiml = new VoiceResponse();
+            denyTwiml.say(
+                { voice: 'Google.en-US-Chirp3-HD-Charon' },
+                'Sorry, this line is restricted. Goodbye.'
+            );
+            denyTwiml.hangup();
+            return reply.type('text/xml').send(denyTwiml.toString());
         }
 
         const primaryName = String(PRIMARY_USER_FIRST_NAME || '').trim();
@@ -45,16 +48,16 @@ export async function incomingCallHandler(request, reply) {
 
         const timeGreeting = getTimeGreeting({ timeZone: 'America/Los_Angeles' });
 
-        const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-                          <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Charon">${timeGreeting} ${callerName}. Connecting to your AI assistant momentarily.</Say>
-                              <Connect>
-                                  <Stream url="wss://${request.headers.host}/media-stream">
-                                      <Parameter name="caller_number" value="${fromE164}" />
-                                      <Parameter name="twilio_number" value="${toE164 || ''}" />
-                                  </Stream>
-                              </Connect>
-                          </Response>`;
+        const { VoiceResponse } = twilio.twiml;
+        const twimlResponse = new VoiceResponse();
+        twimlResponse.say(
+            { voice: 'Google.en-US-Chirp3-HD-Charon' },
+            `${timeGreeting} ${callerName}. Connecting to your AI assistant momentarily.`
+        );
+        const connect = twimlResponse.connect();
+        const stream = connect.stream({ url: `wss://${request.headers.host}/media-stream` });
+        stream.parameter({ name: 'caller_number', value: fromE164 });
+        stream.parameter({ name: 'twilio_number', value: toE164 || '' });
 
-    reply.type('text/xml').send(twimlResponse);
+    reply.type('text/xml').send(twimlResponse.toString());
 }
