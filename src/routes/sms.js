@@ -1,5 +1,6 @@
 import twilio from 'twilio';
 import { SMS_REPLY_INSTRUCTIONS } from '../assistant/prompts.js';
+import { openaiClient, twilioClient } from '../app-context.js';
 import {
     buildSmsPrompt,
     buildSmsThreadText,
@@ -8,6 +9,7 @@ import {
 } from '../utils/sms.js';
 import {
     DEFAULT_SMS_USER_LOCATION,
+    IS_DEV,
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
 } from '../env.js';
@@ -15,13 +17,7 @@ import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
 
-export function registerSmsRoute({ fastify, deps }) {
-    const {
-        twilioClient,
-        openaiClient,
-        isDev,
-    } = deps;
-
+export function registerSmsRoute({ fastify }) {
     fastify.post('/sms', async (request, reply) => {
         try {
             // Note: Global console wrappers already scrub sensitive data in logs.
@@ -124,7 +120,7 @@ export function registerSmsRoute({ fastify, deps }) {
             const smsPrompt = buildSmsPrompt({ threadText, latestMessage: bodyRaw });
 
             // Dev-only: log the full SMS prompt for debugging
-            if (isDev) {
+            if (IS_DEV) {
                 console.log({
                     event: 'sms.prompt.debug',
                     prompt: smsPrompt
@@ -160,7 +156,7 @@ export function registerSmsRoute({ fastify, deps }) {
             } catch (e) {
                 console.error('OpenAI SMS reply error:', e?.message || e);
                 let detail = e?.message || stringifyDeep(e);
-                if (!isDev) {
+                if (!IS_DEV) {
                     detail = redactErrorDetail({
                         errorLike: e,
                         detail,
@@ -209,7 +205,7 @@ export function registerSmsRoute({ fastify, deps }) {
                 console.error('Failed to send Twilio SMS:', e?.message || e);
                 // Fallback: reply via TwiML with redacted error details to ensure the user gets context
                 let detail = e?.message || stringifyDeep(e);
-                if (!isDev) {
+                if (!IS_DEV) {
                     detail = redactErrorDetail({
                         errorLike: e,
                         detail,

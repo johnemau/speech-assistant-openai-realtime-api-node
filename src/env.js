@@ -1,4 +1,9 @@
+import dotenv from 'dotenv';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
+
+dotenv.config();
+
+export const IS_DEV = String(process.env.NODE_ENV || '').toLowerCase() === 'development';
 
 export const PRIMARY_CALLERS_SET = new Set(
     (process.env.PRIMARY_USER_PHONE_NUMBERS || '')

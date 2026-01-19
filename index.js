@@ -1,77 +1,16 @@
 import ngrok from '@ngrok/ngrok';
 import Fastify from 'fastify';
-import dotenv from 'dotenv';
 import fastifyFormBody from '@fastify/formbody';
 import fastifyWs from '@fastify/websocket';
-import { createOpenAIClient, createTwilioClient, createEmailTransport } from './src/utils/clients.js';
-import { setupConsoleRedaction } from './src/utils/redaction.js';
 import { registerSmsRoute } from './src/routes/sms.js';
 import { registerIncomingCallRoute } from './src/routes/incoming-call.js';
 import { registerMediaStreamRoute } from './src/routes/media-stream.js';
-
-// Load environment variables from .env file
-dotenv.config();
-
-// Environment flags
-const IS_DEV = String(process.env.NODE_ENV || '').toLowerCase() === 'development';
-// Enable redaction of sensitive env vars from console and stdout
-setupConsoleRedaction(process.env);
-
-// Retrieve required environment variables.
-const { OPENAI_API_KEY, NGROK_DOMAIN } = process.env;
-const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_API_KEY, TWILIO_API_SECRET } = process.env;
-
-// Email-related environment variables
-const {
-    SENDER_FROM_EMAIL,
-    SMTP_USER,
-    SMTP_PASS,
-    SMTP_NODEMAILER_SERVICE_ID,
-} = process.env;
-
-if (!OPENAI_API_KEY) {
-    console.error('Missing OpenAI API key. Please set it in the .env file.');
-    process.exit(1);
-}
-
-if (!NGROK_DOMAIN) {
-    console.warn('NGROK_DOMAIN not set; skipping ngrok binding. Service will be reachable via platform routing.');
-}
-
-// Initialize OpenAI client
-const openaiClient = createOpenAIClient({ apiKey: OPENAI_API_KEY });
-
-// Initialize Twilio REST client (for SMS send/list). This is separate from the TwiML helper usage.
-const twilioClient = createTwilioClient({
-    accountSid: TWILIO_ACCOUNT_SID,
-    authToken: TWILIO_AUTH_TOKEN,
-    apiKey: TWILIO_API_KEY,
-    apiSecret: TWILIO_API_SECRET,
-    logger: console
-});
-
-// Initialize Nodemailer transporter (single sender) using service ID
-let senderTransport = createEmailTransport({
-    user: SMTP_USER,
-    pass: SMTP_PASS,
-    serviceId: SMTP_NODEMAILER_SERVICE_ID,
-    logger: console
-});
-if (!SENDER_FROM_EMAIL) {
-    console.warn('SENDER_FROM_EMAIL missing; emails cannot be sent until configured.');
-}
+import { NGROK_DOMAIN, PORT } from './src/app-context.js';
 
 // Initialize Fastify
 const fastify = Fastify();
 fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
-
-const VOICE = 'cedar';
-const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
-const PORT = process.env.PORT || 10000; // Render default PORT is 10000
-
-// Show AI response elapsed timing calculations
-const SHOW_TIMING_MATH = IS_DEV;
 
 // Root Route
 fastify.get('/', async (request, reply) => {
@@ -85,33 +24,16 @@ fastify.get('/healthz', async (request, reply) => {
 });
 
 registerSmsRoute({
-    fastify,
-    deps: {
-        twilioClient,
-        openaiClient,
-        isDev: IS_DEV,
-    }
+    fastify
 });
 
 registerIncomingCallRoute({
-    fastify,
-    deps: {
-    }
+    fastify
 });
 
 // WebSocket route for media-stream
 registerMediaStreamRoute({
-    fastify,
-    deps: {
-        openaiClient,
-        twilioClient,
-        senderTransport,
-        env: process.env,
-        voice: VOICE,
-        temperature: TEMPERATURE,
-        isDev: IS_DEV,
-        showTimingMath: SHOW_TIMING_MATH,
-    }
+    fastify
 });
 
 // Start server and establish ngrok ingress using SessionBuilder

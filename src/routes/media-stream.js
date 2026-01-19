@@ -2,12 +2,22 @@ import WebSocket from 'ws';
 import fs from 'fs';
 import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
 import { createAssistantSession, safeParseToolArguments } from '../assistant/session.js';
+import {
+    openaiClient,
+    twilioClient,
+    senderTransport,
+    env,
+    VOICE as voice,
+    TEMPERATURE as temperature,
+    SHOW_TIMING_MATH as showTimingMath,
+} from '../app-context.js';
 import { parseWavToUlaw } from '../utils/audio.js';
 import { getToolDefinitions, executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import {
     DEFAULT_SMS_USER_LOCATION,
+    IS_DEV,
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
     WAIT_MUSIC_FILE,
@@ -17,18 +27,7 @@ import {
     SECONDARY_USER_FIRST_NAME,
 } from '../env.js';
 
-export function registerMediaStreamRoute({ fastify, deps }) {
-    const {
-        openaiClient,
-        twilioClient,
-        senderTransport,
-        env,
-        voice,
-        temperature,
-        isDev,
-        showTimingMath,
-    } = deps;
-
+export function registerMediaStreamRoute({ fastify }) {
     // WebSocket route for media-stream
     fastify.register(async (fastify) => {
         fastify.get('/media-stream', { websocket: true }, (connection, req) => {
@@ -201,7 +200,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
 
             const handleOpenAiEvent = (response) => {
                 if (LOG_EVENT_TYPES.includes(response.type)) {
-                    if (isDev) console.log(`Received event: ${response.type}`, response);
+                    if (IS_DEV) console.log(`Received event: ${response.type}`, response);
                     else console.log(`Received event: ${response.type}`);
                 }
 
@@ -245,7 +244,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                                 if (twilioClient && toNumber && fromNumber) {
                                     const subjectNote = lastEmailSubject ? ` Email sent: "${lastEmailSubject}".` : '';
                                     const body = `Your request is complete.${subjectNote} Reply if you want more.`;
-                                    if (isDev) console.log('Post-hang-up completion SMS:', { from: fromNumber, to: toNumber, body });
+                                    if (IS_DEV) console.log('Post-hang-up completion SMS:', { from: fromNumber, to: toNumber, body });
                                     twilioClient.messages.create({ from: fromNumber, to: toNumber, body })
                                         .then((sendRes) => {
                                             console.info({ event: 'posthangup.sms.sent', sid: sendRes?.sid, to: toNumber });
@@ -268,7 +267,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
             };
 
             const handleToolCall = async (functionCall) => {
-                if (isDev) console.log('LLM response.done received');
+                if (IS_DEV) console.log('LLM response.done received');
                 console.log('Function call detected:', functionCall.name);
                 const callId = functionCall.call_id;
                 if (!callId) {
@@ -320,7 +319,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                                     }
                                 }
                             };
-                            if (isDev) console.log('Applying noise_reduction change:', sessionUpdate);
+                            if (IS_DEV) console.log('Applying noise_reduction change:', sessionUpdate);
                             assistantSession.updateSession(sessionUpdate);
                         },
                         onEndCall: ({ reason }) => {
@@ -342,10 +341,10 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                     const output = await executeToolCall({ name: toolName, args: toolInput, context: toolContext });
 
                     if (toolName === 'update_mic_distance') {
-                        if (isDev) console.log('Noise reduction updated:', output);
+                        if (IS_DEV) console.log('Noise reduction updated:', output);
                     }
 
-                    if (toolName === 'gpt_web_search' && isDev) {
+                    if (toolName === 'gpt_web_search' && IS_DEV) {
                         console.log('Dev tool call gpt_web_search output:', output);
                     }
 
@@ -362,7 +361,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                     clearWaitingMusicInterval();
                     assistantSession.send(toolResultEvent);
                     if (!responseActive) assistantSession.requestResponse();
-                    if (isDev) console.log('LLM tool output sent to OpenAI', toolResultEvent);
+                    if (IS_DEV) console.log('LLM tool output sent to OpenAI', toolResultEvent);
                 } catch (error) {
                     console.error('Error handling tool call:', error);
                     toolCallInProgress = false;
