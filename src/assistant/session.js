@@ -25,7 +25,7 @@ export function safeParseToolArguments(args) {
                 .replace(/,\s*([}\]])/g, '$1'); // remove trailing commas
 
             // Add quotes around unquoted property names at object boundaries
-            repaired = repaired.replace(/([{|,]\s*)([A-Za-z_][A-Za-z0-9_\-]*)(\s*):/g, '$1"$2"$3:');
+            repaired = repaired.replace(/([{|,]\s*)([A-Za-z_][A-Za-z0-9_-]*)(\s*):/g, '$1"$2"$3:');
 
             return JSON5.parse(repaired);
         }
@@ -174,7 +174,10 @@ export function createAssistantSession({
             }
         }),
         close: () => {
-            try { openAiWs.close(); } catch {}
+            try { openAiWs.close(); } catch {
+                // noop: ignore close errors
+                void 0;
+            }
         },
         clearPendingMessages: () => { pendingOpenAiMessages.length = 0; },
     };

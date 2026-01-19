@@ -87,7 +87,10 @@ export function mediaStreamHandler(connection, req) {
                     threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
                     file: WAIT_MUSIC_FILE || null
                 });
-            } catch {}
+            } catch {
+                // noop: logging failures should not interrupt audio flow
+                void 0;
+            }
             // If audio file is provided and exists
             if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
                 try {
@@ -134,7 +137,10 @@ export function mediaStreamHandler(connection, req) {
                 isWaitingMusic = false;
                 try {
                     console.info({ event: 'wait_music.stop', reason, streamSid });
-                } catch {}
+                } catch {
+                    // noop: logging failures should not interrupt audio flow
+                    void 0;
+                }
             }
             // Remove unused buffer since ffmpeg is not used
             waitingMusicUlawBuffer = null;
@@ -162,8 +168,14 @@ export function mediaStreamHandler(connection, req) {
                     }
                     stopWaitingMusic();
                     clearWaitingMusicInterval();
-                    try { connection.close(1000, 'Call ended by assistant'); } catch {}
-                    try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {}
+                    try { connection.close(1000, 'Call ended by assistant'); } catch {
+                        // noop: connection may already be closed
+                        void 0;
+                    }
+                    try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {
+                        // noop: websocket may already be closed
+                        void 0;
+                    }
                     console.log('Call closed after goodbye playback.');
                 }
             } catch (e) {
@@ -262,7 +274,10 @@ export function mediaStreamHandler(connection, req) {
                             console.warn('Post-hang-up SMS error:', e?.message || e);
                         }
                         // Close OpenAI WS after completion notification
-                        try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {}
+                        try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {
+                            // noop: websocket may already be closed
+                            void 0;
+                        }
                     }
                 }
             }
@@ -330,7 +345,10 @@ export function mediaStreamHandler(connection, req) {
                             pendingDisconnect = true;
                             if (toolCallInProgress) hangupDuringTools = true;
                             // Close the Twilio stream promptly; keep OpenAI WS alive for tools
-                            try { connection.close(1000, 'Call ended by assistant'); } catch {}
+                            try { connection.close(1000, 'Call ended by assistant'); } catch {
+                                // noop: connection may already be closed
+                                void 0;
+                            }
                             return {
                                 status: 'ok',
                                 pending_disconnect: true,
@@ -494,7 +512,7 @@ export function mediaStreamHandler(connection, req) {
                     const data = JSON.parse(message);
 
                     switch (data.event) {
-                        case 'media':
+                        case 'media': {
                             latestMediaTimestamp = data.media.timestamp;
                             const audioAppend = {
                                 type: 'input_audio_buffer.append',
@@ -502,6 +520,7 @@ export function mediaStreamHandler(connection, req) {
                             };
                             assistantSession.send(audioAppend);
                             break;
+                        }
                         case 'start':
                             streamSid = data.start.streamSid;
                             console.log('Incoming stream has started', streamSid);
@@ -540,6 +559,8 @@ export function mediaStreamHandler(connection, req) {
                                     }, WAIT_MUSIC_THRESHOLD_MS);
                                 }
                             } catch {
+                                // noop: missing custom parameters should not break stream handling
+                                void 0;
                                 console.warn('No custom caller parameter found on start event.');
                                 // Fallback greeting without a personalized name
                                 sendInitialConversationItem('legend');

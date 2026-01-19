@@ -70,10 +70,16 @@ export function setupConsoleRedaction(env = process.env) {
                         if (a && typeof a === 'object') {
                             try {
                                 guessed.push(...findSensitiveValues(a));
-                            } catch {}
+                            } catch {
+                                // noop: best-effort discovery of sensitive values
+                                void 0;
+                            }
                         }
                     }
-                } catch {}
+                } catch {
+                    // noop: best-effort discovery of sensitive values
+                    void 0;
+                }
                 const secrets = Array.from(new Set([
                     ...envSecretValues,
                     ...guessed,
@@ -84,7 +90,10 @@ export function setupConsoleRedaction(env = process.env) {
                         if (typeof a === 'string' || (a && typeof a === 'object') || Array.isArray(a)) {
                             return scrub(a, secrets);
                         }
-                    } catch {}
+                    } catch {
+                        // noop: scrub failures should not block logging
+                        void 0;
+                    }
                     return a;
                 });
             };
@@ -112,9 +121,15 @@ export function redactErrorDetail({ errorLike, detail, env = process.env, secret
         const keys = secretKeys.length > 0 ? secretKeys : getSecretEnvKeys(env, DEFAULT_SECRET_ENV_KEYS);
         const envVals = getSecretEnvValues(env, keys);
         let guessed = [];
-        try { guessed = findSensitiveValues(errorLike); } catch {}
+        try { guessed = findSensitiveValues(errorLike); } catch {
+            // noop: best-effort discovery of sensitive values
+            void 0;
+        }
         const secrets = Array.from(new Set([...envVals, ...guessed]));
         redacted = scrub(redacted, secrets);
-    } catch {}
+    } catch {
+        // noop: fallback to original detail when redaction fails
+        void 0;
+    }
     return redacted;
 }
