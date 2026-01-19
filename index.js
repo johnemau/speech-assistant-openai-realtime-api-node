@@ -47,7 +47,7 @@ fastify.get('/media-stream', { websocket: true }, mediaStreamHandler);
 // Start server and establish ngrok ingress using SessionBuilder
 (async () => {
     try {
-        await fastify.listen({ host: '0.0.0.0', port: PORT });
+        fastify.listen({ host: '0.0.0.0', port: PORT });
         console.log(`HTTP server listening on 0.0.0.0:${PORT}`);
 
         // Optionally establish ngrok ingress if NGROK_DOMAIN is provided
