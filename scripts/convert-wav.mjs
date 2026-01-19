@@ -35,24 +35,22 @@ if (!existsSync(inputPath)) {
 const codec = format === 'mulaw' ? 'pcm_mulaw' : 'pcm_s16le';
 
 try {
-    const process = new ffmpeg(inputPath);
-    await process
-        .then((video) =>
-            new Promise((resolvePromise, rejectPromise) => {
-                video
-                    .setAudioCodec(codec)
-                    .setAudioChannels(1)
-                    .setAudioFrequency(8000)
-                    .addCommand('-af', 'aresample=resampler=soxr:precision=28:dither_method=triangular')
-                    .save(outputPath, (error, file) => {
-                        if (error) {
-                            rejectPromise(error);
-                            return;
-                        }
-                        resolvePromise(file);
-                    });
-            })
-        );
+    const ffmpegProcess = new ffmpeg(inputPath);
+    const video = await ffmpegProcess;
+    await new Promise((resolvePromise, rejectPromise) => {
+        video
+            .setAudioCodec(codec)
+            .setAudioChannels(1)
+            .setAudioFrequency(8000)
+            .addCommand('-af', 'aresample=resampler=soxr:precision=28:dither_method=triangular')
+            .save(outputPath, (error, file) => {
+                if (error) {
+                    rejectPromise(error);
+                    return;
+                }
+                resolvePromise(file);
+            });
+    });
 
     console.log(`Converted ${inputPath} -> ${outputPath} (${format})`);
 } catch (error) {
