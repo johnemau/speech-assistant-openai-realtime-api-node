@@ -54,12 +54,15 @@ npm install
 
 ### Run tests
 
-Quickly verify code changes and linting:
+Quickly verify code changes:
 ```
 npm test
 ```
 Notes:
-- The default test script runs ESLint to catch issues early.
+- `npm test` runs the unit test suite.
+- Run `npm run lint` for ESLint checks.
+- Run `npm run typecheck` for TypeScript type checking (JS + JSDoc).
+- Run `npm run ci` to execute lint, typecheck, and unit tests sequentially.
 
 ### Voice test runner (text-mode)
 
@@ -193,7 +196,7 @@ ngrok forwarding active on domain your-subdomain.ngrok.app
 Quick local checks:
 - Visit http://localhost:10000/ to confirm the root endpoint.
 - Visit http://localhost:10000/healthz for a simple health check.
-- Run `npm test` to lint and verify code changes.
+- Run `npm run ci` to lint, typecheck, and verify tests.
 
 ### SMS Auto‑Reply
 
@@ -246,6 +249,7 @@ Implementation details:
 - The `/incoming-call` TwiML now includes `<Parameter name="twilio_number" value="[To]" />`.
 - The media stream stores this number on `start` and the tool sends via the shared Twilio REST client.
 - Tool execution returns `sid/status/length` via `function_call_output`, then the assistant briefly confirms.
+
 ## Personalized Greeting
 
 - **Env vars:** `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`
@@ -258,7 +262,7 @@ SECONDARY_USER_FIRST_NAME=Taylor
 ```
 
 If a name is not set for the matching caller group, the assistant will greet you as "legend".
-```
+
 ## Test the app
 With the development server running, call the phone number you purchased in the **Prerequisites**. After the introduction, you should be able to talk to the AI Assistant. Have fun!
 
@@ -286,6 +290,13 @@ WAIT_MUSIC_FILE=melodyloops-relaxing-jazz.pcmu
 
 Notes:
 - Audio must be raw PCMU (G.711 µ-law), 8 kHz, mono; frames are sent at ~20 ms cadence to Twilio.
+- Use the conversion script to generate a compatible file (requires `ffmpeg` on your PATH):
+
+```
+npm run convert:wav -- input.wav output.pcmu --format=mulaw
+```
+
+- `--format=mulaw` generates µ-law audio (recommended for waiting music). Use `--format=pcm` for linear PCM.
 - Music starts after `WAIT_MUSIC_THRESHOLD_MS` when a tool call begins and stops on the first assistant `response.output_audio.delta`, on `input_audio_buffer.speech_started`, and at cleanup.
 - `WAIT_MUSIC_VOLUME` is retained for compatibility but is not applied to raw PCMU files.
 
