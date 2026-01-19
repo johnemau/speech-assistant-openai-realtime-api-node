@@ -289,7 +289,17 @@ Notes:
 - Music starts after `WAIT_MUSIC_THRESHOLD_MS` when a tool call begins and stops on the first assistant `response.output_audio.delta`, on `input_audio_buffer.speech_started`, and at cleanup.
 - Adjust `WAIT_MUSIC_VOLUME` to taste. Keep volume low to avoid distraction and clipping.
 
-Provide a `.wav` file; the app parses WAV directly (PCM 16-bit) and downmixes/resamples to 8 kHz mono in-process, then streams PCMU frames. Non-WAV files are supported only via WAV; ffmpeg is not used.
+Optional pre-conversion (highest quality):
+
+```
+npm run convert:wav -- input.wav output.wav --format=pcm
+```
+
+- Requires ffmpeg on your PATH.
+- Use `--format=pcm` to keep compatibility with the in-app WAV parser (it still applies `WAIT_MUSIC_VOLUME` and converts to µ-law at runtime).
+- Use `--format=mulaw` to output PCMU WAV for direct streaming in custom flows.
+
+Provide a `.wav` file; the app parses WAV directly (PCM 16-bit) and downmixes/resamples to 8 kHz mono in-process, then streams PCMU frames. Non-WAV files are supported only via WAV; ffmpeg is optional for pre-conversion and is not used at runtime.
 
 ### Follow-up Questions (optional)
 

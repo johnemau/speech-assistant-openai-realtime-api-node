@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "test": "npm run test:unit",
     "test:unit": "node --test src/**/*.test.js",
-    "test:voice": "node --test tests/voice-tests.js"
+    "test:voice": "node --test tests/voice-tests.js",
+    "convert:wav": "node scripts/convert-wav.mjs"
   },
   "keywords": [],
   "author": "",
