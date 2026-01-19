@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from 'node:child_process';
+import ffmpeg from 'ffmpeg';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -33,30 +33,29 @@ if (!existsSync(inputPath)) {
 }
 
 const codec = format === 'mulaw' ? 'pcm_mulaw' : 'pcm_s16le';
-const ffmpegArgs = [
-    '-hide_banner',
-    '-y',
-    '-i',
-    inputPath,
-    '-af',
-    'aresample=resampler=soxr:precision=28:dither_method=triangular',
-    '-ac',
-    '1',
-    '-ar',
-    '8000',
-    '-c:a',
-    codec,
-    outputPath,
-];
 
-const result = spawnSync('ffmpeg', ffmpegArgs, { stdio: 'inherit' });
-if (result.error) {
-    console.error(`Failed to run ffmpeg: ${result.error.message}`);
+try {
+    const process = new ffmpeg(inputPath);
+    await process
+        .then((video) =>
+            new Promise((resolvePromise, rejectPromise) => {
+                video
+                    .setAudioCodec(codec)
+                    .setAudioChannels(1)
+                    .setAudioFrequency(8000)
+                    .addCommand('-af', 'aresample=resampler=soxr:precision=28:dither_method=triangular')
+                    .save(outputPath, (error, file) => {
+                        if (error) {
+                            rejectPromise(error);
+                            return;
+                        }
+                        resolvePromise(file);
+                    });
+            })
+        );
+
+    console.log(`Converted ${inputPath} -> ${outputPath} (${format})`);
+} catch (error) {
+    console.error(`Failed to run ffmpeg: ${error?.message || error}`);
     process.exit(1);
 }
-if (result.status !== 0) {
-    console.error(`ffmpeg exited with code ${result.status}`);
-    process.exit(result.status ?? 1);
-}
-
-console.log(`Converted ${inputPath} -> ${outputPath} (${format})`);

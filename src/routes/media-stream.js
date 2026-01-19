@@ -11,7 +11,7 @@ import {
     TEMPERATURE as temperature,
     SHOW_TIMING_MATH as showTimingMath,
 } from '../init.js';
-import { parseWavToUlaw } from '../utils/audio.js';
+import { readPcmuFile } from '../utils/audio.js';
 import { getToolDefinitions, executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
@@ -22,7 +22,6 @@ import {
     SECONDARY_CALLERS_SET,
     WAIT_MUSIC_FILE,
     WAIT_MUSIC_THRESHOLD_MS,
-    WAIT_MUSIC_VOLUME,
     PRIMARY_USER_FIRST_NAME,
     SECONDARY_USER_FIRST_NAME,
 } from '../env.js';
@@ -94,38 +93,33 @@ export function mediaStreamHandler(connection, req) {
             // If audio file is provided and exists
             if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
                 try {
-                    if (WAIT_MUSIC_FILE.toLowerCase().endsWith('.wav')) {
-                        // Parse WAV and pre-encode to µ-law buffer
-                        waitingMusicUlawBuffer = parseWavToUlaw(WAIT_MUSIC_FILE, WAIT_MUSIC_VOLUME);
-                        waitingMusicOffset = 0;
-                        if (!waitingMusicInterval) {
-                            waitingMusicInterval = setInterval(() => {
-                                if (!isWaitingMusic || !streamSid || !waitingMusicUlawBuffer || waitingMusicUlawBuffer.length < 160) return;
-                                const frameSize = 160; // 20ms @ 8kHz mono
-                                let end = waitingMusicOffset + frameSize;
-                                let frame;
-                                if (end <= waitingMusicUlawBuffer.length) {
-                                    frame = waitingMusicUlawBuffer.subarray(waitingMusicOffset, end);
-                                } else {
-                                    const first = waitingMusicUlawBuffer.subarray(waitingMusicOffset);
-                                    const rest = waitingMusicUlawBuffer.subarray(0, end - waitingMusicUlawBuffer.length);
-                                    frame = Buffer.concat([first, rest]);
-                                }
-                                waitingMusicOffset = end % waitingMusicUlawBuffer.length;
-                                const payload = frame.toString('base64');
-                                connection.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }));
-                            }, 20);
-                        }
-                    } else {
-                        // Non-WAV files are not supported without ffmpeg; waiting music disabled
-                        console.warn({ event: 'wait_music.unsupported_file', file: WAIT_MUSIC_FILE });
+                    // Read raw PCMU and pre-load into µ-law buffer
+                    waitingMusicUlawBuffer = readPcmuFile(WAIT_MUSIC_FILE);
+                    waitingMusicOffset = 0;
+                    if (!waitingMusicInterval) {
+                        waitingMusicInterval = setInterval(() => {
+                            if (!isWaitingMusic || !streamSid || !waitingMusicUlawBuffer || waitingMusicUlawBuffer.length < 160) return;
+                            const frameSize = 160; // 20ms @ 8kHz mono
+                            let end = waitingMusicOffset + frameSize;
+                            let frame;
+                            if (end <= waitingMusicUlawBuffer.length) {
+                                frame = waitingMusicUlawBuffer.subarray(waitingMusicOffset, end);
+                            } else {
+                                const first = waitingMusicUlawBuffer.subarray(waitingMusicOffset);
+                                const rest = waitingMusicUlawBuffer.subarray(0, end - waitingMusicUlawBuffer.length);
+                                frame = Buffer.concat([first, rest]);
+                            }
+                            waitingMusicOffset = end % waitingMusicUlawBuffer.length;
+                            const payload = frame.toString('base64');
+                            connection.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }));
+                        }, 20);
                     }
                 } catch (e) {
                     console.error('Failed to load waiting music file; disabling waiting music:', e?.message || e);
                 }
             }
 
-            // No fallback tone; only WAV file is supported for waiting music.
+            // No fallback tone; only raw PCMU file is supported for waiting music.
         }
 
         function stopWaitingMusic(reason = 'unknown') {

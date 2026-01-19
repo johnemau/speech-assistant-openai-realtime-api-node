@@ -28,7 +28,7 @@ export const ALL_ALLOWED_CALLERS_SET = new Set([
 // Waiting music configuration (optional)
 export const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 500);
 export const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
-export const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.wav
+export const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.pcmu
 
 export const DEFAULT_SMS_USER_LOCATION = { type: 'approximate', country: 'US', region: 'Washington' };
 
