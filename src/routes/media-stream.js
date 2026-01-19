@@ -10,7 +10,7 @@ import {
     VOICE as voice,
     TEMPERATURE as temperature,
     SHOW_TIMING_MATH as showTimingMath,
-} from '../app-context.js';
+} from '../init.js';
 import { parseWavToUlaw } from '../utils/audio.js';
 import { getToolDefinitions, executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';

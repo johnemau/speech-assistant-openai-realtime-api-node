@@ -5,7 +5,7 @@ import fastifyWs from '@fastify/websocket';
 import { registerSmsRoute } from './src/routes/sms.js';
 import { registerIncomingCallRoute } from './src/routes/incoming-call.js';
 import { registerMediaStreamRoute } from './src/routes/media-stream.js';
-import { NGROK_DOMAIN, PORT } from './src/app-context.js';
+import { NGROK_DOMAIN, PORT } from './src/init.js';
 
 // Initialize Fastify
 const fastify = Fastify();

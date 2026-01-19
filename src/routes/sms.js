@@ -1,6 +1,6 @@
 import twilio from 'twilio';
 import { SMS_REPLY_INSTRUCTIONS } from '../assistant/prompts.js';
-import { openaiClient, twilioClient } from '../app-context.js';
+import { openaiClient, twilioClient } from '../init.js';
 import {
     buildSmsPrompt,
     buildSmsThreadText,
