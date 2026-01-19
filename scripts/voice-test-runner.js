@@ -1,32 +1,14 @@
 import dotenv from 'dotenv';
-import OpenAI from 'openai';
-import twilio from 'twilio';
-import nodemailer from 'nodemailer';
 import { createAssistantSession, safeParseToolArguments } from '../src/assistant/session.js';
 import { getToolDefinitions, executeToolCall } from '../src/tools/index.js';
 import { judgeResponse } from '../src/testing/judge.js';
 import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../src/assistant/prompts.js';
 import { callerTurns, expectedAssistant } from '../tests/voice-tests.js';
+import { isTruthy } from '../src/utils/env.js';
+import { normalizeUSNumberToE164 } from '../src/utils/phone.js';
+import { createOpenAIClient, createTwilioClient, createEmailTransport } from '../src/utils/clients.js';
 
 dotenv.config();
-
-function isTruthy(val) {
-    const v = String(val || '').trim().toLowerCase();
-    return v === '1' || v === 'true' || v === 'yes' || v === 'on';
-}
-
-function normalizeUSNumberToE164(input) {
-    if (!input) return null;
-    const trimmed = String(input).trim();
-    if (trimmed.startsWith('+')) {
-        const normalized = '+' + trimmed.replace(/[^0-9]/g, '');
-        return normalized;
-    }
-    const digits = trimmed.replace(/[^0-9]/g, '');
-    if (!digits) return null;
-    const withCountry = digits.startsWith('1') ? digits : ('1' + digits);
-    return '+' + withCountry;
-}
 
 const { OPENAI_API_KEY } = process.env;
 if (!OPENAI_API_KEY) {
@@ -34,27 +16,23 @@ if (!OPENAI_API_KEY) {
     process.exit(1);
 }
 
-const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+const openaiClient = createOpenAIClient({ apiKey: OPENAI_API_KEY });
 
-let twilioClient = null;
-try {
-    const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_API_KEY, TWILIO_API_SECRET } = process.env;
-    if (TWILIO_API_KEY && TWILIO_API_SECRET && TWILIO_ACCOUNT_SID) {
-        twilioClient = twilio(TWILIO_API_KEY, TWILIO_API_SECRET, { accountSid: TWILIO_ACCOUNT_SID });
-    } else if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
-        twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-    }
-} catch (e) {
-    console.warn('Failed to initialize Twilio client:', e?.message || e);
-}
+const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_API_KEY, TWILIO_API_SECRET } = process.env;
+const twilioClient = createTwilioClient({
+    accountSid: TWILIO_ACCOUNT_SID,
+    authToken: TWILIO_AUTH_TOKEN,
+    apiKey: TWILIO_API_KEY,
+    apiSecret: TWILIO_API_SECRET,
+    logger: console
+});
 
-let senderTransport = null;
-if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    senderTransport = nodemailer.createTransport({
-        service: process.env.SMTP_NODEMAILER_SERVICE_ID,
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    });
-}
+const senderTransport = createEmailTransport({
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    serviceId: process.env.SMTP_NODEMAILER_SERVICE_ID,
+    logger: console
+});
 
 const allowLiveSideEffects = isTruthy(process.env.ALLOW_LIVE_SIDE_EFFECTS);
 const passScoreThreshold = Number(process.env.JUDGE_PASS_SCORE || 0.7);
