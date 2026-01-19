@@ -4,145 +4,23 @@ import WebSocket from 'ws';
 import dotenv from 'dotenv';
 import fastifyFormBody from '@fastify/formbody';
 import fastifyWs from '@fastify/websocket';
-import OpenAI from 'openai';
 import fs from 'fs';
-import nodemailer from 'nodemailer';
-import patchLogs from 'redact-logs';
-import { scrub, findSensitiveValues } from '@zapier/secret-scrubber';
-import { inspect } from 'node:util';
 import twilio from 'twilio';
 import { createAssistantSession, safeParseToolArguments } from './src/assistant/session.js';
 import { getToolDefinitions, executeToolCall } from './src/tools/index.js';
 import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS, SMS_REPLY_INSTRUCTIONS } from './src/assistant/prompts.js';
+import { createOpenAIClient, createTwilioClient, createEmailTransport } from './src/utils/clients.js';
+import { stringifyDeep } from './src/utils/format.js';
+import { normalizeUSNumberToE164 } from './src/utils/phone.js';
+import { setupConsoleRedaction, redactErrorDetail } from './src/utils/redaction.js';
 
 // Load environment variables from .env file
 dotenv.config();
 
-// Enable redaction of sensitive env vars from console and stdout
-function isTruthy(val) {
-    const v = String(val || '').trim().toLowerCase();
-    return v === '1' || v === 'true' || v === 'yes' || v === 'on';
-}
-
-// Helper: stringify objects for logging with deep nesting
-function stringifyDeep(obj) {
-    try {
-        return inspect(obj, { depth: 10, colors: false, compact: false });
-    } catch {
-        try { return JSON.stringify(obj); } catch { return String(obj); }
-    }
-}
-
 // Environment flags
 const IS_DEV = String(process.env.NODE_ENV || '').toLowerCase() === 'development';
-
-const DEFAULT_SECRET_ENV_KEYS = [
-    'OPENAI_API_KEY',
-    'NGROK_AUTHTOKEN',
-    'SMTP_NODEMAILER_SERVICE_ID',
-    'SMTP_PASS',
-    'SMTP_USER',
-    'SENDER_FROM_EMAIL',
-    'PRIMARY_TO_EMAIL',
-    'SECONDARY_TO_EMAIL',
-    'TWILIO_SMS_FROM_NUMBER',
-    // Caller-related environment variables
-    'PRIMARY_USER_PHONE_NUMBERS',
-    'SECONDARY_USER_PHONE_NUMBERS',
-    'PRIMARY_USER_FIRST_NAME',
-    'SECONDARY_USER_FIRST_NAME',
-    'TWILIO_AUTH_TOKEN',
-    'TWILIO_ACCOUNT_SID',
-    'TWILIO_API_KEY',
-    'TWILIO_API_SECRET',
-];
-
-let disableLogRedaction = null;
-try {
-    const extraKeys = (process.env.REDACT_ENV_KEYS || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-    const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
-    // Enable redaction by default
-    disableLogRedaction = patchLogs(keys);
-    // Optional: brief confirmation without leaking values
-    console.log('Log redaction enabled for env keys:', keys);
-    // If env flag is truthy, disable the redaction immediately
-    if (isTruthy(process.env.DISABLE_LOG_REDACTION)) {
-        try {
-            disableLogRedaction();
-            console.log('Log redaction disabled via DISABLE_LOG_REDACTION env flag.');
-        } catch (err) {
-            console.warn('Failed to disable log redaction:', err?.message || err);
-        }
-    }
-} catch (e) {
-    console.warn('Failed to initialize log redaction:', e?.message || e);
-}
-
-// Wrap console methods to proactively scrub sensitive data in any logged objects
-// Skip entirely if DISABLE_LOG_REDACTION is truthy
-if (!isTruthy(process.env.DISABLE_LOG_REDACTION)) {
-    try {
-        const envSecretValues = (() => {
-            const extraKeys = (process.env.REDACT_ENV_KEYS || '')
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean);
-            const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
-            const vals = [];
-            for (const k of keys) {
-                const v = process.env[k];
-                if (typeof v === 'string' && v.length > 0) vals.push(v);
-            }
-            return vals;
-        })();
-
-        const original = {
-            log: console.log.bind(console),
-            error: console.error.bind(console),
-            warn: console.warn.bind(console),
-            info: console.info.bind(console),
-        };
-
-        const sanitizeArgs = (args) => {
-            let guessed = [];
-            try {
-                for (const a of args) {
-                    if (a && typeof a === 'object') {
-                        try {
-                            guessed.push(...findSensitiveValues(a));
-                        } catch {}
-                    }
-                }
-            } catch {}
-            const secrets = Array.from(new Set([
-                ...envSecretValues,
-                ...guessed,
-            ]));
-
-            return args.map((a) => {
-                try {
-                    if (typeof a === 'string' || (a && typeof a === 'object') || Array.isArray(a)) {
-                        return scrub(a, secrets);
-                    }
-                } catch {}
-                return a;
-            });
-        };
-
-        console.log = (...args) => original.log(...sanitizeArgs(args));
-        console.error = (...args) => original.error(...sanitizeArgs(args));
-        console.warn = (...args) => original.warn(...sanitizeArgs(args));
-        console.info = (...args) => original.info(...sanitizeArgs(args));
-    } catch (e) {
-        // If scrubber initialization fails, leave console untouched
-        console.warn('Secret scrubber initialization failed:', e?.message || e);
-    }
-} else {
-    console.warn('DISABLE_LOG_REDACTION is truthy; secret scrubber not initialized.');
-}
+// Enable redaction of sensitive env vars from console and stdout
+const { secretKeys: REDACTION_KEYS } = setupConsoleRedaction(process.env);
 
 // Retrieve required environment variables.
 const { OPENAI_API_KEY, NGROK_DOMAIN, PRIMARY_USER_FIRST_NAME, SECONDARY_USER_FIRST_NAME } = process.env;
@@ -166,42 +44,24 @@ if (!NGROK_DOMAIN) {
 }
 
 // Initialize OpenAI client
-const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+const openaiClient = createOpenAIClient({ apiKey: OPENAI_API_KEY });
 
 // Initialize Twilio REST client (for SMS send/list). This is separate from the TwiML helper usage.
-let twilioClient = null;
-try {
-    // Prefer API Key + Secret with Account SID (recommended by Twilio for production)
-    if (TWILIO_API_KEY && TWILIO_API_SECRET && TWILIO_ACCOUNT_SID) {
-        twilioClient = twilio(TWILIO_API_KEY, TWILIO_API_SECRET, { accountSid: TWILIO_ACCOUNT_SID });
-        console.log('Twilio REST client initialized with API Key + Secret.');
-    } else if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
-        // Fallback: Account SID + Auth Token (best for local testing)
-        twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-        console.log('Twilio REST client initialized with Account SID + Auth Token.');
-    } else {
-        console.warn('Twilio credentials missing; provide API Key + Secret + Account SID or Account SID + Auth Token. SMS auto-reply will be unavailable.');
-    }
-} catch (e) {
-    console.warn('Failed to initialize Twilio REST client:', e?.message || e);
-}
-
-let senderTransport = null;
+const twilioClient = createTwilioClient({
+    accountSid: TWILIO_ACCOUNT_SID,
+    authToken: TWILIO_AUTH_TOKEN,
+    apiKey: TWILIO_API_KEY,
+    apiSecret: TWILIO_API_SECRET,
+    logger: console
+});
 
 // Initialize Nodemailer transporter (single sender) using service ID
-if (SMTP_USER && SMTP_PASS) {
-    senderTransport = nodemailer.createTransport({
-        service: SMTP_NODEMAILER_SERVICE_ID,
-        auth: { user: SMTP_USER, pass: SMTP_PASS },
-    });
-    senderTransport.verify().then(() => {
-        console.log('Email transporter verified.');
-    }).catch((err) => {
-        console.warn('Email transporter verification failed:', err?.message || err);
-    });
-} else {
-    console.warn('SMTP credentials missing; send_email will be unavailable.');
-}
+let senderTransport = createEmailTransport({
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+    serviceId: SMTP_NODEMAILER_SERVICE_ID,
+    logger: console
+});
 if (!SENDER_FROM_EMAIL) {
     console.warn('SENDER_FROM_EMAIL missing; emails cannot be sent until configured.');
 }
@@ -215,24 +75,6 @@ const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 10000; // Render default PORT is 10000
 
-
-// Allowed callers (E.164). Configure via env `PRIMARY_USER_PHONE_NUMBERS` and `SECONDARY_USER_PHONE_NUMBERS` as comma-separated numbers.
-function normalizeUSNumberToE164(input) {
-    if (!input) return null;
-    // Remove non-digits except leading +
-    const trimmed = String(input).trim();
-    if (trimmed.startsWith('+')) {
-        // Keep only + and digits
-        const normalized = '+' + trimmed.replace(/[^0-9]/g, '');
-        return normalized;
-    }
-    // Strip all non-digits
-    const digits = trimmed.replace(/[^0-9]/g, '');
-    if (!digits) return null;
-    // Ensure leading country code 1 for US
-    const withCountry = digits.startsWith('1') ? digits : ('1' + digits);
-    return '+' + withCountry;
-}
 
 const PRIMARY_CALLERS_SET = new Set(
     (process.env.PRIMARY_USER_PHONE_NUMBERS || '')
@@ -435,22 +277,12 @@ fastify.post('/sms', async (request, reply) => {
             console.error('OpenAI SMS reply error:', e?.message || e);
             let detail = e?.message || stringifyDeep(e);
             if (!IS_DEV) {
-                try {
-                    const extraKeys = (process.env.REDACT_ENV_KEYS || '')
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                    const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
-                    const envVals = [];
-                    for (const k of keys) {
-                        const v = process.env[k];
-                        if (typeof v === 'string' && v.length > 0) envVals.push(v);
-                    }
-                    let guessed = [];
-                    try { guessed = findSensitiveValues(e); } catch {}
-                    const secrets = Array.from(new Set([...envVals, ...guessed]));
-                    detail = scrub(detail, secrets);
-                } catch {}
+                detail = redactErrorDetail({
+                    errorLike: e,
+                    detail,
+                    env: process.env,
+                    secretKeys: REDACTION_KEYS
+                });
             }
             // Structured error log (redacted unless development)
             console.error({
@@ -494,22 +326,12 @@ fastify.post('/sms', async (request, reply) => {
             // Fallback: reply via TwiML with redacted error details to ensure the user gets context
             let detail = e?.message || stringifyDeep(e);
             if (!IS_DEV) {
-                try {
-                    const extraKeys = (process.env.REDACT_ENV_KEYS || '')
-                        .split(',')
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                    const keys = Array.from(new Set([...DEFAULT_SECRET_ENV_KEYS, ...extraKeys]));
-                    const envVals = [];
-                    for (const k of keys) {
-                        const v = process.env[k];
-                        if (typeof v === 'string' && v.length > 0) envVals.push(v);
-                    }
-                    let guessed = [];
-                    try { guessed = findSensitiveValues(e); } catch {}
-                    const secrets = Array.from(new Set([...envVals, ...guessed]));
-                    detail = scrub(detail, secrets);
-                } catch {}
+                detail = redactErrorDetail({
+                    errorLike: e,
+                    detail,
+                    env: process.env,
+                    secretKeys: REDACTION_KEYS
+                });
             }
             // Structured error log (redacted unless development)
             console.error({
