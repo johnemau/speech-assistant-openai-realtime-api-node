@@ -8,7 +8,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
     "test": "npm run lint && npm run typecheck && npm run test:unit",
-    "test:unit": "node --test src/**/*.test.js",
+    "test:unit": "node --test src/**/*.test.js scripts/**/*.test.js",
     "test:voice": "node --test tests/voice-tests.js",
     "convert:wav": "node scripts/convert-wav.mjs"
   },
@@ -22,6 +22,7 @@
     "@ngrok/ngrok": "^1.3.0",
     "@zapier/secret-scrubber": "^1.1.6",
     "json5": "^2.2.3",
+    "minimist": "^1.2.8",
     "dotenv": "^16.4.5",
     "fastify": "^5.0.0",
     "nodemailer": "^7.0.12",
@@ -32,14 +33,17 @@
   },
   "devDependencies": {
     "@types/ffmpeg": "^1.0.7",
+    "@types/minimist": "^1.2.5",
     "@types/node": "^22.13.1",
     "@types/nodemailer": "^6.4.17",
+    "@types/sinon": "^17.0.3",
     "@eslint/js": "^9.39.2",
     "@typescript-eslint/parser": "^8.50.0",
     "eslint": "^9.39.2",
     "eslint-plugin-jsdoc": "^50.8.0",
     "ffmpeg": "^0.0.4",
     "globals": "^15.9.0",
+    "sinon": "^19.0.2",
     "typescript": "^5.7.3"
   }
 }

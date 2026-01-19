@@ -1,44 +1,46 @@
 #!/usr/bin/env node
 import ffmpeg from 'ffmpeg';
+import minimist from 'minimist';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-function printUsage() {
-    console.log('Usage: npm run convert:wav -- <input.wav> <output.wav>');
-    console.log('Options: --format=mulaw|pcm (default: mulaw)');
+/**
+ * @typedef {{ log: (...args: any[]) => void, error: (...args: any[]) => void }} Logger
+ */
+
+/**
+ * @param {Logger} logger
+ */
+export function printUsage(logger = console) {
+    logger.log('Usage: npm run convert:wav -- <input.wav> <output.wav>');
+    logger.log('Options: --format=mulaw|pcm (default: mulaw)');
 }
 
-const rawArgs = process.argv.slice(2);
-const formatArg = rawArgs.find((arg) => arg.startsWith('--format='));
-const format = formatArg ? formatArg.split('=')[1] : 'mulaw';
-const args = rawArgs.filter((arg) => !arg.startsWith('--format='));
-
-if (format !== 'mulaw' && format !== 'pcm') {
-    console.error(`Unsupported format: ${format}`);
-    printUsage();
-    process.exit(1);
+export function parseArgs(rawArgs) {
+    const parsed = minimist(rawArgs, {
+        string: ['format'],
+        default: { format: 'mulaw' },
+        alias: { format: 'f' },
+    });
+    const { format } = parsed;
+    const args = parsed._;
+    return { format, args };
 }
 
-if (args.length < 2) {
-    printUsage();
-    process.exit(1);
+export function isSupportedFormat(format) {
+    return format === 'mulaw' || format === 'pcm';
 }
 
-const inputPath = resolve(args[0]);
-const outputPath = resolve(args[1]);
-
-if (!existsSync(inputPath)) {
-    console.error(`Input file not found: ${inputPath}`);
-    process.exit(1);
+export function getCodecForFormat(format) {
+    return format === 'mulaw' ? 'pcm_mulaw' : 'pcm_s16le';
 }
 
-const codec = format === 'mulaw' ? 'pcm_mulaw' : 'pcm_s16le';
-
-try {
-    const ffmpegProcess = new ffmpeg(inputPath);
+export async function convertWithFfmpeg({ ffmpegModule, inputPath, outputPath, codec }) {
+    const ffmpegProcess = new ffmpegModule(inputPath);
     /** @type {any} */
     const video = await ffmpegProcess;
-    await new Promise((resolvePromise, rejectPromise) => {
+    return new Promise((resolvePromise, rejectPromise) => {
         video
             .setAudioCodec(codec)
             .setAudioChannels(1)
@@ -52,9 +54,63 @@ try {
                 resolvePromise(file);
             });
     });
+}
 
-    console.log(`Converted ${inputPath} -> ${outputPath} (${format})`);
-} catch (error) {
-    console.error(`Failed to run ffmpeg: ${error?.message || error}`);
-    process.exit(1);
+/**
+ * @param {{
+ *  argv?: string[],
+ *  logger?: Logger,
+ *  exit?: (code?: number) => void,
+ *  existsSyncFn?: (path: import('node:fs').PathLike) => boolean,
+ *  resolvePath?: (...paths: string[]) => string,
+ *  ffmpegModule?: any
+ * }=} options
+ */
+export async function run({
+    argv = process.argv,
+    logger = console,
+    exit = process.exit,
+    existsSyncFn = existsSync,
+    resolvePath = resolve,
+    ffmpegModule = ffmpeg,
+} = {}) {
+    const rawArgs = argv.slice(2);
+    const { format, args } = parseArgs(rawArgs);
+
+    if (!isSupportedFormat(format)) {
+        logger.error(`Unsupported format: ${format}`);
+        printUsage(logger);
+        exit(1);
+        return;
+    }
+
+    if (args.length < 2) {
+        printUsage(logger);
+        exit(1);
+        return;
+    }
+
+    const inputPath = resolvePath(args[0]);
+    const outputPath = resolvePath(args[1]);
+
+    if (!existsSyncFn(inputPath)) {
+        logger.error(`Input file not found: ${inputPath}`);
+        exit(1);
+        return;
+    }
+
+    const codec = getCodecForFormat(format);
+
+    try {
+        await convertWithFfmpeg({ ffmpegModule, inputPath, outputPath, codec });
+        logger.log(`Converted ${inputPath} -> ${outputPath} (${format})`);
+    } catch (error) {
+        logger.error(`Failed to run ffmpeg: ${error?.message || error}`);
+        exit(1);
+    }
+}
+
+const isCli = import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isCli) {
+    await run();
 }
