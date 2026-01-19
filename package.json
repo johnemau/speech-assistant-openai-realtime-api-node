@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
     "test": "npm run test:unit",
+    "ci": "npm run lint && npm run typecheck && npm run test:unit",
     "test:unit": "node --test src/**/*.test.js",
     "test:voice": "node --test tests/voice-tests.js",
     "convert:wav": "node scripts/convert-wav.mjs"
