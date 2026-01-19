@@ -32,10 +32,7 @@ export default [
       reportUnusedDisableDirectives: true
     },
     rules: {
-      'no-unused-vars': ['error', { args: 'none', ignoreRestSiblings: true }],
-      'no-empty': 'error',
-      'no-useless-escape': 'error',
-      'no-case-declarations': 'error'
+      'no-unused-vars': ['error', { args: 'none', ignoreRestSiblings: true }]
     }
   }
 ];
