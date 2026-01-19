@@ -8,7 +8,7 @@
     "lint": "eslint .",
     "test": "npm run lint && node --test src/**/*.test.js tests/**/*.js",
     "test:unit": "node --test src/**/*.test.js",
-    "test:voice": "node --test tests/voice-tests.js",
+    "test:voice": "node --test tests/voice-tests.js"
   },
   "keywords": [],
   "author": "",
