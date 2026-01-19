@@ -8,10 +8,10 @@ import {
 } from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
-export function registerIncomingCallRoute({ fastify }) {
+export function createIncomingCallHandler() {
     // Route for Twilio to handle incoming calls
     // <Say> punctuation to improve text-to-speech translation
-    fastify.all('/incoming-call', async (request, reply) => {
+    return async (request, reply) => {
         const fromRaw = request.body?.From || request.body?.from || request.body?.Caller;
         const fromE164 = normalizeUSNumberToE164(fromRaw);
         const toRaw = request.body?.To || request.body?.to || '';
@@ -52,5 +52,5 @@ export function registerIncomingCallRoute({ fastify }) {
                           </Response>`;
 
         reply.type('text/xml').send(twimlResponse);
-    });
+    };
 }

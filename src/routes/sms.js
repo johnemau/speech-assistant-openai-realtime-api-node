@@ -17,8 +17,8 @@ import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
 
-export function registerSmsRoute({ fastify }) {
-    fastify.post('/sms', async (request, reply) => {
+export function createSmsHandler() {
+    return async (request, reply) => {
         try {
             // Note: Global console wrappers already scrub sensitive data in logs.
             // No additional per-call redaction wrapper needed in this route.
@@ -247,5 +247,5 @@ export function registerSmsRoute({ fastify }) {
             });
             return reply.code(500).send('');
         }
-    });
+    };
 }

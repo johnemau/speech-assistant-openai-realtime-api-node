@@ -27,246 +27,244 @@ import {
     SECONDARY_USER_FIRST_NAME,
 } from '../env.js';
 
-export function registerMediaStreamRoute({ fastify }) {
-    // WebSocket route for media-stream
-    fastify.register(async (fastify) => {
-        fastify.get('/media-stream', { websocket: true }, (connection, req) => {
-            console.log('Client connected');
+export function createMediaStreamHandler() {
+    return (connection, req) => {
+        console.log('Client connected');
 
-            // Connection-specific state
-            let streamSid = null;
-            let currentCallerE164 = null;
-            let currentTwilioNumberE164 = null;
-            let latestMediaTimestamp = 0;
-            let lastAssistantItem = null;
-            let markQueue = [];
-            let responseStartTimestampTwilio = null;
-            let pendingDisconnect = false;
-            let pendingDisconnectTimeout = null;
+        // Connection-specific state
+        let streamSid = null;
+        let currentCallerE164 = null;
+        let currentTwilioNumberE164 = null;
+        let latestMediaTimestamp = 0;
+        let lastAssistantItem = null;
+        let markQueue = [];
+        let responseStartTimestampTwilio = null;
+        let pendingDisconnect = false;
+        let pendingDisconnectTimeout = null;
 
-            // Track response lifecycle to avoid overlapping response.create calls
-            let responseActive = false;
+        // Track response lifecycle to avoid overlapping response.create calls
+        let responseActive = false;
 
-            // Post-hang-up behavior: suppress audio, continue tools, then SMS
-            let postHangupSilentMode = false; // when true, do not send any audio back to Twilio
-            let postHangupSmsSent = false;    // ensure the completion SMS is sent at most once
-            let lastWebSearchQuery = null;    // capture recent query to summarize
-            let lastEmailSubject = null;      // capture subject to summarize
-            let hangupDuringTools = false;    // true if caller hung up while tools were pending/active
+        // Post-hang-up behavior: suppress audio, continue tools, then SMS
+        let postHangupSilentMode = false; // when true, do not send any audio back to Twilio
+        let postHangupSmsSent = false;    // ensure the completion SMS is sent at most once
+        let lastWebSearchQuery = null;    // capture recent query to summarize
+        let lastEmailSubject = null;      // capture subject to summarize
+        let hangupDuringTools = false;    // true if caller hung up while tools were pending/active
 
-            // Mic distance / noise reduction state & counters
-            const micState = {
-                currentNoiseReductionType: 'near_field',
-                lastMicDistanceToggleTs: 0,
-                farToggles: 0,
-                nearToggles: 0,
-                skippedNoOp: 0,
-            };
+        // Mic distance / noise reduction state & counters
+        const micState = {
+            currentNoiseReductionType: 'near_field',
+            lastMicDistanceToggleTs: 0,
+            farToggles: 0,
+            nearToggles: 0,
+            skippedNoOp: 0,
+        };
 
-            // Waiting music state
-            let isWaitingMusic = false;
-            let waitingMusicInterval = null;
-            let waitingMusicStartTimeout = null;
-            let toolCallInProgress = false;
-            // Track the very first assistant audio to stop initial wait music
-            let firstAssistantAudioReceived = false;
-            // ffmpeg removed; we only support WAV files; no tone fallback
-            let waitingMusicUlawBuffer = null;
-            let waitingMusicOffset = 0;
+        // Waiting music state
+        let isWaitingMusic = false;
+        let waitingMusicInterval = null;
+        let waitingMusicStartTimeout = null;
+        let toolCallInProgress = false;
+        // Track the very first assistant audio to stop initial wait music
+        let firstAssistantAudioReceived = false;
+        // ffmpeg removed; we only support WAV files; no tone fallback
+        let waitingMusicUlawBuffer = null;
+        let waitingMusicOffset = 0;
 
-            function startWaitingMusic(reason = 'unknown') {
-                if (!streamSid || isWaitingMusic) return;
-                isWaitingMusic = true;
+        function startWaitingMusic(reason = 'unknown') {
+            if (!streamSid || isWaitingMusic) return;
+            isWaitingMusic = true;
+            try {
+                console.info({
+                    event: 'wait_music.start',
+                    reason,
+                    streamSid,
+                    threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
+                    file: WAIT_MUSIC_FILE || null
+                });
+            } catch {}
+            // If audio file is provided and exists
+            if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
                 try {
-                    console.info({
-                        event: 'wait_music.start',
-                        reason,
-                        streamSid,
-                        threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
-                        file: WAIT_MUSIC_FILE || null
-                    });
-                } catch {}
-                // If audio file is provided and exists
-                if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
-                    try {
-                        if (WAIT_MUSIC_FILE.toLowerCase().endsWith('.wav')) {
-                            // Parse WAV and pre-encode to µ-law buffer
-                            waitingMusicUlawBuffer = parseWavToUlaw(WAIT_MUSIC_FILE, WAIT_MUSIC_VOLUME);
-                            waitingMusicOffset = 0;
-                            if (!waitingMusicInterval) {
-                                waitingMusicInterval = setInterval(() => {
-                                    if (!isWaitingMusic || !streamSid || !waitingMusicUlawBuffer || waitingMusicUlawBuffer.length < 160) return;
-                                    const frameSize = 160; // 20ms @ 8kHz mono
-                                    let end = waitingMusicOffset + frameSize;
-                                    let frame;
-                                    if (end <= waitingMusicUlawBuffer.length) {
-                                        frame = waitingMusicUlawBuffer.subarray(waitingMusicOffset, end);
-                                    } else {
-                                        const first = waitingMusicUlawBuffer.subarray(waitingMusicOffset);
-                                        const rest = waitingMusicUlawBuffer.subarray(0, end - waitingMusicUlawBuffer.length);
-                                        frame = Buffer.concat([first, rest]);
-                                    }
-                                    waitingMusicOffset = end % waitingMusicUlawBuffer.length;
-                                    const payload = frame.toString('base64');
-                                    connection.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }));
-                                }, 20);
-                            }
-                        } else {
-                            // Non-WAV files are not supported without ffmpeg; waiting music disabled
-                            console.warn({ event: 'wait_music.unsupported_file', file: WAIT_MUSIC_FILE });
+                    if (WAIT_MUSIC_FILE.toLowerCase().endsWith('.wav')) {
+                        // Parse WAV and pre-encode to µ-law buffer
+                        waitingMusicUlawBuffer = parseWavToUlaw(WAIT_MUSIC_FILE, WAIT_MUSIC_VOLUME);
+                        waitingMusicOffset = 0;
+                        if (!waitingMusicInterval) {
+                            waitingMusicInterval = setInterval(() => {
+                                if (!isWaitingMusic || !streamSid || !waitingMusicUlawBuffer || waitingMusicUlawBuffer.length < 160) return;
+                                const frameSize = 160; // 20ms @ 8kHz mono
+                                let end = waitingMusicOffset + frameSize;
+                                let frame;
+                                if (end <= waitingMusicUlawBuffer.length) {
+                                    frame = waitingMusicUlawBuffer.subarray(waitingMusicOffset, end);
+                                } else {
+                                    const first = waitingMusicUlawBuffer.subarray(waitingMusicOffset);
+                                    const rest = waitingMusicUlawBuffer.subarray(0, end - waitingMusicUlawBuffer.length);
+                                    frame = Buffer.concat([first, rest]);
+                                }
+                                waitingMusicOffset = end % waitingMusicUlawBuffer.length;
+                                const payload = frame.toString('base64');
+                                connection.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }));
+                            }, 20);
                         }
-                    } catch (e) {
-                        console.error('Failed to load waiting music file; disabling waiting music:', e?.message || e);
-                    }
-                }
-
-                // No fallback tone; only WAV file is supported for waiting music.
-            }
-
-            function stopWaitingMusic(reason = 'unknown') {
-                if (waitingMusicStartTimeout) {
-                    clearTimeout(waitingMusicStartTimeout);
-                    waitingMusicStartTimeout = null;
-                }
-                if (isWaitingMusic) {
-                    isWaitingMusic = false;
-                    try {
-                        console.info({ event: 'wait_music.stop', reason, streamSid });
-                    } catch {}
-                }
-                // Remove unused buffer since ffmpeg is not used
-                waitingMusicUlawBuffer = null;
-                waitingMusicOffset = 0;
-                // Ensure any playback interval is cleared
-                clearWaitingMusicInterval();
-            }
-
-            function clearWaitingMusicInterval() {
-                if (waitingMusicInterval) {
-                    clearInterval(waitingMusicInterval);
-                    waitingMusicInterval = null;
-                }
-            }
-
-            function attemptPendingDisconnectClose() {
-                try {
-                    if (!pendingDisconnect) return;
-                    // Prefer closing after Twilio marks catch up (no queued marks)
-                    if (markQueue.length === 0) {
-                        pendingDisconnect = false;
-                        if (pendingDisconnectTimeout) {
-                            clearTimeout(pendingDisconnectTimeout);
-                            pendingDisconnectTimeout = null;
-                        }
-                        stopWaitingMusic();
-                        clearWaitingMusicInterval();
-                        try { connection.close(1000, 'Call ended by assistant'); } catch {}
-                        try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {}
-                        console.log('Call closed after goodbye playback.');
+                    } else {
+                        // Non-WAV files are not supported without ffmpeg; waiting music disabled
+                        console.warn({ event: 'wait_music.unsupported_file', file: WAIT_MUSIC_FILE });
                     }
                 } catch (e) {
-                    console.warn('Attempt to close pending disconnect failed:', e?.message || e);
+                    console.error('Failed to load waiting music file; disabling waiting music:', e?.message || e);
                 }
             }
 
-            const handleAssistantOutput = (payload) => {
-                if (payload?.type !== 'audio' || !payload?.delta) return;
-                // Suppress audio entirely after hang-up; otherwise, stream to Twilio
-                // Mark that the assistant has started speaking (first-time check)
-                if (!firstAssistantAudioReceived) firstAssistantAudioReceived = true;
-                // Assistant audio is streaming; stop any waiting music immediately
-                stopWaitingMusic('assistant_audio');
-                if (!postHangupSilentMode) {
-                    const audioDelta = {
-                        event: 'media',
-                        streamSid: streamSid,
-                        media: { payload: payload.delta }
-                    };
-                    connection.send(JSON.stringify(audioDelta));
+            // No fallback tone; only WAV file is supported for waiting music.
+        }
 
-                    // First delta from a new response starts the elapsed time counter
-                    if (!responseStartTimestampTwilio) {
-                        responseStartTimestampTwilio = latestMediaTimestamp;
-                        if (showTimingMath) console.log(`Setting start timestamp for new response: ${responseStartTimestampTwilio}ms`);
+        function stopWaitingMusic(reason = 'unknown') {
+            if (waitingMusicStartTimeout) {
+                clearTimeout(waitingMusicStartTimeout);
+                waitingMusicStartTimeout = null;
+            }
+            if (isWaitingMusic) {
+                isWaitingMusic = false;
+                try {
+                    console.info({ event: 'wait_music.stop', reason, streamSid });
+                } catch {}
+            }
+            // Remove unused buffer since ffmpeg is not used
+            waitingMusicUlawBuffer = null;
+            waitingMusicOffset = 0;
+            // Ensure any playback interval is cleared
+            clearWaitingMusicInterval();
+        }
+
+        function clearWaitingMusicInterval() {
+            if (waitingMusicInterval) {
+                clearInterval(waitingMusicInterval);
+                waitingMusicInterval = null;
+            }
+        }
+
+        function attemptPendingDisconnectClose() {
+            try {
+                if (!pendingDisconnect) return;
+                // Prefer closing after Twilio marks catch up (no queued marks)
+                if (markQueue.length === 0) {
+                    pendingDisconnect = false;
+                    if (pendingDisconnectTimeout) {
+                        clearTimeout(pendingDisconnectTimeout);
+                        pendingDisconnectTimeout = null;
                     }
-
-                    if (payload.itemId) {
-                        lastAssistantItem = payload.itemId;
-                    }
-                    
-                    sendMark(connection, streamSid);
+                    stopWaitingMusic();
+                    clearWaitingMusicInterval();
+                    try { connection.close(1000, 'Call ended by assistant'); } catch {}
+                    try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {}
+                    console.log('Call closed after goodbye playback.');
                 }
-            };
+            } catch (e) {
+                console.warn('Attempt to close pending disconnect failed:', e?.message || e);
+            }
+        }
 
-            const handleOpenAiEvent = (response) => {
-                if (LOG_EVENT_TYPES.includes(response.type)) {
-                    if (IS_DEV) console.log(`Received event: ${response.type}`, response);
-                    else console.log(`Received event: ${response.type}`);
+        const handleAssistantOutput = (payload) => {
+            if (payload?.type !== 'audio' || !payload?.delta) return;
+            // Suppress audio entirely after hang-up; otherwise, stream to Twilio
+            // Mark that the assistant has started speaking (first-time check)
+            if (!firstAssistantAudioReceived) firstAssistantAudioReceived = true;
+            // Assistant audio is streaming; stop any waiting music immediately
+            stopWaitingMusic('assistant_audio');
+            if (!postHangupSilentMode) {
+                const audioDelta = {
+                    event: 'media',
+                    streamSid: streamSid,
+                    media: { payload: payload.delta }
+                };
+                connection.send(JSON.stringify(audioDelta));
+
+                // First delta from a new response starts the elapsed time counter
+                if (!responseStartTimestampTwilio) {
+                    responseStartTimestampTwilio = latestMediaTimestamp;
+                    if (showTimingMath) console.log(`Setting start timestamp for new response: ${responseStartTimestampTwilio}ms`);
                 }
+
+                if (payload.itemId) {
+                    lastAssistantItem = payload.itemId;
+                }
+                
+                sendMark(connection, streamSid);
+            }
+        };
+
+        const handleOpenAiEvent = (response) => {
+            if (LOG_EVENT_TYPES.includes(response.type)) {
+                if (IS_DEV) console.log(`Received event: ${response.type}`, response);
+                else console.log(`Received event: ${response.type}`);
+            }
 
                 // Track response lifecycle to avoid overlapping creates
                 if (response.type === 'response.created') {
                     responseActive = true;
                 }
-                if (response.type === 'response.done') {
-                    responseActive = false;
-                }
+            if (response.type === 'response.done') {
+                responseActive = false;
+            }
 
                 // When VAD ends a user turn, we must explicitly create a response (auto-create disabled)
-                if (response.type === 'input_audio_buffer.speech_stopped') {
-                    stopWaitingMusic('speech_stopped');
-                    if (!responseActive) {
+            if (response.type === 'input_audio_buffer.speech_stopped') {
+                stopWaitingMusic('speech_stopped');
+                if (!responseActive) {
+                    try {
+                        assistantSession.requestResponse();
+                    } catch (e) {
+                        console.warn('Failed to request response.create after speech_stopped:', e?.message || e);
+                    }
+                }
+            }
+
+            if (response.type === 'input_audio_buffer.speech_started') {
+                // Caller barged in; stop waiting music and handle truncation
+                stopWaitingMusic('caller_speech');
+                handleSpeechStartedEvent();
+            }
+
+            if (response.type === 'response.done') {
+                const functionCall = response.response?.output?.[0];
+                if (!functionCall || functionCall?.type !== 'function_call') {
+                    // Non-function responses: if we were asked to end the call, close after playback finishes
+                    attemptPendingDisconnectClose();
+                    // If in silent mode and no tool call is active, send a completion SMS and close OpenAI WS
+                    if (postHangupSilentMode && hangupDuringTools && !toolCallInProgress && !postHangupSmsSent) {
                         try {
-                            assistantSession.requestResponse();
-                        } catch (e) {
-                            console.warn('Failed to request response.create after speech_stopped:', e?.message || e);
-                        }
-                    }
-                }
-
-                if (response.type === 'input_audio_buffer.speech_started') {
-                    // Caller barged in; stop waiting music and handle truncation
-                    stopWaitingMusic('caller_speech');
-                    handleSpeechStartedEvent();
-                }
-
-                if (response.type === 'response.done') {
-                    const functionCall = response.response?.output?.[0];
-                    if (!functionCall || functionCall?.type !== 'function_call') {
-                        // Non-function responses: if we were asked to end the call, close after playback finishes
-                        attemptPendingDisconnectClose();
-                        // If in silent mode and no tool call is active, send a completion SMS and close OpenAI WS
-                        if (postHangupSilentMode && hangupDuringTools && !toolCallInProgress && !postHangupSmsSent) {
-                            try {
-                                const toNumber = currentCallerE164;
-                                const envFrom = normalizeUSNumberToE164(env?.TWILIO_SMS_FROM_NUMBER || '');
-                                const fromNumber = currentTwilioNumberE164 || envFrom;
-                                if (twilioClient && toNumber && fromNumber) {
-                                    const subjectNote = lastEmailSubject ? ` Email sent: "${lastEmailSubject}".` : '';
-                                    const body = `Your request is complete.${subjectNote} Reply if you want more.`;
-                                    if (IS_DEV) console.log('Post-hang-up completion SMS:', { from: fromNumber, to: toNumber, body });
-                                    twilioClient.messages.create({ from: fromNumber, to: toNumber, body })
-                                        .then((sendRes) => {
-                                            console.info({ event: 'posthangup.sms.sent', sid: sendRes?.sid, to: toNumber });
-                                        })
-                                        .catch((e) => {
-                                            console.warn('Post-hang-up SMS send error:', e?.message || e);
-                                        });
-                                    postHangupSmsSent = true;
-                                } else {
-                                    console.warn({ event: 'posthangup.sms.unavailable', to: toNumber, from: fromNumber });
-                                }
-                            } catch (e) {
-                                console.warn('Post-hang-up SMS error:', e?.message || e);
+                            const toNumber = currentCallerE164;
+                            const envFrom = normalizeUSNumberToE164(env?.TWILIO_SMS_FROM_NUMBER || '');
+                            const fromNumber = currentTwilioNumberE164 || envFrom;
+                            if (twilioClient && toNumber && fromNumber) {
+                                const subjectNote = lastEmailSubject ? ` Email sent: "${lastEmailSubject}".` : '';
+                                const body = `Your request is complete.${subjectNote} Reply if you want more.`;
+                                if (IS_DEV) console.log('Post-hang-up completion SMS:', { from: fromNumber, to: toNumber, body });
+                                twilioClient.messages.create({ from: fromNumber, to: toNumber, body })
+                                    .then((sendRes) => {
+                                        console.info({ event: 'posthangup.sms.sent', sid: sendRes?.sid, to: toNumber });
+                                    })
+                                    .catch((e) => {
+                                        console.warn('Post-hang-up SMS send error:', e?.message || e);
+                                    });
+                                postHangupSmsSent = true;
+                            } else {
+                                console.warn({ event: 'posthangup.sms.unavailable', to: toNumber, from: fromNumber });
                             }
-                            // Close OpenAI WS after completion notification
-                            try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {}
+                        } catch (e) {
+                            console.warn('Post-hang-up SMS error:', e?.message || e);
                         }
+                        // Close OpenAI WS after completion notification
+                        try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {}
                     }
                 }
-            };
+            }
+        };
 
-            const handleToolCall = async (functionCall) => {
+        const handleToolCall = async (functionCall) => {
                 if (IS_DEV) console.log('LLM response.done received');
                 console.log('Function call detected:', functionCall.name);
                 const callId = functionCall.call_id;
@@ -371,7 +369,7 @@ export function registerMediaStreamRoute({ fastify }) {
                 }
             };
 
-            const assistantSession = createAssistantSession({
+        const assistantSession = createAssistantSession({
                 apiKey: env?.OPENAI_API_KEY,
                 model: 'gpt-realtime',
                 temperature,
@@ -404,7 +402,7 @@ export function registerMediaStreamRoute({ fastify }) {
             });
 
             // Send initial conversation item using the caller's name once available
-            const sendInitialConversationItem = (callerNameValue = 'legend') => {
+        const sendInitialConversationItem = (callerNameValue = 'legend') => {
                 const initialConversationItem = {
                     type: 'conversation.item.create',
                     item: {
@@ -425,7 +423,7 @@ export function registerMediaStreamRoute({ fastify }) {
             };
 
             // Helper to log and send tool errors to OpenAI WS
-            function sendOpenAiToolError(callId, errorLike) {
+        function sendOpenAiToolError(callId, errorLike) {
                 const msg = (typeof errorLike === 'string') ? errorLike : (errorLike?.message || String(errorLike));
                 try {
                     console.error('Sending tool error to OpenAI WS:', msg);
@@ -445,7 +443,7 @@ export function registerMediaStreamRoute({ fastify }) {
             }
 
             // Handle interruption when the caller's speech starts
-            const handleSpeechStartedEvent = () => {
+        const handleSpeechStartedEvent = () => {
                 if (markQueue.length > 0 && responseStartTimestampTwilio != null) {
                     const elapsedTime = latestMediaTimestamp - responseStartTimestampTwilio;
                     if (showTimingMath) console.log(`Calculating elapsed time for truncation: ${latestMediaTimestamp} - ${responseStartTimestampTwilio} = ${elapsedTime}ms`);
@@ -474,7 +472,7 @@ export function registerMediaStreamRoute({ fastify }) {
             };
 
             // Send mark messages to Media Streams so we know if and when AI response playback is finished
-            const sendMark = (connection, streamSid) => {
+        const sendMark = (connection, streamSid) => {
                 if (streamSid) {
                     const markEvent = {
                         event: 'mark',
@@ -487,7 +485,7 @@ export function registerMediaStreamRoute({ fastify }) {
             };
 
             // Handle incoming messages from Twilio
-            connection.on('message', (message) => {
+        connection.on('message', (message) => {
                 try {
                     const data = JSON.parse(message);
 
@@ -580,10 +578,9 @@ export function registerMediaStreamRoute({ fastify }) {
                 stopWaitingMusic();
                 clearWaitingMusicInterval();
                 console.log('Client disconnected; silent mode enabled. Continuing tools and will notify via SMS.');
-            });
+                });
 
-        });
-    });
+            };
 }
 
 const LOG_EVENT_TYPES = [
