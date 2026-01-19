@@ -78,21 +78,16 @@ export function mediaStreamHandler(connection, req) {
         function startWaitingMusic(reason = 'unknown') {
             if (!streamSid || isWaitingMusic) return;
             isWaitingMusic = true;
-            try {
-                console.info(
-                    `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS} file=${WAIT_MUSIC_FILE || ''}`,
-                    {
-                        event: 'wait_music.start',
-                        reason,
-                        streamSid,
-                        threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
-                        file: WAIT_MUSIC_FILE || null
-                    }
-                );
-            } catch {
-                // noop: logging failures should not interrupt audio flow
-                void 0;
-            }
+            console.info(
+                `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS} file=${WAIT_MUSIC_FILE || ''}`,
+                {
+                    event: 'wait_music.start',
+                    reason,
+                    streamSid,
+                    threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
+                    file: WAIT_MUSIC_FILE || null
+                }
+            );
             // If audio file is provided and exists
             if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
                 try {
@@ -132,15 +127,10 @@ export function mediaStreamHandler(connection, req) {
             }
             if (isWaitingMusic) {
                 isWaitingMusic = false;
-                try {
-                    console.info(
-                        `wait music stop: reason=${reason} streamSid=${streamSid || ''}`,
-                        { event: 'wait_music.stop', reason, streamSid }
-                    );
-                } catch {
-                    // noop: logging failures should not interrupt audio flow
-                    void 0;
-                }
+                console.info(
+                    `wait music stop: reason=${reason} streamSid=${streamSid || ''}`,
+                    { event: 'wait_music.stop', reason, streamSid }
+                );
             }
             // Remove unused buffer since ffmpeg is not used
             waitingMusicUlawBuffer = null;
