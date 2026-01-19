@@ -25,7 +25,7 @@ export const definition = {
  * @param {object} root0 - Tool inputs.
  * @param {{ mode?: string, reason?: string }} root0.args - Tool arguments.
  * @param {object} root0.context - Tool context.
- * @returns {Promise<{ status: string, applied: boolean, reason?: string }>} Update result.
+ * @returns {Promise<{ status: string, applied: boolean, reason?: string, mode?: string, current?: string, counters?: { farToggles: number, nearToggles: number, skippedNoOp: number } }>} Update result.
  */
 export async function execute({ args, context }) {
     const { micState, applyNoiseReduction } = context;

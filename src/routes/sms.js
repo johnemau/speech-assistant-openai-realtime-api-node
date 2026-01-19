@@ -27,11 +27,13 @@ export async function smsHandler(request, reply) {
         // Note: Global console wrappers already scrub sensitive data in logs.
         // No additional per-call redaction wrapper needed in this route.
 
+            const body = /** @type {Record<string, string>} */ (request.body || {});
+
             const { MessagingResponse } = twilio.twiml;
             const twiml = new MessagingResponse();
 
             const { bodyRaw, fromRaw, toRaw, fromE164, toE164 } = extractSmsRequest({
-                body: request.body,
+                body,
                 normalizeUSNumberToE164,
             });
 
@@ -132,6 +134,7 @@ export async function smsHandler(request, reply) {
             }
 
             // Prepare OpenAI request with web_search tool
+            /** @type {import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming} */
             const reqPayload = {
                 model: 'gpt-5.2',
                 reasoning: { effort: 'high' },

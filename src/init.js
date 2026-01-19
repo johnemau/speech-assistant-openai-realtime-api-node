@@ -49,5 +49,5 @@ export const env = process.env;
 export const VOICE = 'cedar';
 export const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 export const SHOW_TIMING_MATH = IS_DEV;
-export const PORT = process.env.PORT || 10000; // Render default PORT is 10000
+export const PORT = Number(process.env.PORT || 10000); // Render default PORT is 10000
 export { NGROK_DOMAIN };

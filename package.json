@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
     "test": "npm run test:unit",
     "test:unit": "node --test src/**/*.test.js",
     "test:voice": "node --test tests/voice-tests.js",
@@ -30,11 +31,15 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/ffmpeg": "^1.0.7",
+    "@types/node": "^22.13.1",
+    "@types/nodemailer": "^6.4.17",
     "@eslint/js": "^9.39.2",
     "@typescript-eslint/parser": "^8.50.0",
     "eslint": "^9.39.2",
     "eslint-plugin-jsdoc": "^50.8.0",
     "ffmpeg": "^0.0.4",
-    "globals": "^15.9.0"
+    "globals": "^15.9.0",
+    "typescript": "^5.7.3"
   }
 }

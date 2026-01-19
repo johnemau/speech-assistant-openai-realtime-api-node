@@ -16,9 +16,10 @@ import { normalizeUSNumberToE164 } from '../utils/phone.js';
 export async function incomingCallHandler(request, reply) {
     // Route for Twilio to handle incoming calls
     // <Say> punctuation to improve text-to-speech translation
-    const fromRaw = request.body?.From || request.body?.from || request.body?.Caller;
+    const body = /** @type {Record<string, string>} */ (request.body || {});
+    const fromRaw = body.From || body.from || body.Caller;
     const fromE164 = normalizeUSNumberToE164(fromRaw);
-    const toRaw = request.body?.To || request.body?.to || '';
+    const toRaw = body.To || body.to || '';
     const toE164 = normalizeUSNumberToE164(toRaw);
     console.log('Incoming call from:', fromRaw, '=>', fromE164);
 

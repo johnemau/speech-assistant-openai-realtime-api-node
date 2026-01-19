@@ -9,7 +9,7 @@ import JSON5 from 'json5';
  */
 export function safeParseToolArguments(args) {
     if (args == null) return {};
-    if (typeof args === 'object') return args;
+    if (typeof args === 'object') return /** @type {Record<string, unknown>} */ (args);
     let str = String(args);
     // Normalize and trim possible BOMs/whitespace
     str = str.replace(/^\uFEFF/, '').trim();

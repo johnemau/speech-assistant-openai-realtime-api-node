@@ -137,7 +137,8 @@ export function redactErrorDetail({ errorLike, detail, env = process.env, secret
         const keys = secretKeys.length > 0 ? secretKeys : getSecretEnvKeys(env, DEFAULT_SECRET_ENV_KEYS);
         const envVals = getSecretEnvValues(env, keys);
         let guessed = [];
-        try { guessed = findSensitiveValues(errorLike); } catch {
+        const errorLikeObj = (errorLike && typeof errorLike === 'object') ? errorLike : {};
+        try { guessed = findSensitiveValues(errorLikeObj); } catch {
             // noop: best-effort discovery of sensitive values
             void 0;
         }

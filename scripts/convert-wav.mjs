@@ -36,6 +36,7 @@ const codec = format === 'mulaw' ? 'pcm_mulaw' : 'pcm_s16le';
 
 try {
     const ffmpegProcess = new ffmpeg(inputPath);
+    /** @type {any} */
     const video = await ffmpegProcess;
     await new Promise((resolvePromise, rejectPromise) => {
         video

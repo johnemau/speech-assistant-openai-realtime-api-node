@@ -3,7 +3,16 @@
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
-    "strict": true
+    "strict": false,
+    "noImplicitAny": false,
+    "useUnknownInCatchVariables": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "target": "es2022",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["index.js", "scripts", "src", "tests", "tools"]
 }

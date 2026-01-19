@@ -27,7 +27,7 @@ import {
 } from '../env.js';
 
 /**
- * @param {import('@fastify/websocket').SocketStream} connection - WebSocket connection for Twilio media stream.
+ * @param {import('ws').WebSocket} connection - WebSocket connection for Twilio media stream.
  * @param {import('fastify').FastifyRequest} req - Incoming upgrade request.
  * @returns {void}
  */
