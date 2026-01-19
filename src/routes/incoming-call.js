@@ -8,15 +8,14 @@ import {
 } from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
-export function createIncomingCallHandler() {
+export async function incomingCallHandler(request, reply) {
     // Route for Twilio to handle incoming calls
     // <Say> punctuation to improve text-to-speech translation
-    return async (request, reply) => {
-        const fromRaw = request.body?.From || request.body?.from || request.body?.Caller;
-        const fromE164 = normalizeUSNumberToE164(fromRaw);
-        const toRaw = request.body?.To || request.body?.to || '';
-        const toE164 = normalizeUSNumberToE164(toRaw);
-        console.log('Incoming call from:', fromRaw, '=>', fromE164);
+    const fromRaw = request.body?.From || request.body?.from || request.body?.Caller;
+    const fromE164 = normalizeUSNumberToE164(fromRaw);
+    const toRaw = request.body?.To || request.body?.to || '';
+    const toE164 = normalizeUSNumberToE164(toRaw);
+    console.log('Incoming call from:', fromRaw, '=>', fromE164);
 
         if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
             const denyTwiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -51,6 +50,5 @@ export function createIncomingCallHandler() {
                               </Connect>
                           </Response>`;
 
-        reply.type('text/xml').send(twimlResponse);
-    };
+    reply.type('text/xml').send(twimlResponse);
 }

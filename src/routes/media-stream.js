@@ -27,8 +27,7 @@ import {
     SECONDARY_USER_FIRST_NAME,
 } from '../env.js';
 
-export function createMediaStreamHandler() {
-    return (connection, req) => {
+export function mediaStreamHandler(connection, req) {
         console.log('Client connected');
 
         // Connection-specific state
@@ -332,7 +331,6 @@ export function createMediaStreamHandler() {
                                 pending_disconnect: true,
                                 reason,
                                 silent: true
-                            };
                         }
                     };
 

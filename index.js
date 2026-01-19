@@ -2,9 +2,9 @@ import ngrok from '@ngrok/ngrok';
 import Fastify from 'fastify';
 import fastifyFormBody from '@fastify/formbody';
 import fastifyWs from '@fastify/websocket';
-import { createSmsHandler } from './src/routes/sms.js';
-import { createIncomingCallHandler } from './src/routes/incoming-call.js';
-import { createMediaStreamHandler } from './src/routes/media-stream.js';
+import { smsHandler } from './src/routes/sms.js';
+import { incomingCallHandler } from './src/routes/incoming-call.js';
+import { mediaStreamHandler } from './src/routes/media-stream.js';
 import { NGROK_DOMAIN, PORT } from './src/init.js';
 
 // Initialize Fastify
@@ -23,12 +23,12 @@ fastify.get('/healthz', async (request, reply) => {
     reply.code(200).send({ status: 'ok' });
 });
 
-fastify.post('/sms', createSmsHandler());
+fastify.post('/sms', smsHandler);
 
-fastify.all('/incoming-call', createIncomingCallHandler());
+fastify.all('/incoming-call', incomingCallHandler);
 
 // WebSocket route for media-stream
-fastify.get('/media-stream', { websocket: true }, createMediaStreamHandler());
+fastify.get('/media-stream', { websocket: true }, mediaStreamHandler);
 
 // Start server and establish ngrok ingress using SessionBuilder
 (async () => {

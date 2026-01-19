@@ -17,11 +17,10 @@ import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
 
-export function createSmsHandler() {
-    return async (request, reply) => {
-        try {
-            // Note: Global console wrappers already scrub sensitive data in logs.
-            // No additional per-call redaction wrapper needed in this route.
+export async function smsHandler(request, reply) {
+    try {
+        // Note: Global console wrappers already scrub sensitive data in logs.
+        // No additional per-call redaction wrapper needed in this route.
 
             const { MessagingResponse } = twilio.twiml;
             const twiml = new MessagingResponse();
@@ -245,7 +244,6 @@ export function createSmsHandler() {
                 event: 'sms.webhook.unhandled_error',
                 error: (e?.message || String(e || '')).slice(0, 220)
             });
-            return reply.code(500).send('');
-        }
-    };
+        return reply.code(500).send('');
+    }
 }
