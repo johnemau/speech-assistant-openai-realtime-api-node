@@ -7,6 +7,11 @@ import { judgeResponse } from '../src/testing/judge.js';
 import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../src/assistant/prompts.js';
 import { isTruthy } from '../src/utils/env.js';
 import { normalizeUSNumberToE164 } from '../src/utils/phone.js';
+import {
+    PRIMARY_CALLERS_SET,
+    SECONDARY_CALLERS_SET,
+    DEFAULT_SMS_USER_LOCATION
+} from '../src/env.js';
 import { createOpenAIClient, createTwilioClient, createEmailTransport } from '../src/utils/clients.js';
 
 dotenv.config();
@@ -36,18 +41,8 @@ const allowLiveSideEffects = isTruthy(process.env.ALLOW_LIVE_SIDE_EFFECTS);
 const passScoreThreshold = Number(process.env.JUDGE_PASS_SCORE || 0.7);
 const judgeModel = process.env.JUDGE_MODEL || 'gpt-5.2';
 
-const primarySet = new Set(
-    (process.env.PRIMARY_USER_PHONE_NUMBERS || '')
-        .split(',')
-        .map((s) => normalizeUSNumberToE164(s))
-        .filter(Boolean)
-);
-const secondarySet = new Set(
-    (process.env.SECONDARY_USER_PHONE_NUMBERS || '')
-        .split(',')
-        .map((s) => normalizeUSNumberToE164(s))
-        .filter(Boolean)
-);
+const primarySet = PRIMARY_CALLERS_SET;
+const secondarySet = SECONDARY_CALLERS_SET;
 
 const fallbackCaller = (process.env.PRIMARY_USER_PHONE_NUMBERS || '').split(',')[0];
 const currentCallerE164 = normalizeUSNumberToE164(process.env.TEST_CALLER_NUMBER || fallbackCaller || '');
@@ -112,7 +107,7 @@ const assistantSession = createAssistantSession({
                     currentCallerE164,
                     currentTwilioNumberE164,
                     webSearchInstructions: WEB_SEARCH_INSTRUCTIONS,
-                    defaultUserLocation: { type: 'approximate', country: 'US', region: 'Washington' },
+                    defaultUserLocation: DEFAULT_SMS_USER_LOCATION,
                     micState,
                     applyNoiseReduction: (mode) => {
                         micState.currentNoiseReductionType = mode;
