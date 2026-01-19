@@ -13,6 +13,7 @@ import { stringifyDeep } from './src/utils/format.js';
 import { normalizeUSNumberToE164 } from './src/utils/phone.js';
 import { setupConsoleRedaction, redactErrorDetail } from './src/utils/redaction.js';
 import { registerSmsRoute } from './src/routes/sms.js';
+import { registerIncomingCallRoute } from './src/routes/incoming-call.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -142,52 +143,16 @@ registerSmsRoute({
     }
 });
 
-// Route for Twilio to handle incoming calls
-// <Say> punctuation to improve text-to-speech translation
-fastify.all('/incoming-call', async (request, reply) => {
-    const fromRaw = request.body?.From || request.body?.from || request.body?.Caller;
-    const fromE164 = normalizeUSNumberToE164(fromRaw);
-    const toRaw = request.body?.To || request.body?.to || '';
-    const toE164 = normalizeUSNumberToE164(toRaw);
-    console.log('Incoming call from:', fromRaw, '=>', fromE164);
-
-    if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
-        const denyTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-                          <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Charon">Sorry, this line is restricted. Goodbye.</Say>
-                              <Hangup/>
-                          </Response>`;
-        return reply.type('text/xml').send(denyTwiml);
+registerIncomingCallRoute({
+    fastify,
+    deps: {
+        normalizeUSNumberToE164,
+        allAllowedCallersSet: ALL_ALLOWED_CALLERS_SET,
+        primaryCallersSet: PRIMARY_CALLERS_SET,
+        secondaryCallersSet: SECONDARY_CALLERS_SET,
+        primaryUserFirstName: PRIMARY_USER_FIRST_NAME,
+        secondaryUserFirstName: SECONDARY_USER_FIRST_NAME,
     }
-
-    // Choose greeting based on caller list membership
-    const primaryName = (PRIMARY_USER_FIRST_NAME || '').trim();
-    const secondaryName = (SECONDARY_USER_FIRST_NAME || '').trim();
-    let callerName = 'legend';
-    if (PRIMARY_CALLERS_SET.has(fromE164) && primaryName) {
-        callerName = primaryName;
-    } else if (SECONDARY_CALLERS_SET.has(fromE164) && secondaryName) {
-        callerName = secondaryName;
-    }
-    // Determine current time in Washington State (America/Los_Angeles)
-    const pacificHour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }).format(new Date()));
-    const timeGreeting = (pacificHour >= 5 && pacificHour < 12)
-        ? 'Good morning'
-        : (pacificHour >= 12 && pacificHour < 17)
-            ? 'Good afternoon'
-            : 'Good evening';
-    const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-                          <Response>
-                              <Say voice="Google.en-US-Chirp3-HD-Charon">${timeGreeting} ${callerName}. Connecting to your AI assistant momentarily.</Say>
-                              <Connect>
-                                  <Stream url="wss://${request.headers.host}/media-stream">
-                                      <Parameter name="caller_number" value="${fromE164}" />
-                                      <Parameter name="twilio_number" value="${toE164 || ''}" />
-                                  </Stream>
-                              </Connect>
-                          </Response>`;
-
-    reply.type('text/xml').send(twimlResponse);
 });
 
 // WebSocket route for media-stream
