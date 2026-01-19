@@ -336,6 +336,7 @@ export function mediaStreamHandler(connection, req) {
                                 pending_disconnect: true,
                                 reason,
                                 silent: true
+                            };
                         }
                     };
 
@@ -581,9 +582,7 @@ export function mediaStreamHandler(connection, req) {
                 stopWaitingMusic();
                 clearWaitingMusicInterval();
                 console.log('Client disconnected; silent mode enabled. Continuing tools and will notify via SMS.');
-                });
-
-            };
+            });
 }
 
 const LOG_EVENT_TYPES = [
