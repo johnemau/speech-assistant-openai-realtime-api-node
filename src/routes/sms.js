@@ -38,34 +38,35 @@ export async function smsHandler(request, reply) {
             });
 
             // Concise incoming log
-            console.info({
-                event: 'sms.incoming',
-                from: fromE164 || fromRaw || '',
-                to: toE164 || toRaw || '',
-                length: String(bodyRaw || '').length,
-                preview: String(bodyRaw || '').slice(0, 160)
-            });
+            console.info(
+                `sms incoming: from=${fromE164 || fromRaw || ''} to=${toE164 || toRaw || ''} length=${String(bodyRaw || '').length}`,
+                {
+                    event: 'sms.incoming',
+                    from: fromE164 || fromRaw || '',
+                    to: toE164 || toRaw || '',
+                    length: String(bodyRaw || '').length,
+                    preview: String(bodyRaw || '').slice(0, 160)
+                }
+            );
 
             // Allowlist check: only PRIMARY or SECONDARY callers may use SMS auto-reply
             const isAllowed = !!fromE164 && (PRIMARY_CALLERS_SET.has(fromE164) || SECONDARY_CALLERS_SET.has(fromE164));
             if (!isAllowed) {
                 // Concise log for restricted access
-                console.warn({
-                    event: 'sms.reply.restricted_twiml',
-                    from: fromE164,
-                    to: toE164
-                });
+                console.warn(
+                    `sms reply restricted (twiml): from=${fromE164 || ''} to=${toE164 || ''}`,
+                    { event: 'sms.reply.restricted_twiml', from: fromE164, to: toE164 }
+                );
                 twiml.message('Sorry, this SMS line is restricted.');
                 return reply.type('text/xml').send(twiml.toString());
             }
 
             if (!twilioClient) {
                 // Concise log for missing Twilio client
-                console.warn({
-                    event: 'sms.reply.unconfigured_twiml',
-                    from: toE164,
-                    to: fromE164
-                });
+                console.warn(
+                    `sms reply unconfigured (twiml): from=${toE164 || ''} to=${fromE164 || ''}`,
+                    { event: 'sms.reply.unconfigured_twiml', from: toE164, to: fromE164 }
+                );
                 twiml.message('SMS auto-reply is not configured.');
                 return reply.type('text/xml').send(twiml.toString());
             }
@@ -79,16 +80,19 @@ export async function smsHandler(request, reply) {
             try {
                 // Inbound: from caller → our Twilio number
                 // Log Twilio API request details
-                console.info({
-                    event: 'twilio.messages.list.request',
-                    direction: 'inbound',
-                    params: {
-                        dateSentAfter: startWindow.toISOString(),
-                        from: fromE164,
-                        to: toE164,
-                        limit: 20,
+                console.info(
+                    `twilio messages list request (inbound): from=${fromE164 || ''} to=${toE164 || ''} after=${startWindow.toISOString()} limit=20`,
+                    {
+                        event: 'twilio.messages.list.request',
+                        direction: 'inbound',
+                        params: {
+                            dateSentAfter: startWindow.toISOString(),
+                            from: fromE164,
+                            to: toE164,
+                            limit: 20,
+                        }
                     }
-                });
+                );
                 inbound = await twilioClient.messages.list({
                     dateSentAfter: startWindow,
                     from: fromE164,
@@ -101,16 +105,19 @@ export async function smsHandler(request, reply) {
             try {
                 // Outbound: from our Twilio number → caller
                 // Log Twilio API request details
-                console.info({
-                    event: 'twilio.messages.list.request',
-                    direction: 'outbound',
-                    params: {
-                        dateSentAfter: startWindow.toISOString(),
-                        from: toE164,
-                        to: fromE164,
-                        limit: 20,
+                console.info(
+                    `twilio messages list request (outbound): from=${toE164 || ''} to=${fromE164 || ''} after=${startWindow.toISOString()} limit=20`,
+                    {
+                        event: 'twilio.messages.list.request',
+                        direction: 'outbound',
+                        params: {
+                            dateSentAfter: startWindow.toISOString(),
+                            from: toE164,
+                            to: fromE164,
+                            limit: 20,
+                        }
                     }
-                });
+                );
                 outbound = await twilioClient.messages.list({
                     dateSentAfter: startWindow,
                     from: toE164,
@@ -127,10 +134,7 @@ export async function smsHandler(request, reply) {
 
             // Dev-only: log the full SMS prompt for debugging
             if (IS_DEV) {
-                console.log({
-                    event: 'sms.prompt.debug',
-                    prompt: smsPrompt
-                });
+                console.log('sms prompt debug', { event: 'sms.prompt.debug', prompt: smsPrompt });
             }
 
             // Prepare OpenAI request with web_search tool
@@ -149,12 +153,15 @@ export async function smsHandler(request, reply) {
             };
 
             // Concise log of AI request (dev-friendly, but short)
-            console.info({
-                event: 'sms.ai.request',
-                model: 'gpt-5.2',
-                tools: ['web_search'],
-                prompt_len: String(smsPrompt || '').length
-            });
+            console.info(
+                `sms ai request: model=gpt-5.2 tools=web_search promptLen=${String(smsPrompt || '').length}`,
+                {
+                    event: 'sms.ai.request',
+                    model: 'gpt-5.2',
+                    tools: ['web_search'],
+                    prompt_len: String(smsPrompt || '').length
+                }
+            );
 
             let aiText = '';
             try {
@@ -172,27 +179,33 @@ export async function smsHandler(request, reply) {
                     });
                 }
                 // Structured error log (redacted unless development)
-                console.error({
-                    event: 'sms.reply.ai_error',
-                    from: fromE164,
-                    to: toE164,
-                    error: String(detail || '').slice(0, 220)
-                });
+                console.error(
+                    `sms reply AI error: from=${fromE164 || ''} to=${toE164 || ''} error=${String(detail || '').slice(0, 220)}`,
+                    {
+                        event: 'sms.reply.ai_error',
+                        from: fromE164,
+                        to: toE164,
+                        error: String(detail || '').slice(0, 220)
+                    }
+                );
                 aiText = `Sorry—SMS reply error. Details: ${String(detail || '').slice(0, 220)}.`;
             }
 
             // Send the reply via Twilio API (from the same Twilio number the webhook hit)
             try {
                 // Log Twilio API request details for SMS send
-                console.info({
-                    event: 'twilio.messages.create.request',
-                    params: {
-                        from: toE164,
-                        to: fromE164,
-                        length: String(aiText || '').length,
-                        preview: String(aiText || '').slice(0, 160),
+                console.info(
+                    `twilio messages create request: from=${toE164 || ''} to=${fromE164 || ''} length=${String(aiText || '').length}`,
+                    {
+                        event: 'twilio.messages.create.request',
+                        params: {
+                            from: toE164,
+                            to: fromE164,
+                            length: String(aiText || '').length,
+                            preview: String(aiText || '').slice(0, 160),
+                        }
                     }
-                });
+                );
                 const sendRes = await twilioClient.messages.create({
                     from: toE164,
                     to: fromE164,
@@ -200,14 +213,17 @@ export async function smsHandler(request, reply) {
                 });
                 // Always log SMS sends (with redaction unless development)
                 const preview = String(aiText || '').slice(0, 160);
-                console.info({
-                    event: 'sms.reply.sent',
-                    sid: sendRes?.sid,
-                    from: toE164,
-                    to: fromE164,
-                    length: String(aiText || '').length,
-                    preview,
-                });
+                console.info(
+                    `sms reply sent: sid=${sendRes?.sid || ''} from=${toE164 || ''} to=${fromE164 || ''} length=${String(aiText || '').length}`,
+                    {
+                        event: 'sms.reply.sent',
+                        sid: sendRes?.sid,
+                        from: toE164,
+                        to: fromE164,
+                        length: String(aiText || '').length,
+                        preview,
+                    }
+                );
             } catch (e) {
                 console.error('Failed to send Twilio SMS:', e?.message || e);
                 // Fallback: reply via TwiML with redacted error details to ensure the user gets context
@@ -221,37 +237,42 @@ export async function smsHandler(request, reply) {
                     });
                 }
                 // Structured error log (redacted unless development)
-                console.error({
-                    event: 'sms.reply.send_error',
-                    from: toE164,
-                    to: fromE164,
-                    error: String(detail || '').slice(0, 220)
-                });
+                console.error(
+                    `sms reply send error: from=${toE164 || ''} to=${fromE164 || ''} error=${String(detail || '').slice(0, 220)}`,
+                    {
+                        event: 'sms.reply.send_error',
+                        from: toE164,
+                        to: fromE164,
+                        error: String(detail || '').slice(0, 220)
+                    }
+                );
                 const fallbackMsg = `Sorry—SMS send error. Details: ${String(detail || '').slice(0, 220)}.`;
                 // Log fallback TwiML generation
-                console.warn({
-                    event: 'sms.reply.fallback_twiml',
-                    from: toE164,
-                    to: fromE164,
-                    preview: String(fallbackMsg).slice(0, 160)
-                });
+                console.warn(
+                    `sms reply fallback twiml: from=${toE164 || ''} to=${fromE164 || ''} preview=${String(fallbackMsg).slice(0, 160)}`,
+                    {
+                        event: 'sms.reply.fallback_twiml',
+                        from: toE164,
+                        to: fromE164,
+                        preview: String(fallbackMsg).slice(0, 160)
+                    }
+                );
                 twiml.message(fallbackMsg);
                 return reply.type('text/xml').send(twiml.toString());
             }
 
             // Return empty TwiML to avoid duplicate auto-replies
-            console.info({
-                event: 'sms.webhook.completed',
-                from: toE164,
-                to: fromE164
-            });
+            console.info(
+                `sms webhook completed: from=${toE164 || ''} to=${fromE164 || ''}`,
+                { event: 'sms.webhook.completed', from: toE164, to: fromE164 }
+            );
             return reply.type('text/xml').send(twiml.toString());
         } catch (e) {
             // Concise structured unhandled error
-            console.error({
-                event: 'sms.webhook.unhandled_error',
-                error: (e?.message || String(e || '')).slice(0, 220)
-            });
+            console.error(
+                `sms webhook unhandled error: ${(e?.message || String(e || '')).slice(0, 220)}`,
+                { event: 'sms.webhook.unhandled_error', error: (e?.message || String(e || '')).slice(0, 220) }
+            );
         return reply.code(500).send('');
     }
 }

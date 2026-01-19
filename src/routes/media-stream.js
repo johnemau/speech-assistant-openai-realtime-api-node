@@ -79,13 +79,16 @@ export function mediaStreamHandler(connection, req) {
             if (!streamSid || isWaitingMusic) return;
             isWaitingMusic = true;
             try {
-                console.info({
-                    event: 'wait_music.start',
-                    reason,
-                    streamSid,
-                    threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
-                    file: WAIT_MUSIC_FILE || null
-                });
+                console.info(
+                    `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS} file=${WAIT_MUSIC_FILE || ''}`,
+                    {
+                        event: 'wait_music.start',
+                        reason,
+                        streamSid,
+                        threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
+                        file: WAIT_MUSIC_FILE || null
+                    }
+                );
             } catch {
                 // noop: logging failures should not interrupt audio flow
                 void 0;
@@ -130,7 +133,10 @@ export function mediaStreamHandler(connection, req) {
             if (isWaitingMusic) {
                 isWaitingMusic = false;
                 try {
-                    console.info({ event: 'wait_music.stop', reason, streamSid });
+                    console.info(
+                        `wait music stop: reason=${reason} streamSid=${streamSid || ''}`,
+                        { event: 'wait_music.stop', reason, streamSid }
+                    );
                 } catch {
                     // noop: logging failures should not interrupt audio flow
                     void 0;
@@ -255,14 +261,20 @@ export function mediaStreamHandler(connection, req) {
                                 if (IS_DEV) console.log('Post-hang-up completion SMS:', { from: fromNumber, to: toNumber, body });
                                 twilioClient.messages.create({ from: fromNumber, to: toNumber, body })
                                     .then((sendRes) => {
-                                        console.info({ event: 'posthangup.sms.sent', sid: sendRes?.sid, to: toNumber });
+                                        console.info(
+                                            `posthangup SMS sent: sid=${sendRes?.sid || ''} to=${toNumber || ''}`,
+                                            { event: 'posthangup.sms.sent', sid: sendRes?.sid, to: toNumber }
+                                        );
                                     })
                                     .catch((e) => {
                                         console.warn('Post-hang-up SMS send error:', e?.message || e);
                                     });
                                 postHangupSmsSent = true;
                             } else {
-                                console.warn({ event: 'posthangup.sms.unavailable', to: toNumber, from: fromNumber });
+                                console.warn(
+                                    `posthangup SMS unavailable: to=${toNumber || ''} from=${fromNumber || ''}`,
+                                    { event: 'posthangup.sms.unavailable', to: toNumber, from: fromNumber }
+                                );
                             }
                         } catch (e) {
                             console.warn('Post-hang-up SMS error:', e?.message || e);

@@ -64,7 +64,7 @@ fastify.get('/media-stream', { websocket: true }, mediaStreamHandler);
             console.log('ngrok domain not configured; skipping ngrok setup.');
         }
     } catch (err) {
-        console.error(err);
+        console.error('Server startup failed', err);
         process.exit(1);
     }
 })();
