@@ -1,8 +1,8 @@
 import { getTimeGreeting, resolveCallerName } from '../calls/utils.js';
+import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
 export function registerIncomingCallRoute({ fastify, deps }) {
     const {
-        normalizeUSNumberToE164,
         allAllowedCallersSet,
         primaryCallersSet,
         secondaryCallersSet,

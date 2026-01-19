@@ -3,13 +3,9 @@ import Fastify from 'fastify';
 import dotenv from 'dotenv';
 import fastifyFormBody from '@fastify/formbody';
 import fastifyWs from '@fastify/websocket';
-import { createAssistantSession, safeParseToolArguments } from './src/assistant/session.js';
-import { getToolDefinitions, executeToolCall } from './src/tools/index.js';
-import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS, SMS_REPLY_INSTRUCTIONS } from './src/assistant/prompts.js';
 import { createOpenAIClient, createTwilioClient, createEmailTransport } from './src/utils/clients.js';
-import { stringifyDeep } from './src/utils/format.js';
 import { normalizeUSNumberToE164 } from './src/utils/phone.js';
-import { setupConsoleRedaction, redactErrorDetail } from './src/utils/redaction.js';
+import { setupConsoleRedaction } from './src/utils/redaction.js';
 import { registerSmsRoute } from './src/routes/sms.js';
 import { registerIncomingCallRoute } from './src/routes/incoming-call.js';
 import { registerMediaStreamRoute } from './src/routes/media-stream.js';
@@ -116,23 +112,18 @@ registerSmsRoute({
     deps: {
         twilioClient,
         openaiClient,
-        normalizeUSNumberToE164,
         primaryCallersSet: PRIMARY_CALLERS_SET,
         secondaryCallersSet: SECONDARY_CALLERS_SET,
-        smsReplyInstructions: SMS_REPLY_INSTRUCTIONS,
         defaultUserLocation: DEFAULT_SMS_USER_LOCATION,
         isDev: IS_DEV,
         env: process.env,
         redactionKeys: REDACTION_KEYS,
-        redactErrorDetail,
-        stringifyDeep,
     }
 });
 
 registerIncomingCallRoute({
     fastify,
     deps: {
-        normalizeUSNumberToE164,
         allAllowedCallersSet: ALL_ALLOWED_CALLERS_SET,
         primaryCallersSet: PRIMARY_CALLERS_SET,
         secondaryCallersSet: SECONDARY_CALLERS_SET,
@@ -149,11 +140,8 @@ registerMediaStreamRoute({
         twilioClient,
         senderTransport,
         env: process.env,
-        normalizeUSNumberToE164,
         primaryCallersSet: PRIMARY_CALLERS_SET,
         secondaryCallersSet: SECONDARY_CALLERS_SET,
-        systemMessage: SYSTEM_MESSAGE,
-        webSearchInstructions: WEB_SEARCH_INSTRUCTIONS,
         voice: VOICE,
         temperature: TEMPERATURE,
         waitMusicThresholdMs: WAIT_MUSIC_THRESHOLD_MS,
@@ -161,11 +149,6 @@ registerMediaStreamRoute({
         waitMusicFile: WAIT_MUSIC_FILE,
         isDev: IS_DEV,
         showTimingMath: SHOW_TIMING_MATH,
-        createAssistantSession,
-        safeParseToolArguments,
-        getToolDefinitions,
-        executeToolCall,
-        stringifyDeep,
         defaultUserLocation: DEFAULT_SMS_USER_LOCATION,
     }
 });

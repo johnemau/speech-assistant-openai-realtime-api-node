@@ -1,6 +1,11 @@
 import WebSocket from 'ws';
 import fs from 'fs';
+import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
+import { createAssistantSession, safeParseToolArguments } from '../assistant/session.js';
 import { parseWavToUlaw } from '../media/audio.js';
+import { getToolDefinitions, executeToolCall } from '../tools/index.js';
+import { stringifyDeep } from '../utils/format.js';
+import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
 export function registerMediaStreamRoute({ fastify, deps }) {
     const {
@@ -8,11 +13,8 @@ export function registerMediaStreamRoute({ fastify, deps }) {
         twilioClient,
         senderTransport,
         env,
-        normalizeUSNumberToE164,
         primaryCallersSet,
         secondaryCallersSet,
-        systemMessage,
-        webSearchInstructions,
         voice,
         temperature,
         waitMusicThresholdMs,
@@ -20,11 +22,6 @@ export function registerMediaStreamRoute({ fastify, deps }) {
         waitMusicFile,
         isDev,
         showTimingMath,
-        createAssistantSession,
-        safeParseToolArguments,
-        getToolDefinitions,
-        executeToolCall,
-        stringifyDeep,
         defaultUserLocation,
     } = deps;
 
@@ -307,7 +304,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                         secondaryCallersSet,
                         currentCallerE164,
                         currentTwilioNumberE164,
-                        webSearchInstructions,
+                        webSearchInstructions: WEB_SEARCH_INSTRUCTIONS,
                         defaultUserLocation,
                         allowLiveSideEffects: true,
                         micState,
@@ -376,7 +373,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                 model: 'gpt-realtime',
                 temperature,
                 voice,
-                instructions: systemMessage,
+                instructions: SYSTEM_MESSAGE,
                 tools: getToolDefinitions(),
                 outputModalities: ['audio'],
                 audioConfig: {

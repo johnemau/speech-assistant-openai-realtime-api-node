@@ -1,25 +1,25 @@
 import twilio from 'twilio';
+import { SMS_REPLY_INSTRUCTIONS } from '../assistant/prompts.js';
 import {
     buildSmsPrompt,
     buildSmsThreadText,
     extractSmsRequest,
     mergeAndSortMessages,
 } from '../sms/utils.js';
+import { stringifyDeep } from '../utils/format.js';
+import { normalizeUSNumberToE164 } from '../utils/phone.js';
+import { redactErrorDetail } from '../utils/redaction.js';
 
 export function registerSmsRoute({ fastify, deps }) {
     const {
         twilioClient,
         openaiClient,
-        normalizeUSNumberToE164,
         primaryCallersSet,
         secondaryCallersSet,
-        smsReplyInstructions,
         defaultUserLocation,
         isDev,
         env,
         redactionKeys,
-        redactErrorDetail,
-        stringifyDeep,
     } = deps;
 
     fastify.post('/sms', async (request, reply) => {
@@ -139,7 +139,7 @@ export function registerSmsRoute({ fastify, deps }) {
                     type: 'web_search',
                     user_location: defaultUserLocation,
                 }],
-                instructions: smsReplyInstructions,
+                instructions: SMS_REPLY_INSTRUCTIONS,
                 input: smsPrompt,
                 tool_choice: 'required',
                 truncation: 'auto',
