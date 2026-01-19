@@ -26,8 +26,10 @@ export const DEFAULT_SECRET_ENV_KEYS = [
 export const REDACTION_KEYS = getSecretEnvKeys(process.env, DEFAULT_SECRET_ENV_KEYS);
 
 /**
+ * Patch console logging to redact configured secrets.
  *
- * @param env
+ * @param {Record<string, string | undefined>} [env] - Environment object.
+ * @returns {{ redactionDisabled: boolean, secretKeys: string[], envSecretValues: string[] }} Redaction state.
  */
 export function setupConsoleRedaction(env = process.env) {
     let disableLogRedaction = null;
@@ -120,12 +122,14 @@ export function setupConsoleRedaction(env = process.env) {
 }
 
 /**
+ * Redact sensitive details from a string using known secrets.
  *
- * @param root0
- * @param root0.errorLike
- * @param root0.detail
- * @param root0.env
- * @param root0.secretKeys
+ * @param {object} root0 - Redaction inputs.
+ * @param {unknown} root0.errorLike - Error or data to scan for secrets.
+ * @param {string} root0.detail - Detail string to redact.
+ * @param {Record<string, string | undefined>} [root0.env] - Environment object.
+ * @param {string[]} [root0.secretKeys] - Secret keys to use.
+ * @returns {string} Redacted detail.
  */
 export function redactErrorDetail({ errorLike, detail, env = process.env, secretKeys = [] }) {
     let redacted = detail;

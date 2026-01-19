@@ -13,8 +13,8 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
 /**
- * @param {import('fastify').FastifyRequest} request
- * @param {import('fastify').FastifyReply} reply
+ * @param {import('fastify').FastifyRequest} request - Incoming HTTP request.
+ * @param {import('fastify').FastifyReply} reply - Fastify reply interface.
  * @returns {Promise<void>}
  */
 async function rootHandler(request, reply) {
@@ -22,8 +22,8 @@ async function rootHandler(request, reply) {
 }
 
 /**
- * @param {import('fastify').FastifyRequest} request
- * @param {import('fastify').FastifyReply} reply
+ * @param {import('fastify').FastifyRequest} request - Incoming HTTP request.
+ * @param {import('fastify').FastifyReply} reply - Fastify reply interface.
  * @returns {Promise<void>}
  */
 async function healthzHandler(request, reply) {

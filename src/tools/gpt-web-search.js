@@ -25,10 +25,12 @@ export const definition = {
 };
 
 /**
+ * Execute gpt_web_search tool.
  *
- * @param root0
- * @param root0.args
- * @param root0.context
+ * @param {object} root0 - Tool inputs.
+ * @param {{ query?: string, user_location?: object }} root0.args - Tool arguments.
+ * @param {{ openaiClient: { responses: { create: Function } }, webSearchInstructions?: string, defaultUserLocation?: object }} root0.context - Tool context.
+ * @returns {Promise<string>} Search summary text.
  */
 export async function execute({ args, context }) {
     const { openaiClient, webSearchInstructions, defaultUserLocation } = context;

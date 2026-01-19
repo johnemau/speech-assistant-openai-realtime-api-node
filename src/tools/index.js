@@ -13,7 +13,9 @@ const toolExecutors = new Map([
 ]);
 
 /**
+ * Get tool definitions for the assistant session.
  *
+ * @returns {Array<object>} Tool definitions.
  */
 export function getToolDefinitions() {
     return [
@@ -26,11 +28,13 @@ export function getToolDefinitions() {
 }
 
 /**
+ * Execute a tool call by name.
  *
- * @param root0
- * @param root0.name
- * @param root0.args
- * @param root0.context
+ * @param {object} root0 - Tool invocation data.
+ * @param {string} root0.name - Tool name.
+ * @param {object} root0.args - Tool arguments.
+ * @param {object} root0.context - Tool context.
+ * @returns {Promise<unknown>} Tool result.
  */
 export async function executeToolCall({ name, args, context }) {
     const executor = toolExecutors.get(name);

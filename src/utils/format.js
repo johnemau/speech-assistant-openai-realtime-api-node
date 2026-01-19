@@ -2,8 +2,10 @@ import { inspect } from 'node:util';
 
 // Helper: stringify objects for logging with deep nesting
 /**
+ * Stringify an object for logging with deep nesting.
  *
- * @param obj
+ * @param {unknown} obj - Value to stringify.
+ * @returns {string} Stringified value.
  */
 export function stringifyDeep(obj) {
     try {

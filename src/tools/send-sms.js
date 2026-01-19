@@ -15,10 +15,12 @@ export const definition = {
 };
 
 /**
+ * Execute send_sms tool.
  *
- * @param root0
- * @param root0.args
- * @param root0.context
+ * @param {object} root0 - Tool inputs.
+ * @param {{ body_text?: string }} root0.args - Tool arguments.
+ * @param {object} root0.context - Tool context.
+ * @returns {Promise<{ sid?: string, status?: string, length: number }>} Send result.
  */
 export async function execute({ args, context }) {
     const {

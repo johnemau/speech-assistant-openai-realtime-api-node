@@ -28,8 +28,8 @@ import {
 } from '../env.js';
 
 /**
- * @param {import('@fastify/websocket').SocketStream} connection
- * @param {import('fastify').FastifyRequest} req
+ * @param {import('@fastify/websocket').SocketStream} connection - WebSocket connection for Twilio media stream.
+ * @param {import('fastify').FastifyRequest} req - Incoming upgrade request.
  * @returns {void}
  */
 export function mediaStreamHandler(connection, req) {

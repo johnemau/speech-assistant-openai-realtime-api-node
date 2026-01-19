@@ -1,6 +1,8 @@
 /**
+ * Determine if a value is truthy for env flags.
  *
- * @param val
+ * @param {unknown} val - Input value.
+ * @returns {boolean} True if value is a truthy env string.
  */
 export function isTruthy(val) {
     const v = String(val || '').trim().toLowerCase();
@@ -8,9 +10,11 @@ export function isTruthy(val) {
 }
 
 /**
+ * Get the union of default and user-supplied secret env keys.
  *
- * @param env
- * @param defaultKeys
+ * @param {Record<string, string | undefined>} env - Environment object.
+ * @param {string[]} [defaultKeys] - Default secret keys.
+ * @returns {string[]} Secret env keys.
  */
 export function getSecretEnvKeys(env, defaultKeys = []) {
     const extraKeys = (env.REDACT_ENV_KEYS || '')
@@ -21,9 +25,11 @@ export function getSecretEnvKeys(env, defaultKeys = []) {
 }
 
 /**
+ * Collect secret env values for a set of keys.
  *
- * @param env
- * @param keys
+ * @param {Record<string, string | undefined>} env - Environment object.
+ * @param {string[]} [keys] - Keys to resolve.
+ * @returns {string[]} Secret values.
  */
 export function getSecretEnvValues(env, keys = []) {
     const values = [];

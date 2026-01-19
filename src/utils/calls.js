@@ -1,12 +1,14 @@
 /**
+ * Resolve a friendly name for a caller.
  *
- * @param root0
- * @param root0.callerE164
- * @param root0.primaryCallersSet
- * @param root0.secondaryCallersSet
- * @param root0.primaryName
- * @param root0.secondaryName
- * @param root0.fallbackName
+ * @param {object} root0 - Caller info.
+ * @param {string|null} root0.callerE164 - Caller number in E.164.
+ * @param {Set<string>} root0.primaryCallersSet - Primary allowlist.
+ * @param {Set<string>} root0.secondaryCallersSet - Secondary allowlist.
+ * @param {string} root0.primaryName - Primary greeting name.
+ * @param {string} root0.secondaryName - Secondary greeting name.
+ * @param {string} [root0.fallbackName] - Fallback greeting name.
+ * @returns {string} Resolved caller name.
  */
 export function resolveCallerName({
     callerE164,
@@ -22,10 +24,12 @@ export function resolveCallerName({
 }
 
 /**
+ * Compute a time-of-day greeting in a target time zone.
  *
- * @param root0
- * @param root0.timeZone
- * @param root0.now
+ * @param {object} root0 - Time inputs.
+ * @param {string} [root0.timeZone] - IANA time zone.
+ * @param {Date} [root0.now] - Current time override.
+ * @returns {string} Greeting string.
  */
 export function getTimeGreeting({
     timeZone = 'America/Los_Angeles',

@@ -11,10 +11,12 @@ export const definition = {
 };
 
 /**
+ * Execute end_call tool.
  *
- * @param root0
- * @param root0.args
- * @param root0.context
+ * @param {object} root0 - Tool inputs.
+ * @param {object} root0.args - Tool arguments.
+ * @param {object} root0.context - Tool context.
+ * @returns {Promise<{ status: string, reason?: string }>} Tool result.
  */
 export async function execute({ args, context }) {
     const { onEndCall } = context;

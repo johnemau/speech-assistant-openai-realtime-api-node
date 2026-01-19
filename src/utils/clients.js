@@ -3,9 +3,11 @@ import twilio from 'twilio';
 import nodemailer from 'nodemailer';
 
 /**
+ * Create an OpenAI API client.
  *
- * @param root0
- * @param root0.apiKey
+ * @param {object} root0 - Client options.
+ * @param {string} root0.apiKey - OpenAI API key.
+ * @returns {OpenAI} OpenAI client instance.
  */
 export function createOpenAIClient({ apiKey }) {
     if (!apiKey) {
@@ -15,13 +17,15 @@ export function createOpenAIClient({ apiKey }) {
 }
 
 /**
+ * Create a Twilio REST client if credentials are available.
  *
- * @param root0
- * @param root0.accountSid
- * @param root0.authToken
- * @param root0.apiKey
- * @param root0.apiSecret
- * @param root0.logger
+ * @param {object} root0 - Client options.
+ * @param {string} [root0.accountSid] - Twilio Account SID.
+ * @param {string} [root0.authToken] - Twilio Auth Token.
+ * @param {string} [root0.apiKey] - Twilio API Key SID.
+ * @param {string} [root0.apiSecret] - Twilio API Key Secret.
+ * @param {{ log: Function, warn: Function }} [root0.logger] - Logger.
+ * @returns {import('twilio').Twilio | null} Twilio client or null when unavailable.
  */
 export function createTwilioClient({
     accountSid,
@@ -52,12 +56,14 @@ export function createTwilioClient({
 }
 
 /**
+ * Create an SMTP transport for sending email.
  *
- * @param root0
- * @param root0.user
- * @param root0.pass
- * @param root0.serviceId
- * @param root0.logger
+ * @param {object} root0 - Transport options.
+ * @param {string} root0.user - SMTP username.
+ * @param {string} root0.pass - SMTP password.
+ * @param {string} [root0.serviceId] - Nodemailer service id.
+ * @param {{ log: Function, warn: Function }} [root0.logger] - Logger.
+ * @returns {import('nodemailer').Transporter | null} Email transport or null.
  */
 export function createEmailTransport({ user, pass, serviceId, logger = console }) {
     if (!user || !pass) {

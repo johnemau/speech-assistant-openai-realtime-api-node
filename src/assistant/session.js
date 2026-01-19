@@ -2,8 +2,10 @@ import WebSocket from 'ws';
 import JSON5 from 'json5';
 
 /**
+ * Safely parse tool-call arguments into an object.
  *
- * @param args
+ * @param {unknown} args - Raw tool arguments from the model.
+ * @returns {Record<string, unknown>} Parsed arguments object.
  */
 export function safeParseToolArguments(args) {
     if (args == null) return {};
@@ -37,23 +39,32 @@ export function safeParseToolArguments(args) {
 }
 
 /**
+ * Create a realtime assistant session and wire event handlers.
  *
- * @param root0
- * @param root0.apiKey
- * @param root0.model
- * @param root0.temperature
- * @param root0.voice
- * @param root0.instructions
- * @param root0.tools
- * @param root0.outputModalities
- * @param root0.audioConfig
- * @param root0.toolChoice
- * @param root0.onEvent
- * @param root0.onAssistantOutput
- * @param root0.onToolCall
- * @param root0.onOpen
- * @param root0.onClose
- * @param root0.onError
+ * @param {object} root0 - Session options.
+ * @param {string} root0.apiKey - OpenAI API key.
+ * @param {string} [root0.model] - Realtime model name.
+ * @param {number} [root0.temperature] - Sampling temperature.
+ * @param {string} [root0.voice] - Voice id.
+ * @param {string} [root0.instructions] - System instructions.
+ * @param {Array<object>} [root0.tools] - Tool definitions.
+ * @param {string[]} [root0.outputModalities] - Output modalities.
+ * @param {object} [root0.audioConfig] - Audio session config.
+ * @param {string} [root0.toolChoice] - Tool choice policy.
+ * @param {(event: object) => void} [root0.onEvent] - Raw event handler.
+ * @param {(event: object) => void} [root0.onAssistantOutput] - Assistant output handler.
+ * @param {(call: object, response: object) => void} [root0.onToolCall] - Tool call handler.
+ * @param {() => void} [root0.onOpen] - WebSocket open handler.
+ * @param {() => void} [root0.onClose] - WebSocket close handler.
+ * @param {(error: Error) => void} [root0.onError] - WebSocket error handler.
+ * @returns {{
+ *   openAiWs: WebSocket,
+ *   send: (obj: unknown) => void,
+ *   requestResponse: () => void,
+ *   updateSession: (partialSession: object) => void,
+ *   close: () => void,
+ *   clearPendingMessages: () => void,
+ * }} Session helpers.
  */
 export function createAssistantSession({
     apiKey,

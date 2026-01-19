@@ -22,9 +22,11 @@ function linearToMuLaw(s16) {
 
 // Parse a WAV file and convert to µ-law (PCMU) 8kHz mono bytes
 /**
+ * Parse a WAV file and convert to µ-law (PCMU) 8kHz mono bytes.
  *
- * @param filePath
- * @param volume
+ * @param {string} filePath - Path to a WAV file.
+ * @param {number} [volume] - Volume scalar (0-1 range recommended).
+ * @returns {Buffer} µ-law audio bytes.
  */
 export function parseWavToUlaw(filePath, volume = 0.12) {
     const buf = fs.readFileSync(filePath);

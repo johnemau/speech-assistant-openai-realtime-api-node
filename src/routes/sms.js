@@ -18,8 +18,8 @@ import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
 
 /**
- * @param {import('fastify').FastifyRequest} request
- * @param {import('fastify').FastifyReply} reply
+ * @param {import('fastify').FastifyRequest} request - Incoming Twilio SMS webhook request.
+ * @param {import('fastify').FastifyReply} reply - Fastify reply interface.
  * @returns {Promise<void>}
  */
 export async function smsHandler(request, reply) {

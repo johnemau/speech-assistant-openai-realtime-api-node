@@ -1,7 +1,9 @@
 // Allowed callers (E.164). Configure via env `PRIMARY_USER_PHONE_NUMBERS` and `SECONDARY_USER_PHONE_NUMBERS` as comma-separated numbers.
 /**
+ * Normalize a phone number to E.164 with US default country code.
  *
- * @param input
+ * @param {string} input - Raw phone number input.
+ * @returns {string | null} Normalized E.164 number or null.
  */
 export function normalizeUSNumberToE164(input) {
     if (!input) return null;

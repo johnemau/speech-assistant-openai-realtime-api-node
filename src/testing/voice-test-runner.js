@@ -178,11 +178,21 @@ function formatFailureSummary(failedResults = []) {
 }
 
 /**
+ * Run a series of voice test turns and return results.
  *
- * @param root0
- * @param root0.callerTurns
- * @param root0.expectedAssistant
- * @param root0.timeoutMs
+ * @param {object} root0 - Test inputs.
+ * @param {string[]} [root0.callerTurns] - Caller utterances.
+ * @param {string[]} [root0.expectedAssistant] - Expected assistant behavior per turn.
+ * @param {number} [root0.timeoutMs] - Timeout per turn in milliseconds.
+ * @returns {Promise<Array<{
+ *   turnIndex: number,
+ *   callerTurn: string,
+ *   expectation: string,
+ *   assistantText: string,
+ *   judge: object | null,
+ *   pass: boolean,
+ *   toolError?: string,
+ * }>>} Results for each turn.
  */
 export async function runVoiceTests({ callerTurns = [], expectedAssistant = [], timeoutMs = 90000 } = {}) {
     assert.equal(

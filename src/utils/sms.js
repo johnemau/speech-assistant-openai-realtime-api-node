@@ -1,8 +1,16 @@
 /**
+ * Extract SMS request details from a webhook body.
  *
- * @param root0
- * @param root0.body
- * @param root0.normalizeUSNumberToE164
+ * @param {object} root0 - Extraction inputs.
+ * @param {Record<string, string>} root0.body - Webhook body.
+ * @param {(input: string) => (string | null)} root0.normalizeUSNumberToE164 - Normalizer.
+ * @returns {{
+ *   bodyRaw: string,
+ *   fromRaw: string,
+ *   toRaw: string,
+ *   fromE164: string | null,
+ *   toE164: string | null,
+ * }} Extracted SMS fields.
  */
 export function extractSmsRequest({ body = {}, normalizeUSNumberToE164 }) {
     const bodyRaw = body?.Body || body?.body || '';
@@ -22,9 +30,11 @@ export function extractSmsRequest({ body = {}, normalizeUSNumberToE164 }) {
 }
 
 /**
+ * Merge inbound and outbound messages and sort newest-first.
  *
- * @param inbound
- * @param outbound
+ * @param {Array<object>} inbound - Inbound messages.
+ * @param {Array<object>} outbound - Outbound messages.
+ * @returns {Array<object>} Combined, sorted messages.
  */
 export function mergeAndSortMessages(inbound = [], outbound = []) {
     const combined = [...inbound, ...outbound];
@@ -37,11 +47,13 @@ export function mergeAndSortMessages(inbound = [], outbound = []) {
 }
 
 /**
+ * Build a text thread from recent messages.
  *
- * @param root0
- * @param root0.messages
- * @param root0.fromE164
- * @param root0.limit
+ * @param {object} root0 - Thread inputs.
+ * @param {Array<object>} [root0.messages] - Messages.
+ * @param {string} root0.fromE164 - Caller number in E.164.
+ * @param {number} [root0.limit] - Max messages to include.
+ * @returns {string} Thread text.
  */
 export function buildSmsThreadText({ messages = [], fromE164, limit = 10 }) {
     const recent = messages.slice(0, limit);
@@ -53,10 +65,12 @@ export function buildSmsThreadText({ messages = [], fromE164, limit = 10 }) {
 }
 
 /**
+ * Build an SMS prompt for the model.
  *
- * @param root0
- * @param root0.threadText
- * @param root0.latestMessage
+ * @param {object} root0 - Prompt inputs.
+ * @param {string} root0.threadText - Thread text.
+ * @param {string} root0.latestMessage - Latest inbound message.
+ * @returns {string} Prompt text.
  */
 export function buildSmsPrompt({ threadText, latestMessage }) {
     const latest = String(latestMessage || '').trim();
