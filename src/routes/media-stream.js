@@ -27,6 +27,11 @@ import {
     SECONDARY_USER_FIRST_NAME,
 } from '../env.js';
 
+/**
+ * @param {import('@fastify/websocket').SocketStream} connection
+ * @param {import('fastify').FastifyRequest} req
+ * @returns {void}
+ */
 export function mediaStreamHandler(connection, req) {
         console.log('Client connected');
 

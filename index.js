@@ -12,16 +12,30 @@ const fastify = Fastify();
 fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
-// Root Route
-fastify.get('/', async (request, reply) => {
+/**
+ * @param {import('fastify').FastifyRequest} request
+ * @param {import('fastify').FastifyReply} reply
+ * @returns {Promise<void>}
+ */
+async function rootHandler(request, reply) {
     reply.send({ message: 'Twilio Media Stream Server is running!' });
-});
+}
 
-// Health Check Route (for Render/uptime monitors)
-fastify.get('/healthz', async (request, reply) => {
+/**
+ * @param {import('fastify').FastifyRequest} request
+ * @param {import('fastify').FastifyReply} reply
+ * @returns {Promise<void>}
+ */
+async function healthzHandler(request, reply) {
     // Respond quickly with a 2xx to indicate instance is healthy
     reply.code(200).send({ status: 'ok' });
-});
+}
+
+// Root Route
+fastify.get('/', rootHandler);
+
+// Health Check Route (for Render/uptime monitors)
+fastify.get('/healthz', healthzHandler);
 
 fastify.post('/sms', smsHandler);
 

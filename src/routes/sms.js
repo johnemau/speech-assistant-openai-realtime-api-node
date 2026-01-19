@@ -17,6 +17,11 @@ import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
 
+/**
+ * @param {import('fastify').FastifyRequest} request
+ * @param {import('fastify').FastifyReply} reply
+ * @returns {Promise<void>}
+ */
 export async function smsHandler(request, reply) {
     try {
         // Note: Global console wrappers already scrub sensitive data in logs.

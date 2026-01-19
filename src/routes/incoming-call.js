@@ -8,6 +8,11 @@ import {
 } from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
+/**
+ * @param {import('fastify').FastifyRequest} request
+ * @param {import('fastify').FastifyReply} reply
+ * @returns {Promise<void>}
+ */
 export async function incomingCallHandler(request, reply) {
     // Route for Twilio to handle incoming calls
     // <Say> punctuation to improve text-to-speech translation
