@@ -61,6 +61,49 @@ npm test
 Notes:
 - The default test script runs ESLint to catch issues early.
 
+### Voice test runner (text-mode)
+
+Run the text-mode voice tests (Realtime session + real tools, no Twilio audio):
+
+```
+npm run test:voice
+```
+
+Required environment variables:
+
+```
+OPENAI_API_KEY=sk-...
+```
+
+Optional (only needed if tests trigger live side effects):
+
+```
+ALLOW_LIVE_SIDE_EFFECTS=true
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_API_KEY=SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_API_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_SMS_FROM_NUMBER=+12065551234
+SMTP_NODEMAILER_SERVICE_ID=gmail
+SMTP_USER=sender@example.com
+SMTP_PASS=app_password
+SENDER_FROM_EMAIL=sender@example.com
+PRIMARY_TO_EMAIL=primary.recipient@example.com
+SECONDARY_TO_EMAIL=secondary.recipient@example.com
+```
+
+Test runner configuration:
+
+```
+TEST_CALLER_NUMBER=+12065551234   # optional override for caller identity
+JUDGE_MODEL=gpt-5.2               # optional judge model override
+JUDGE_PASS_SCORE=0.7              # minimum score to pass a turn
+```
+
+Notes:
+- When `ALLOW_LIVE_SIDE_EFFECTS` is false or missing, `send_sms` and `send_email` tool calls fail the test with a clear error.
+- The judge uses OpenAI responses to score each turn; costs apply.
+
 ### Redact sensitive env values in logs
 
 Prevent accidental printing of secret environment variables to `console.log` and `process.stdout`.

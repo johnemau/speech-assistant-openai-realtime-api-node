@@ -11,7 +11,9 @@ import patchLogs from 'redact-logs';
 import { scrub, findSensitiveValues } from '@zapier/secret-scrubber';
 import { inspect } from 'node:util';
 import twilio from 'twilio';
-import JSON5 from 'json5';
+import { createAssistantSession, safeParseToolArguments } from './src/assistant/session.js';
+import { getToolDefinitions, executeToolCall } from './src/tools/index.js';
+import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS, SMS_REPLY_INSTRUCTIONS } from './src/assistant/prompts.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -151,8 +153,6 @@ const {
     SENDER_FROM_EMAIL,
     SMTP_USER,
     SMTP_PASS,
-    PRIMARY_TO_EMAIL,
-    SECONDARY_TO_EMAIL,
     SMTP_NODEMAILER_SERVICE_ID,
 } = process.env;
 
@@ -211,116 +211,10 @@ const fastify = Fastify();
 fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
-// Constants
-const SYSTEM_MESSAGE = `# System Role
-You are a voice-only AI assistant participating in a live phone call using the OpenAI Realtime API.
-
-# Role and Goals
-- Provide accurate, concise, and up-to-date information in a natural speaking voice.
-- Optimize for low latency, clarity, and clean turn-taking.
-- Prefer correctness and verified facts over speculation or improvisation.
-
--# Tool Use
-- For every user question, always call the tool named gpt_web_search before speaking.
-- Keep queries short and specific; include **user_location** only when it materially affects the answer.
-- If the user mentions location information, pass **user_location** to gpt_web_search with extracted 'city', 'region' (state/province/country), and 'country' when inferable.
-- Wait for the tool response before speaking.
-- Base factual statements strictly on the tool output; do not rely on memory for facts.
-- When the user mentions a location, populate the tool argument 'user_location' by extracting 'city' and 'region' (state/province/country) from their speech.
-- When calling gpt_web_search, include 'user_location' with the extracted details whenever a location is mentioned.
-- Set 'type' to "approximate" and set 'country' to a two-letter code when inferable (e.g., US, FR). If country is not stated but the location is in the United States, default 'country' to US.
-- Tool-call limits: default to one tool per user turn, except the following explicit exceptions where chaining is allowed in the same turn:
-    1) web_search + send_email or web_search + send_sms (verification then send).
-    2) update_mic_distance may be combined with other tools and does not count toward the one-tool limit (at most one mic toggle per turn).
-- Examples:
-    - "I am in Tucson Arizona" → 'user_location': { type: "approximate", country: "US", region: "Arizona", city: "Tucson" }
-    - "I will be in Paris, France" → 'user_location': { type: "approximate", country: "FR", region: "Île-de-France", city: "Paris" }
-
-## Requests to Send Texts or Emails (Exception)
-- When the caller explicitly asks to send content via SMS or email (e.g., "send me a text with …", "sms me the answer to …", "email me …"), first call gpt_web_search to ensure facts are current, then immediately call the appropriate tool (send_sms or send_email) in the same turn.
-- This sequence (web_search → send tool) is an explicit exception to the one-tool-per-turn rule.
-- If the utterance also includes a mic-distance change (e.g., "you’re on speaker"), call update_mic_distance first, then proceed with web_search → send tool, all in the same user turn (max one mic toggle).
-- After the tool(s) finish, briefly confirm success or the error in voice.
- - Example combined request A: "Search the web for Seattle coffee and email me the results." → Call gpt_web_search with query "Seattle coffee" (include user_location when available), then call send_email with a short subject and an HTML body summarizing verified details (business names, addresses, phone numbers, hours, and one or two concise source labels). Conclude with ASCII art, then confirm send with a one-sentence summary.
- - Example combined request B: "You are on speaker. Search the web for good restaurants in Seattle and text me the results." → Call update_mic_distance(mode="far_field") → Call gpt_web_search(query="good restaurants in Seattle", include user_location if available) → Call send_sms(body_text with concise verified results and at most one short source label).
-
-# Email Tool
-- When the caller says "email me that" or similar, call the tool named send_email.
-- Compose the tool args from the latest conversation context — do not invent outside facts.
- - Provide a short, clear 'subject' and 'body_html' containing an HTML-only body. Include specific details the caller requested and, when available, include links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. Links must be clickable URLs.
-- The email body must be non-conversational: do not include follow-up questions (e.g., "would you like me to do x?"). Ensure the information is formatted for readability and kept concise.
-- Always conclude the email with a small, cute ASCII art on a new line.
- - After calling send_email and receiving the result, respond briefly confirming success or describing any error, and include a one-sentence summary of the email contents sent (e.g., subject and key items, business name, or topic). Keep it concise and voice-friendly.
-- For explicit email requests that require information, perform gpt_web_search first, then call send_email in the same turn using the verified details.
-
-# SMS Tool
-- When the caller says "text me", "send me a text", "sms me", "message me", or similar, call the tool named send_sms.
-- Before sending, call gpt_web_search to verify any factual content when the request refers to information, then compose the SMS body from the verified details and latest context.
-- SMS style: concise and actionable; include at most one short source label with a URL when directly helpful; omit filler and preambles. A single short follow-up question is allowed only when clearly useful.
- - After calling send_sms and receiving the result, respond briefly confirming success or describing any error, and include a one-sentence summary of the SMS contents sent (e.g., the main info or action shared).
-
-# Speaking Style
-- Keep responses brief and voice-friendly, typically 1–3 short sentences.
-- Use plain language and natural pacing.
-- Avoid lists, long explanations, or monologues.
-- Do not use filler phrases, sound effects, or onomatopoeia.
-- Do not claim you are about to perform an action unless you immediately execute the corresponding tool call.
-- Avoid meta statements like "I will look that up for you" unless a tool call is being performed right now.
-- When reading numbers, IDs, or codes, speak each character individually with hyphens (for example: 4-1-5).
-- Repeat numbers exactly as provided, without correction or inference.
- - When helpful, include one short follow-up question directly related to the user’s request (for example: "Would you like me to get the hours of operation?", "Would you like me to text or email you the article?", "Would you like me to get additional details?", or "Would you like me to find the business’s phone number?"). Only ask a follow-up when it clearly adds value; otherwise, omit it.
-
-# Personality & Tone
-## Personality
-- Friendly, calm and approachable expert assistant.
-## Tone
-- Warm, concise, confident, never fawning.
-## Pacing
-- Deliver your audio response fast, but do not sound rushed.
-- Do not modify the content of your response, only increase speaking speed for the same response.
-
-# Sources and Attribution
-- If the tool response includes sources or dates, mention at most one or two reputable sources with the date.
-  Example: “Source: Reuters, January 2026.”
-- Never invent or guess sources or dates.
-
-# Language and Clarity
-- Always respond in the user’s language.
-- If results are empty, conflicting, or unreliable, clearly state that and ask one concise clarifying question.
-
-# Audio Handling
-- Respond only to clear and intelligible speech.
-- If audio is unclear, noisy, incomplete, or ambiguous, ask the user to repeat or clarify.
-
-# Turn-Taking and Interruption
-- If the user begins speaking while you are responding, stop speaking immediately.
-- Listen and resume only if appropriate, with a concise reply.
-
-# Safety
-- If the user requests harmful, hateful, racist, sexist, lewd, or violent content, reply exactly:
-  “Sorry, I can’t assist with that.”
- 
-# Speakerphone Handling
-- If the caller says “you’re on speaker”, “putting you on speaker phone”, or similar → call the tool update_mic_distance with mode="far_field".
-- If the caller says “connected to car bluetooth”, “you are on the car”, “car speakers”, or similar → call update_mic_distance with mode="far_field".
-- If the caller says “taking you off speaker phone”, “off speaker”, “taking off car”, “off bluetooth”, or similar → call update_mic_distance with mode="near_field".
-- At most one mic toggle per user turn; mic toggles may be combined with other tools in the same turn (e.g., web_search, send_sms/send_email).
-- After receiving the tool result, speak one brief confirmation (e.g., “Optimizing for speakerphone.” or “Back to near‑field.”).
-- Respect negations or corrections (e.g., “not on speaker”, “no, keep it near”).
-
-# Call Ending
-- If the caller says “hang up”, “goodbye”, “bye now”, “disconnect”, or “end the call” → call the tool named end_call.
-- After receiving the tool result, speak one brief, context‑aware farewell — a witty line or warm compliment related to the conversation (e.g., “Have a nice day.”, “Enjoy your dinner if you get one.”, “I hope I was helpful.”, “Enjoy the movie if you end up seeing it.”, “Good evening, Mr. President.”, “Remember you are a wonderful person.”). The server will end the call immediately after playback finishes.
-- Make at most one tool call per user turn and respect negations (e.g., “don’t hang up”).
-`;
-// Instructions for web-search `responses.create` to produce detailed, voice-friendly output
-const WEB_SEARCH_INSTRUCTIONS = 'Prepare a voice-ready answer for a live call using gpt-realtime. Provide a detailed, fact-rich response that is easy to follow over the phone. Prioritize useful, actionable facts and omit filler. When relevant (e.g., a business), include the name, address, phone number, hours (if available), and review score. Present information in clear, short sentences or brief phrases that are easy to hear. Do not include URLs. Include concise source labels only (for example: "Source: Yelp" or "Source: Reuters"). Use natural phrasing and readable pacing for speech.';
 const VOICE = 'cedar';
 const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 const PORT = process.env.PORT || 10000; // Render default PORT is 10000
 
-// Instructions tailored for SMS replies
-const SMS_REPLY_INSTRUCTIONS = 'You are an SMS assistant. Take the latest user message and compose a single concise reply. If a recent SMS thread is provided, it may include messages unrelated to the latest user message; focus on the latest user message. Always call the web_search tool first to check for up-to-date facts relevant to the query, and base any factual content strictly on its results. Prefer brevity and clarity. Keep the reply ≤320 characters, friendly, and actionable. Cite sources concisely and include a URL for each cited source if one is available (e.g., official page, business website, specific article). Avoid filler and preambles. Output only the SMS body text, no quotes.';
 
 // Allowed callers (E.164). Configure via env `PRIMARY_USER_PHONE_NUMBERS` and `SECONDARY_USER_PHONE_NUMBERS` as comma-separated numbers.
 function normalizeUSNumberToE164(input) {
@@ -728,11 +622,13 @@ fastify.register(async (fastify) => {
         let hangupDuringTools = false;    // true if caller hung up while tools were pending/active
 
         // Mic distance / noise reduction state & counters
-        let currentNoiseReductionType = 'near_field';
-        let lastMicDistanceToggleTs = 0;
-        let farToggles = 0;
-        let nearToggles = 0;
-        let skippedNoOp = 0;
+        const micState = {
+            currentNoiseReductionType: 'near_field',
+            lastMicDistanceToggleTs: 0,
+            farToggles: 0,
+            nearToggles: 0,
+            skippedNoOp: 0,
+        };
 
         // Waiting music state
         let isWaitingMusic = false;
@@ -916,7 +812,7 @@ fastify.register(async (fastify) => {
                     stopWaitingMusic();
                     clearWaitingMusicInterval();
                     try { connection.close(1000, 'Call ended by assistant'); } catch {}
-                    try { if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close(); } catch {}
+                    try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {}
                     console.log('Call closed after goodbye playback.');
                 }
             } catch (e) {
@@ -924,37 +820,239 @@ fastify.register(async (fastify) => {
             }
         }
 
-        const openAiWs = new WebSocket(`wss://api.openai.com/v1/realtime?model=gpt-realtime&temperature=${TEMPERATURE}`, {
-            headers: {
-                Authorization: `Bearer ${OPENAI_API_KEY}`,
+        const handleAssistantOutput = (payload) => {
+            if (payload?.type !== 'audio' || !payload?.delta) return;
+            // Suppress audio entirely after hang-up; otherwise, stream to Twilio
+            // Mark that the assistant has started speaking (first-time check)
+            if (!firstAssistantAudioReceived) firstAssistantAudioReceived = true;
+            // Assistant audio is streaming; stop any waiting music immediately
+            stopWaitingMusic('assistant_audio');
+            if (!postHangupSilentMode) {
+                const audioDelta = {
+                    event: 'media',
+                    streamSid: streamSid,
+                    media: { payload: payload.delta }
+                };
+                connection.send(JSON.stringify(audioDelta));
+
+                // First delta from a new response starts the elapsed time counter
+                if (!responseStartTimestampTwilio) {
+                    responseStartTimestampTwilio = latestMediaTimestamp;
+                    if (SHOW_TIMING_MATH) console.log(`Setting start timestamp for new response: ${responseStartTimestampTwilio}ms`);
+                }
+
+                if (payload.itemId) {
+                    lastAssistantItem = payload.itemId;
+                }
+                
+                sendMark(connection, streamSid);
+            }
+        };
+
+        const handleOpenAiEvent = (response) => {
+            if (LOG_EVENT_TYPES.includes(response.type)) {
+                if (IS_DEV) console.log(`Received event: ${response.type}`, response);
+                else console.log(`Received event: ${response.type}`);
+            }
+
+            // Track response lifecycle to avoid overlapping creates
+            if (response.type === 'response.created') {
+                responseActive = true;
+            }
+            if (response.type === 'response.done') {
+                responseActive = false;
+            }
+
+            // When VAD ends a user turn, we must explicitly create a response (auto-create disabled)
+            if (response.type === 'input_audio_buffer.speech_stopped') {
+                stopWaitingMusic('speech_stopped');
+                if (!responseActive) {
+                    try {
+                        assistantSession.requestResponse();
+                    } catch (e) {
+                        console.warn('Failed to request response.create after speech_stopped:', e?.message || e);
+                    }
+                }
+            }
+
+            if (response.type === 'input_audio_buffer.speech_started') {
+                // Caller barged in; stop waiting music and handle truncation
+                stopWaitingMusic('caller_speech');
+                handleSpeechStartedEvent();
+            }
+
+            if (response.type === 'response.done') {
+                const functionCall = response.response?.output?.[0];
+                if (!functionCall || functionCall?.type !== 'function_call') {
+                    // Non-function responses: if we were asked to end the call, close after playback finishes
+                    attemptPendingDisconnectClose();
+                    // If in silent mode and no tool call is active, send a completion SMS and close OpenAI WS
+                    if (postHangupSilentMode && hangupDuringTools && !toolCallInProgress && !postHangupSmsSent) {
+                        try {
+                            const toNumber = currentCallerE164;
+                            const envFrom = normalizeUSNumberToE164(process.env.TWILIO_SMS_FROM_NUMBER || '');
+                            const fromNumber = currentTwilioNumberE164 || envFrom;
+                            if (twilioClient && toNumber && fromNumber) {
+                                const subjectNote = lastEmailSubject ? ` Email sent: "${lastEmailSubject}".` : '';
+                                const body = `Your request is complete.${subjectNote} Reply if you want more.`;
+                                if (IS_DEV) console.log('Post-hang-up completion SMS:', { from: fromNumber, to: toNumber, body });
+                                twilioClient.messages.create({ from: fromNumber, to: toNumber, body })
+                                    .then((sendRes) => {
+                                        console.info({ event: 'posthangup.sms.sent', sid: sendRes?.sid, to: toNumber });
+                                    })
+                                    .catch((e) => {
+                                        console.warn('Post-hang-up SMS send error:', e?.message || e);
+                                    });
+                                postHangupSmsSent = true;
+                            } else {
+                                console.warn({ event: 'posthangup.sms.unavailable', to: toNumber, from: fromNumber });
+                            }
+                        } catch (e) {
+                            console.warn('Post-hang-up SMS error:', e?.message || e);
+                        }
+                        // Close OpenAI WS after completion notification
+                        try { if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) assistantSession.close(); } catch {}
+                    }
+                }
+            }
+        };
+
+        const handleToolCall = async (functionCall) => {
+            if (IS_DEV) console.log('LLM response.done received');
+            console.log('Function call detected:', functionCall.name);
+            const callId = functionCall.call_id;
+            if (!callId) {
+                console.warn('Function call missing call_id; skipping to prevent duplicate execution.');
+                return;
+            }
+
+            const toolName = functionCall.name;
+            const shouldUseWaitingMusic = toolName !== 'end_call';
+            if (shouldUseWaitingMusic) {
+                toolCallInProgress = true;
+                waitingMusicStartTimeout = setTimeout(() => {
+                    if (toolCallInProgress) startWaitingMusic();
+                }, WAIT_MUSIC_THRESHOLD_MS);
+            } else {
+                toolCallInProgress = true;
+            }
+
+            try {
+                const toolInput = safeParseToolArguments(functionCall.arguments);
+                if (postHangupSilentMode) hangupDuringTools = true;
+                if (toolName === 'gpt_web_search') {
+                    lastWebSearchQuery = toolInput?.query || lastWebSearchQuery;
+                }
+                if (toolName === 'send_email') {
+                    const subjectRaw = String(toolInput?.subject || '').trim();
+                    if (subjectRaw) lastEmailSubject = subjectRaw;
+                }
+
+                const toolContext = {
+                    openaiClient,
+                    twilioClient,
+                    senderTransport,
+                    env: process.env,
+                    normalizeUSNumberToE164,
+                    primaryCallersSet: PRIMARY_CALLERS_SET,
+                    secondaryCallersSet: SECONDARY_CALLERS_SET,
+                    currentCallerE164,
+                    currentTwilioNumberE164,
+                    webSearchInstructions: WEB_SEARCH_INSTRUCTIONS,
+                    defaultUserLocation: { type: 'approximate', country: 'US', region: 'Washington' },
+                    allowLiveSideEffects: true,
+                    micState,
+                    applyNoiseReduction: (mode) => {
+                        const sessionUpdate = {
+                            audio: {
+                                input: {
+                                    noise_reduction: { type: mode }
+                                }
+                            }
+                        };
+                        if (IS_DEV) console.log('Applying noise_reduction change:', sessionUpdate);
+                        assistantSession.updateSession(sessionUpdate);
+                    },
+                    onEndCall: ({ reason }) => {
+                        // Enter silent mode: do not send any audio; allow tools to finish
+                        postHangupSilentMode = true;
+                        pendingDisconnect = true;
+                        if (toolCallInProgress) hangupDuringTools = true;
+                        // Close the Twilio stream promptly; keep OpenAI WS alive for tools
+                        try { connection.close(1000, 'Call ended by assistant'); } catch {}
+                        return {
+                            status: 'ok',
+                            pending_disconnect: true,
+                            reason,
+                            silent: true
+                        };
+                    }
+                };
+
+                const output = await executeToolCall({ name: toolName, args: toolInput, context: toolContext });
+
+                if (toolName === 'update_mic_distance') {
+                    if (IS_DEV) console.log('Noise reduction updated:', output);
+                }
+
+                if (toolName === 'gpt_web_search' && IS_DEV) {
+                    console.log('Dev tool call gpt_web_search output:', output);
+                }
+
+                const toolResultEvent = {
+                    type: 'conversation.item.create',
+                    item: {
+                        type: 'function_call_output',
+                        call_id: functionCall.call_id,
+                        output: JSON.stringify(output)
+                    }
+                };
+                toolCallInProgress = false;
+                stopWaitingMusic('tool_call_complete');
+                clearWaitingMusicInterval();
+                assistantSession.send(toolResultEvent);
+                if (!responseActive) assistantSession.requestResponse();
+                if (IS_DEV) console.log('LLM tool output sent to OpenAI', toolResultEvent);
+            } catch (error) {
+                console.error('Error handling tool call:', error);
+                toolCallInProgress = false;
+                stopWaitingMusic('tool_error');
+                clearWaitingMusicInterval();
+                sendOpenAiToolError(functionCall.call_id, error);
+            }
+        };
+
+        const assistantSession = createAssistantSession({
+            apiKey: OPENAI_API_KEY,
+            model: 'gpt-realtime',
+            temperature: TEMPERATURE,
+            voice: VOICE,
+            instructions: SYSTEM_MESSAGE,
+            tools: getToolDefinitions(),
+            outputModalities: ['audio'],
+            audioConfig: {
+                input: {
+                    format: { type: 'audio/pcmu' },
+                    turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
+                    noise_reduction: { type: micState.currentNoiseReductionType }
+                },
+                output: { format: { type: 'audio/pcmu' }, voice: VOICE },
+            },
+            onEvent: handleOpenAiEvent,
+            onAssistantOutput: handleAssistantOutput,
+            onToolCall: handleToolCall,
+            onOpen: () => console.log('Connected to the OpenAI Realtime API'),
+            onClose: () => {
+                console.log('Disconnected from the OpenAI Realtime API');
+                stopWaitingMusic();
+                clearWaitingMusicInterval();
+            },
+            onError: (error) => {
+                console.error('Error in the OpenAI WebSocket:', error);
+                stopWaitingMusic();
+                clearWaitingMusicInterval();
             }
         });
-
-        // Queue outbound OpenAI messages until the WS is OPEN
-        const pendingOpenAiMessages = [];
-        function openAiSend(obj) {
-            try {
-                const payload = JSON.stringify(obj);
-                if (openAiWs.readyState === WebSocket.OPEN) {
-                    openAiWs.send(payload);
-                } else {
-                    pendingOpenAiMessages.push(payload);
-                }
-            } catch (e) {
-                console.error('Failed to send/queue OpenAI message:', e);
-            }
-        }
-        function flushPendingOpenAiMessages() {
-            if (openAiWs.readyState !== WebSocket.OPEN) return;
-            try {
-                while (pendingOpenAiMessages.length > 0) {
-                    const msg = pendingOpenAiMessages.shift();
-                    openAiWs.send(msg);
-                }
-            } catch (e) {
-                console.error('Failed to flush OpenAI queued messages:', e);
-            }
-        }
 
         // Send initial conversation item using the caller's name once available
         const sendInitialConversationItem = (callerNameValue = 'legend') => {
@@ -973,8 +1071,8 @@ fastify.register(async (fastify) => {
             };
 
             if (SHOW_TIMING_MATH) console.log('Sending initial conversation item:', JSON.stringify(initialConversationItem));
-            openAiSend(initialConversationItem);
-            openAiSend({ type: 'response.create' });
+            assistantSession.send(initialConversationItem);
+            assistantSession.requestResponse();
         };
 
         // Helper to log and send tool errors to OpenAI WS
@@ -990,287 +1088,12 @@ fastify.register(async (fastify) => {
                         output: JSON.stringify({ error: msg })
                     }
                 };
-                openAiWs.send(JSON.stringify(toolErrorEvent));
-                if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
+                assistantSession.send(toolErrorEvent);
+                if (!responseActive) assistantSession.requestResponse();
             } catch (e) {
                 console.error('Failed to send tool error to OpenAI WS:', e);
             }
         }
-
-        // Helper: robustly parse tool arguments coming from the model
-        function safeParseToolArguments(args) {
-            if (args == null) return {};
-            if (typeof args === 'object') return args;
-            let str = String(args);
-            // Normalize and trim possible BOMs/whitespace
-            str = str.replace(/^\uFEFF/, '').trim();
-            try {
-                // First attempt: strict JSON
-                return JSON.parse(str);
-            } catch {
-                // Second attempt: relaxed JSON (JSON5) for single quotes, unquoted keys, etc.
-                try {
-                    return JSON5.parse(str);
-                } catch {
-                    // Final attempt: minimal repairs + quoting bare keys, then JSON5 parse
-                    try {
-                        let repaired = str
-                            .replace(/^\uFEFF/, '')
-                            .replace(/[\u201C\u201D]/g, '"') // smart double quotes → standard
-                            .replace(/[\u2018\u2019]/g, "'") // smart single quotes → standard
-                            .replace(/\r\n/g, '\n')
-                            .replace(/\n/g, '\\n') // escape literal newlines within strings
-                            .replace(/,\s*([}\]])/g, '$1'); // remove trailing commas
-
-                        // Add quotes around unquoted property names at object boundaries
-                        repaired = repaired.replace(/([{|,]\s*)([A-Za-z_][A-Za-z0-9_\-]*)(\s*):/g, '$1"$2"$3:');
-
-                        return JSON5.parse(repaired);
-                    } catch (e3) {
-                        throw e3;
-                    }
-                }
-            }
-        }
-
-        // Define the gpt_web_search tool
-        const gptWebSearchTool = {
-            type: 'function',
-            name: 'gpt_web_search',
-            parameters: {
-                type: 'object',
-                properties: {
-                    query: {
-                        type: 'string',
-                        description: "The user's question or topic to research across the live web."
-                    },
-                    user_location: {
-                        type: 'object',
-                        description: 'Optional approximate user location to improve local relevance. Defaults to US Washington if not provided. When the user mentions a location, infer and include it here. Set type="approximate". If country is stated, use its two-letter code (e.g., US, FR); if not and the location is in the United States, default to US. Examples: "I am in Tucson Arizona" → region=Arizona, city=Tucson; "I will be in Paris, France" → region=Île-de-France, city=Paris.',
-                        properties: {
-                            type: { type: 'string', description: 'Location type; use "approximate".' },
-                            country: { type: 'string', description: 'Two-letter country code like US.' },
-                            region: { type: 'string', description: 'Region or state name.' },
-                            city: { type: 'string', description: 'Optional city.' }
-                        }
-                    }
-                },
-                required: ['query']
-            },
-            description: 'Comprehensive web search'
-        };
-
-        // Define send_email tool
-        const sendEmailTool = {
-            type: 'function',
-            name: 'send_email',
-            parameters: {
-                type: 'object',
-                properties: {
-                    subject: { type: 'string', description: 'Short subject summarizing the latest context.' },
-                                        body_html: {
-                                                type: 'string',
-                                                description: 'HTML-only email body composed from the latest conversation context. Non-conversational (no follow-up questions); formatted for readability and concise. Include specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be provided as clickable URLs. Always conclude with a small, cute ASCII art at the end of the message.',
-                                                examples: [
-                                                        `<html>
-    <body>
-        <h2>Bluebird Cafe — Seattle, WA</h2>
-
-        <p><strong>Address:</strong> 123 Pine St, Seattle, WA 98101</p>
-        <p><strong>Phone:</strong> <a href="tel:+12065550123">+1 (206) 555‑0123</a></p>
-        <p><strong>Email:</strong> <a href="mailto:info@bluebirdcafe.example">info@bluebirdcafe.example</a></p>
-        <p><strong>Website:</strong> <a href="https://bluebirdcafe.example">https://bluebirdcafe.example</a></p>
-        <p><strong>Google Maps:</strong> <a href="https://maps.google.com/?q=Bluebird%20Cafe%20123%20Pine%20St%20Seattle%20WA%2098101">View location</a></p>
-
-        <h3>Hours of Operation</h3>
-        <ul>
-            <li>Mon–Fri: 7:00 AM – 6:00 PM</li>
-            <li>Sat: 8:00 AM – 6:00 PM</li>
-            <li>Sun: 8:00 AM – 4:00 PM</li>
-        </ul>
-
-        <h3>Quick Highlights</h3>
-        <ul>
-            <li>Specialty: Single‑origin pour‑overs and seasonal pastries.</li>
-            <li>Amenities: Free Wi‑Fi, indoor seating, pet‑friendly patio.</li>
-        </ul>
-
-        <h3>Recent Coverage</h3>
-        <ul>
-            <li><a href="https://news.example.com/2026/bluebird-cafe-feature">Feature article on Bluebird Cafe</a></li>
-            <li><a href="https://blog.example.com/seattle-best-coffee-2026">Seattle coffee roundup (includes Bluebird)</a></li>
-        </ul>
-
-        <hr />
-
-        <pre style="font-family: monospace; line-height: 1.2; margin-top: 12px;">
-            /\_/\
-         ( •.• )  meow
-            > ^ <
-        </pre>
-    </body>
-</html>`,
-                                                        `<html>
-    <body>
-        <h2>U.S. President — Quick Fact</h2>
-        <p><strong>Current President:</strong> Example Name.</p>
-        <p><em>Source:</em> <a href="https://www.whitehouse.gov/">whitehouse.gov</a></p>
-        <hr />
-        <pre style="font-family: monospace; line-height: 1.2; margin-top: 12px;">
-            ʕ•ᴥ•ʔ
-        </pre>
-    </body>
-</html>`,
-                                                        `<html>
-    <body>
-        <h2>24‑Hour Weather — Seattle, WA</h2>
-        <p><strong>Forecast:</strong> Showers early, clearing late. High 49°F / Low 41°F. Winds SW 5–10 mph.</p>
-        <p><em>Source:</em> <a href="https://forecast.weather.gov/MapClick.php?textField1=47.61&textField2=-122.33">National Weather Service</a></p>
-        <hr />
-        <pre style="font-family: monospace; line-height: 1.2; margin-top: 12px;">
-            (•‿•)
-        </pre>
-    </body>
-</html>`,
-                                                        `<html>
-    <body>
-        <h2>Movie Showtimes — Tonight</h2>
-        <p><strong>Regal Pine Street 12</strong><br />
-             456 Pine St, Seattle, WA 98101 — <a href="https://maps.google.com/?q=Regal%20Pine%20Street%2012%20Seattle">Google Maps</a><br />
-             Phone: <a href="tel:+12065550111">+1 (206) 555‑0111</a> — Website: <a href="https://www.regal.example/pine-street-12">regal.example/pine-street-12</a></p>
-        <ul>
-            <li>Starlight Odyssey (PG‑13): 6:45 PM, 9:15 PM</li>
-            <li>City Beats (R): 7:00 PM, 9:30 PM</li>
-            <li>Green Trails (PG): 6:30 PM</li>
-        </ul>
-        <hr />
-        <pre style="font-family: monospace; line-height: 1.2; margin-top: 12px;">
-            /\_/\
-         ( •.• )
-            > ^ <
-        </pre>
-    </body>
-</html>`
-                                                ]
-                                        }
-                },
-                required: ['subject', 'body_html']
-            },
-            description: 'Send an HTML email with the latest context. The assistant must supply a subject and a non-conversational, concise HTML body that includes specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be clickable URLs. Always conclude the email with a small, cute ASCII art at the end.'
-        };
-
-        // Define send_sms tool (concise, actionable SMS; no filler)
-        const sendSmsTool = {
-            type: 'function',
-            name: 'send_sms',
-            parameters: {
-                type: 'object',
-                properties: {
-                    body_text: {
-                        type: 'string',
-                        description: 'Concise, actionable SMS body with no filler or preamble. Include only the information requested and any sources as short labels with URLs (e.g., official page, business website, article). Keep wording tight and direct. You may add a single, short follow-up question (e.g., "Would you like me to get the hours of operation?") when helpful.'
-                    }
-                },
-                required: ['body_text']
-            },
-            description: 'Send an SMS that contains only the requested information and brief source labels with URLs. Keep it actionable and free of preamble or unnecessary words. A single short follow-up question is allowed when helpful (e.g., asking if you should get hours or more details).'
-        };
-
-        // Define update_mic_distance tool (near_field | far_field)
-        const updateMicDistanceTool = {
-            type: 'function',
-            name: 'update_mic_distance',
-            parameters: {
-                type: 'object',
-                properties: {
-                    mode: {
-                        type: 'string',
-                        enum: ['near_field', 'far_field'],
-                        description: 'Set input noise_reduction.type to near_field or far_field.'
-                    },
-                    reason: {
-                        type: 'string',
-                        description: 'Optional short note about why (e.g., caller phrase).'
-                    }
-                },
-                required: ['mode']
-            },
-            description: 'Toggle mic processing based on caller phrases: speakerphone-on → far_field; off-speakerphone → near_field. Debounce and avoid redundant toggles; one tool call per turn.'
-        };
-
-        // Define end_call tool
-        const endCallTool = {
-            type: 'function',
-            name: 'end_call',
-            parameters: {
-                type: 'object',
-                properties: {
-                    reason: { type: 'string', description: 'Optional short phrase indicating why the caller wants to end.' }
-                }
-            },
-            description: 'Politely end the call. The server will close the Twilio media-stream and OpenAI WebSocket after the assistant says a brief goodbye.'
-        };
-
-        // Handle gpt_web_search tool calls
-        const handleWebSearchToolCall = async (query, userLocation) => {
-            try {
-                const effectiveLocation = userLocation ?? {
-                    type: "approximate",
-                    country: "US",
-                    region: "Washington"
-                };
-
-                // Build exact payload and log all values being sent to OpenAI
-                const reqPayload = {
-                    model: 'gpt-5.2',
-                    reasoning: { effort: 'high' },
-                    tools: [{
-                        type: 'web_search',
-                        user_location: effectiveLocation,
-                    }],
-                    instructions: WEB_SEARCH_INSTRUCTIONS,
-                    input: query,
-                    tool_choice: 'required',
-                    truncation: 'auto',
-                };
-
-                if (IS_DEV) console.log('Web search request payload:', reqPayload);
-
-                const result = await openaiClient.responses.create(reqPayload);
-
-                if (IS_DEV) console.log('Web search result:', result.output_text);
-                return result.output_text;
-            } catch (error) {
-                console.error('Error calling web search:', error);
-                throw error;
-            }
-        };
-
-        // Control initial session with OpenAI
-        const initializeSession = () => {
-            const sessionUpdate = {
-                type: 'session.update',
-                session: {
-                    type: 'realtime',
-                    model: 'gpt-realtime',
-                    output_modalities: ['audio'],
-                    audio: {
-                        input: { format: { type: 'audio/pcmu' }, turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false }, noise_reduction: { type: currentNoiseReductionType } },
-                        output: { format: { type: 'audio/pcmu' }, voice: VOICE },
-                    },
-                    instructions: SYSTEM_MESSAGE,
-                    tools: [ gptWebSearchTool, sendEmailTool, sendSmsTool, updateMicDistanceTool, endCallTool ],
-                    tool_choice: 'auto',
-                },
-            };
-
-            console.log('Sending session update:', stringifyDeep(sessionUpdate));
-            openAiWs.send(JSON.stringify(sessionUpdate));
-            // After updating session, flush any queued messages (e.g., initial greeting)
-            flushPendingOpenAiMessages();
-
-            // Initial greeting will be sent after Twilio 'start' event once caller name is known
-        };
 
         // Handle interruption when the caller's speech starts
         const handleSpeechStartedEvent = () => {
@@ -1286,7 +1109,7 @@ fastify.register(async (fastify) => {
                         audio_end_ms: elapsedTime
                     };
                     if (SHOW_TIMING_MATH) console.log('Sending truncation event:', stringifyDeep(truncateEvent));
-                    openAiWs.send(JSON.stringify(truncateEvent));
+                    assistantSession.send(truncateEvent);
                 }
 
                 connection.send(JSON.stringify({
@@ -1314,518 +1137,6 @@ fastify.register(async (fastify) => {
             }
         };
 
-        // Open event for OpenAI WebSocket
-        openAiWs.on('open', () => {
-            console.log('Connected to the OpenAI Realtime API');
-            setTimeout(initializeSession, 100);
-        });
-
-        // Listen for messages from the OpenAI WebSocket (and send to Twilio if necessary)
-        openAiWs.on('message', (data) => {
-            try {
-                const response = JSON.parse(data);
-
-                if (LOG_EVENT_TYPES.includes(response.type)) {
-                    if (IS_DEV) console.log(`Received event: ${response.type}`, response);
-                    else console.log(`Received event: ${response.type}`);
-                }
-
-                if (response.type === 'response.output_audio.delta' && response.delta) {
-                    // Suppress audio entirely after hang-up; otherwise, stream to Twilio
-                    // Mark that the assistant has started speaking (first-time check)
-                    if (!firstAssistantAudioReceived) firstAssistantAudioReceived = true;
-                    // Assistant audio is streaming; stop any waiting music immediately
-                    stopWaitingMusic('assistant_audio');
-                    if (!postHangupSilentMode) {
-                        const audioDelta = {
-                            event: 'media',
-                            streamSid: streamSid,
-                            media: { payload: response.delta }
-                        };
-                        connection.send(JSON.stringify(audioDelta));
-
-                        // First delta from a new response starts the elapsed time counter
-                        if (!responseStartTimestampTwilio) {
-                            responseStartTimestampTwilio = latestMediaTimestamp;
-                            if (SHOW_TIMING_MATH) console.log(`Setting start timestamp for new response: ${responseStartTimestampTwilio}ms`);
-                        }
-
-                        if (response.item_id) {
-                            lastAssistantItem = response.item_id;
-                        }
-                        
-                        sendMark(connection, streamSid);
-                    }
-                }
-
-                // Track response lifecycle to avoid overlapping creates
-                if (response.type === 'response.created') {
-                    responseActive = true;
-                }
-                if (response.type === 'response.done') {
-                    responseActive = false;
-                }
-
-                // When VAD ends a user turn, we must explicitly create a response (auto-create disabled)
-                if (response.type === 'input_audio_buffer.speech_stopped') {
-                    stopWaitingMusic('speech_stopped');
-                    if (!responseActive) {
-                        try {
-                            openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                        } catch (e) {
-                            console.warn('Failed to request response.create after speech_stopped:', e?.message || e);
-                        }
-                    }
-                }
-
-                if (response.type === 'input_audio_buffer.speech_started') {
-                    // Caller barged in; stop waiting music and handle truncation
-                    stopWaitingMusic('caller_speech');
-                    handleSpeechStartedEvent();
-                }
-
-                // Handle function calls from response.done event
-                if (response.type === 'response.done') {
-                    const functionCall = response.response?.output?.[0];
-                    if (IS_DEV) console.log('LLM response.done received');
-                    
-                    if (functionCall?.type === 'function_call') {
-                        console.log('Function call detected:', functionCall.name);
-                        const callId = functionCall.call_id;
-                        if (!callId) {
-                            console.warn('Function call missing call_id; skipping to prevent duplicate execution.');
-                            return;
-                        }
-                        
-                        
-                        if (functionCall.name === 'gpt_web_search') {
-                            // Schedule waiting music if the tool call takes longer than threshold
-                            toolCallInProgress = true;
-                            waitingMusicStartTimeout = setTimeout(() => {
-                                if (toolCallInProgress) startWaitingMusic();
-                            }, WAIT_MUSIC_THRESHOLD_MS);
-                            try {
-                                const toolInput = safeParseToolArguments(functionCall.arguments);
-                                const query = toolInput.query;
-                                const userLocation = toolInput.user_location;
-                                if (IS_DEV) console.log('Dev tool call gpt_web_search input:', { query, user_location: userLocation });
-                                if (postHangupSilentMode) hangupDuringTools = true;
-                                lastWebSearchQuery = query || lastWebSearchQuery;
-                                console.log(`Executing web search`);
-                                handleWebSearchToolCall(query, userLocation)
-                                    .then((searchResult) => {
-                                        // Tool completed; stop waiting music before continuing response
-                                        toolCallInProgress = false;
-                                        stopWaitingMusic('tool_call_complete');
-                                        clearWaitingMusicInterval();
-                                        if (IS_DEV) console.log('Dev tool call gpt_web_search output:', searchResult);
-                                        // Send function call output back to OpenAI
-                                        const toolResultEvent = {
-                                            type: 'conversation.item.create',
-                                            item: {
-                                                type: 'function_call_output',
-                                                call_id: functionCall.call_id,
-                                                output: JSON.stringify(searchResult)
-                                            }
-                                        };
-                                        openAiWs.send(JSON.stringify(toolResultEvent));
-                                        if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                                        if (IS_DEV) console.log('LLM tool output sent to OpenAI', toolResultEvent);
-                                        // Tool call completed
-                                    })
-                                    .catch((error) => {
-                                        console.error('Error handling web search tool call:', error);
-                                        toolCallInProgress = false;
-                                        stopWaitingMusic('tool_error');
-                                        clearWaitingMusicInterval();
-                                        // Send error result back to OpenAI (and log)
-                                        sendOpenAiToolError(functionCall.call_id, error);
-                                        // Tool call errored
-                                    });
-                            } catch (parseError) {
-                                console.error('Error parsing tool arguments:', parseError);
-                                toolCallInProgress = false;
-                                stopWaitingMusic('tool_error');
-                                clearWaitingMusicInterval();
-                                // Tool call parse error
-                            }
-                        } else if (functionCall.name === 'send_email') {
-                            // Schedule waiting music in case email sending takes time
-                            toolCallInProgress = true;
-                            waitingMusicStartTimeout = setTimeout(() => {
-                                if (toolCallInProgress) startWaitingMusic();
-                            }, WAIT_MUSIC_THRESHOLD_MS);
-                            try {
-                                const toolInput = safeParseToolArguments(functionCall.arguments);
-                                const subjectRaw = String(toolInput.subject || '').trim();
-                                const bodyHtml = String(toolInput.body_html || '').trim();
-                                if (IS_DEV) console.log('Dev tool call send_email input:', { subject: subjectRaw, body_html: bodyHtml });
-                                if (postHangupSilentMode) hangupDuringTools = true;
-
-                                if (!subjectRaw || !bodyHtml) {
-                                    const errMsg = 'Missing subject or body_html.';
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic('tool_call_complete');
-                                    clearWaitingMusicInterval();
-                                    sendOpenAiToolError(functionCall.call_id, errMsg);
-                                    // Cleanup on validation error
-                                    
-                                    return;
-                                }
-
-                                const subject = subjectRaw;
-                                // Capture subject for post-hang-up SMS summary
-                                lastEmailSubject = subject;
-
-                                // Determine caller group
-                                let group = null;
-                                if (currentCallerE164 && PRIMARY_CALLERS_SET.has(currentCallerE164)) group = 'primary';
-                                else if (currentCallerE164 && SECONDARY_CALLERS_SET.has(currentCallerE164)) group = 'secondary';
-
-                                const fromEmail = SENDER_FROM_EMAIL || null;
-                                const toEmail = group === 'primary' ? (PRIMARY_TO_EMAIL || null) : (group === 'secondary' ? (SECONDARY_TO_EMAIL || null) : null);
-
-                                if (!senderTransport || !fromEmail || !toEmail) {
-                                    const errMsg = 'Email is not configured for this caller.';
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic('tool_error');
-                                    clearWaitingMusicInterval();
-                                    sendOpenAiToolError(functionCall.call_id, errMsg);
-                                    // Cleanup when email configuration prevents sending
-                                    
-                                    return;
-                                }
-
-                                // Send email
-                                const mailOptions = {
-                                    from: fromEmail,
-                                    to: toEmail,
-                                    subject,
-                                    html: bodyHtml,
-                                    headers: {
-                                        'X-From-Ai-Assistant': 'true'
-                                    }
-                                };
-                                if (IS_DEV) console.log('Dev sendMail options:', mailOptions);
-                                senderTransport.sendMail(mailOptions).then((info) => {
-                                    const result = {
-                                        messageId: info.messageId,
-                                        accepted: info.accepted,
-                                        rejected: info.rejected,
-                                    };
-                                    if (IS_DEV) console.log('Dev tool call send_email output:', result);
-                                    const toolResultEvent = {
-                                        type: 'conversation.item.create',
-                                        item: {
-                                            type: 'function_call_output',
-                                            call_id: functionCall.call_id,
-                                            output: JSON.stringify(result)
-                                        }
-                                    };
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic();
-                                    clearWaitingMusicInterval();
-                                    openAiWs.send(JSON.stringify(toolResultEvent));
-                                    if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                                    if (IS_DEV) console.log('LLM email tool output sent');
-                                    // Email tool call completed
-                                }).catch((error) => {
-                                    console.error('Email send error:', error);
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic();
-                                    clearWaitingMusicInterval();
-                                    sendOpenAiToolError(functionCall.call_id, error);
-                                    // Email tool call errored
-                                });
-                            } catch (parseError) {
-                                toolCallInProgress = false;
-                                stopWaitingMusic('tool_error');
-                                clearWaitingMusicInterval();
-                                sendOpenAiToolError(functionCall.call_id, parseError);
-                                // Email tool call parse error
-                            }
-                        } else if (functionCall.name === 'send_sms') {
-                            // SMS sending is usually quick; still tie in waiting music for consistency
-                            toolCallInProgress = true;
-                            waitingMusicStartTimeout = setTimeout(() => {
-                                if (toolCallInProgress) startWaitingMusic();
-                            }, WAIT_MUSIC_THRESHOLD_MS);
-                            try {
-                                const toolInput = safeParseToolArguments(functionCall.arguments);
-                                let bodyText = String(toolInput.body_text || '').trim();
-                                if (IS_DEV) console.log('Dev tool call send_sms input:', { body_text: bodyText });
-                                if (postHangupSilentMode) hangupDuringTools = true;
-
-                                if (!bodyText) {
-                                    const errMsg = 'Missing body_text.';
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic('tool_call_complete');
-                                    clearWaitingMusicInterval();
-                                    sendOpenAiToolError(functionCall.call_id, errMsg);
-                                    return;
-                                }
-
-                                // Normalize whitespace without enforcing a hard length limit
-                                bodyText = bodyText.replace(/\s+/g, ' ').trim();
-
-                                if (!twilioClient) {
-                                    const errMsg = 'Twilio client unavailable.';
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic();
-                                    clearWaitingMusicInterval();
-                                    sendOpenAiToolError(functionCall.call_id, errMsg);
-                                    return;
-                                }
-
-                                const toNumber = currentCallerE164;
-                                const envFrom = normalizeUSNumberToE164(process.env.TWILIO_SMS_FROM_NUMBER || '');
-                                const fromNumber = currentTwilioNumberE164 || envFrom;
-
-                                if (!toNumber || !fromNumber) {
-                                    const errMsg = 'SMS is not configured: missing caller or from number.';
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic();
-                                    clearWaitingMusicInterval();
-                                    sendOpenAiToolError(functionCall.call_id, errMsg);
-                                    return;
-                                }
-
-                                // Send SMS via Twilio
-                                if (IS_DEV) console.log('Dev Twilio SMS send request:', { from: fromNumber, to: toNumber, length: bodyText.length, preview: bodyText.slice(0, 160) });
-                                twilioClient.messages.create({
-                                    from: fromNumber,
-                                    to: toNumber,
-                                    body: bodyText,
-                                }).then((sendRes) => {
-                                    const result = {
-                                        sid: sendRes?.sid,
-                                        status: sendRes?.status,
-                                        length: bodyText.length,
-                                    };
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic();
-                                    clearWaitingMusicInterval();
-                                    const toolResultEvent = {
-                                        type: 'conversation.item.create',
-                                        item: {
-                                            type: 'function_call_output',
-                                            call_id: functionCall.call_id,
-                                            output: JSON.stringify(result)
-                                        }
-                                    };
-                                    openAiWs.send(JSON.stringify(toolResultEvent));
-                                    if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                                    if (IS_DEV) console.log('LLM SMS tool output sent');
-                                }).catch((error) => {
-                                    console.error('Twilio SMS send error:', error);
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic();
-                                    clearWaitingMusicInterval();
-                                    sendOpenAiToolError(functionCall.call_id, error);
-                                });
-                            } catch (parseError) {
-                                toolCallInProgress = false;
-                                stopWaitingMusic('tool_error');
-                                clearWaitingMusicInterval();
-                                sendOpenAiToolError(functionCall.call_id, parseError);
-                                // SMS tool call parse error
-                            }
-                        } else if (functionCall.name === 'update_mic_distance') {
-                            // Schedule waiting music in case this tool call takes time
-                            toolCallInProgress = true;
-                            waitingMusicStartTimeout = setTimeout(() => {
-                                if (toolCallInProgress) startWaitingMusic();
-                            }, WAIT_MUSIC_THRESHOLD_MS);
-                            try {
-                                const toolInput = safeParseToolArguments(functionCall.arguments);
-                                const requestedMode = String(toolInput.mode || '').trim();
-                                const reason = typeof toolInput.reason === 'string' ? toolInput.reason.trim() : undefined;
-                                if (IS_DEV) console.log('Dev tool call update_mic_distance input:', { requestedMode, reason });
-
-                                // After hang-up, mic distance updates are no-ops
-                                if (postHangupSilentMode) {
-                                    const output = {
-                                        status: 'noop',
-                                        applied: false,
-                                        reason: 'call_ended',
-                                        mode: requestedMode || null,
-                                        current: currentNoiseReductionType,
-                                    };
-                                    const toolResultEvent = {
-                                        type: 'conversation.item.create',
-                                        item: {
-                                            type: 'function_call_output',
-                                            call_id: functionCall.call_id,
-                                            output: JSON.stringify(output)
-                                        }
-                                    };
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic();
-                                    clearWaitingMusicInterval();
-                                    openAiWs.send(JSON.stringify(toolResultEvent));
-                                    if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                                    return;
-                                }
-
-                                const validModes = new Set(['near_field', 'far_field']);
-                                if (!validModes.has(requestedMode)) {
-                                    const err = `Invalid mode: ${requestedMode}. Expected near_field or far_field.`;
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic();
-                                    clearWaitingMusicInterval();
-                                    sendOpenAiToolError(functionCall.call_id, err);
-                                    return;
-                                }
-
-                                const now = Date.now();
-                                const withinDebounce = (now - lastMicDistanceToggleTs) < 2000;
-                                const isNoOp = requestedMode === currentNoiseReductionType;
-
-                                if (withinDebounce || isNoOp) {
-                                    if (isNoOp) skippedNoOp++;
-                                    const output = {
-                                        status: 'noop',
-                                        applied: false,
-                                        reason: withinDebounce ? 'debounced' : 'already-set',
-                                        mode: requestedMode,
-                                        current: currentNoiseReductionType,
-                                        counters: { farToggles, nearToggles, skippedNoOp }
-                                    };
-                                    const toolResultEvent = {
-                                        type: 'conversation.item.create',
-                                        item: {
-                                            type: 'function_call_output',
-                                            call_id: functionCall.call_id,
-                                            output: JSON.stringify(output)
-                                        }
-                                    };
-                                    toolCallInProgress = false;
-                                    stopWaitingMusic();
-                                    clearWaitingMusicInterval();
-                                    openAiWs.send(JSON.stringify(toolResultEvent));
-                                    if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                                    
-                                    return;
-                                }
-
-                                // Apply session.update with the requested mode
-                                const sessionUpdate = {
-                                    type: 'session.update',
-                                    session: {
-                                        // Include required session.type on every session.update
-                                        type: 'realtime',
-                                        audio: {
-                                            input: {
-                                                noise_reduction: { type: requestedMode }
-                                            }
-                                        }
-                                    }
-                                };
-                                console.log('Applying noise_reduction change:', sessionUpdate);
-                                openAiWs.send(JSON.stringify(sessionUpdate));
-                                currentNoiseReductionType = requestedMode;
-                                lastMicDistanceToggleTs = now;
-                                if (requestedMode === 'far_field') farToggles++; else nearToggles++;
-
-                                const output = {
-                                    status: 'ok',
-                                    applied: true,
-                                    mode: requestedMode,
-                                    current: currentNoiseReductionType,
-                                    reason,
-                                    counters: { farToggles, nearToggles, skippedNoOp }
-                                };
-                                const toolResultEvent = {
-                                    type: 'conversation.item.create',
-                                    item: {
-                                        type: 'function_call_output',
-                                        call_id: functionCall.call_id,
-                                        output: JSON.stringify(output)
-                                    }
-                                };
-                                toolCallInProgress = false;
-                                stopWaitingMusic('tool_call_complete');
-                                clearWaitingMusicInterval();
-                                openAiWs.send(JSON.stringify(toolResultEvent));
-                                if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                                if (IS_DEV) console.log('Noise reduction updated:', output);
-                            } catch (parseError) {
-                                console.error('Error parsing update_mic_distance args:', parseError);
-                                toolCallInProgress = false;
-                                stopWaitingMusic('tool_error');
-                                clearWaitingMusicInterval();
-                                sendOpenAiToolError(functionCall.call_id, parseError);
-                            }
-                        } else if (functionCall.name === 'end_call') {
-                            // No waiting music needed; we will end promptly after goodbye.
-                            try {
-                                const toolInput = JSON.parse(functionCall.arguments || '{}');
-                                const reason = typeof toolInput.reason === 'string' ? toolInput.reason.trim() : undefined;
-                                // Enter silent mode: do not send any audio; allow tools to finish
-                                postHangupSilentMode = true;
-                                pendingDisconnect = true;
-                                if (toolCallInProgress) hangupDuringTools = true;
-                                // Close the Twilio stream promptly; keep OpenAI WS alive for tools
-                                try { connection.close(1000, 'Call ended by assistant'); } catch {}
-
-                                const output = {
-                                    status: 'ok',
-                                    pending_disconnect: true,
-                                    reason,
-                                    silent: true
-                                };
-                                const toolResultEvent = {
-                                    type: 'conversation.item.create',
-                                    item: {
-                                        type: 'function_call_output',
-                                        call_id: functionCall.call_id,
-                                        output: JSON.stringify(output)
-                                    }
-                                };
-                                openAiWs.send(JSON.stringify(toolResultEvent));
-                                if (!responseActive) openAiWs.send(JSON.stringify({ type: 'response.create' }));
-                                if (IS_DEV) console.log('end_call tool acknowledged; awaiting goodbye playback.');
-                            } catch (parseError) {
-                                console.error('Error parsing end_call args:', parseError);
-                                sendOpenAiToolError(functionCall.call_id, parseError);
-                            }
-                        }
-                    } else {
-                        // Non-function responses: if we were asked to end the call, close after playback finishes
-                        attemptPendingDisconnectClose();
-                        // If in silent mode and no tool call is active, send a completion SMS and close OpenAI WS
-                        if (postHangupSilentMode && hangupDuringTools && !toolCallInProgress && !postHangupSmsSent) {
-                            try {
-                                const toNumber = currentCallerE164;
-                                const envFrom = normalizeUSNumberToE164(process.env.TWILIO_SMS_FROM_NUMBER || '');
-                                const fromNumber = currentTwilioNumberE164 || envFrom;
-                                if (twilioClient && toNumber && fromNumber) {
-                                    const subjectNote = lastEmailSubject ? ` Email sent: "${lastEmailSubject}".` : '';
-                                    const body = `Your request is complete.${subjectNote} Reply if you want more.`;
-                                    if (IS_DEV) console.log('Post-hang-up completion SMS:', { from: fromNumber, to: toNumber, body });
-                                    twilioClient.messages.create({ from: fromNumber, to: toNumber, body })
-                                        .then((sendRes) => {
-                                            console.info({ event: 'posthangup.sms.sent', sid: sendRes?.sid, to: toNumber });
-                                        })
-                                        .catch((e) => {
-                                            console.warn('Post-hang-up SMS send error:', e?.message || e);
-                                        });
-                                    postHangupSmsSent = true;
-                                } else {
-                                    console.warn({ event: 'posthangup.sms.unavailable', to: toNumber, from: fromNumber });
-                                }
-                            } catch (e) {
-                                console.warn('Post-hang-up SMS error:', e?.message || e);
-                            }
-                            // Close OpenAI WS after completion notification
-                            try { if (openAiWs.readyState === WebSocket.OPEN) openAiWs.close(); } catch {}
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error processing OpenAI message:', error, 'Raw message:', data);
-            }
-        });
 
         // Handle incoming messages from Twilio
         connection.on('message', (message) => {
@@ -1835,13 +1146,11 @@ fastify.register(async (fastify) => {
                 switch (data.event) {
                     case 'media':
                         latestMediaTimestamp = data.media.timestamp;
-                        if (openAiWs.readyState === WebSocket.OPEN) {
-                            const audioAppend = {
-                                type: 'input_audio_buffer.append',
-                                audio: data.media.payload
-                            };
-                            openAiWs.send(JSON.stringify(audioAppend));
-                        }
+                        const audioAppend = {
+                            type: 'input_audio_buffer.append',
+                            audio: data.media.payload
+                        };
+                        assistantSession.send(audioAppend);
                         break;
                     case 'start':
                         streamSid = data.start.streamSid;
@@ -1919,26 +1228,12 @@ fastify.register(async (fastify) => {
             }
             responseActive = false;
             // Clear any queued messages on close
-            pendingOpenAiMessages.length = 0;
+            assistantSession.clearPendingMessages?.();
             stopWaitingMusic();
             clearWaitingMusicInterval();
             console.log('Client disconnected; silent mode enabled. Continuing tools and will notify via SMS.');
         });
 
-        // Handle WebSocket close and errors
-        openAiWs.on('close', () => {
-            console.log('Disconnected from the OpenAI Realtime API');
-            // Clear queued messages on WS close
-            pendingOpenAiMessages.length = 0;
-            stopWaitingMusic();
-            clearWaitingMusicInterval();
-        });
-
-        openAiWs.on('error', (error) => {
-            console.error('Error in the OpenAI WebSocket:', error);
-            stopWaitingMusic();
-            clearWaitingMusicInterval();
-        });
     });
 });
 
