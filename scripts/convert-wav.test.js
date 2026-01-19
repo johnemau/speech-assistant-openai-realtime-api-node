@@ -1,6 +1,5 @@
 import { strict as assert } from 'node:assert';
-import test from 'node:test';
-import sinon from 'sinon';
+import test, { mock } from 'node:test';
 import {
     convertWithFfmpeg,
     getCodecForFormat,
@@ -11,9 +10,13 @@ import {
 
 function createLogger() {
     return {
-        log: sinon.spy(),
-        error: sinon.spy(),
+        log: mock.fn(),
+        error: mock.fn(),
     };
+}
+
+function getMockCallArgs(call) {
+    return Array.isArray(call) ? call : call?.arguments;
 }
 
 function createFfmpegMock(onSave) {
@@ -24,23 +27,23 @@ function createFfmpegMock(onSave) {
             channels: null,
             frequency: null,
             command: null,
-            setAudioCodec: sinon.spy(function setAudioCodec(codec) {
+            setAudioCodec: mock.fn(function setAudioCodec(codec) {
                 this.codec = codec;
                 return this;
             }),
-            setAudioChannels: sinon.spy(function setAudioChannels(channels) {
+            setAudioChannels: mock.fn(function setAudioChannels(channels) {
                 this.channels = channels;
                 return this;
             }),
-            setAudioFrequency: sinon.spy(function setAudioFrequency(freq) {
+            setAudioFrequency: mock.fn(function setAudioFrequency(freq) {
                 this.frequency = freq;
                 return this;
             }),
-            addCommand: sinon.spy(function addCommand(command, value) {
+            addCommand: mock.fn(function addCommand(command, value) {
                 this.command = { command, value };
                 return this;
             }),
-            save: sinon.spy(function save(outputPath, callback) {
+            save: mock.fn(function save(outputPath, callback) {
                 if (onSave) {
                     onSave({ outputPath, video: this });
                 }
@@ -74,18 +77,18 @@ test('format helpers validate formats and codecs', () => {
 
 test('run exits with usage when missing args', async () => {
     const logger = createLogger();
-    const exit = sinon.spy();
+    const exit = mock.fn();
 
     await run({ argv: ['node', 'convert-wav.mjs'], logger, exit });
 
-    assert.equal(exit.callCount, 1);
-    assert.equal(exit.firstCall.args[0], 1);
-    assert.equal(logger.log.callCount, 2);
+    assert.equal(exit.mock.calls.length, 1);
+    assert.equal(getMockCallArgs(exit.mock.calls[0])[0], 1);
+    assert.equal(logger.log.mock.calls.length, 2);
 });
 
 test('run exits when input file missing', async () => {
     const logger = createLogger();
-    const exit = sinon.spy();
+    const exit = mock.fn();
 
     await run({
         argv: ['node', 'convert-wav.mjs', 'missing.wav', 'out.pcmu'],
@@ -95,9 +98,9 @@ test('run exits when input file missing', async () => {
         resolvePath: (value) => `/abs/${value}`,
     });
 
-    assert.equal(exit.callCount, 1);
-    assert.equal(exit.firstCall.args[0], 1);
-    assert.equal(logger.error.firstCall.args[0], 'Input file not found: /abs/missing.wav');
+    assert.equal(exit.mock.calls.length, 1);
+    assert.equal(getMockCallArgs(exit.mock.calls[0])[0], 1);
+    assert.equal(getMockCallArgs(logger.error.mock.calls[0])[0], 'Input file not found: /abs/missing.wav');
 });
 
 test('convertWithFfmpeg configures audio conversion', async () => {
@@ -123,16 +126,16 @@ test('convertWithFfmpeg configures audio conversion', async () => {
         command: '-af',
         value: 'aresample=resampler=soxr:precision=28:dither_method=triangular',
     });
-    assert.equal(saved.video.setAudioCodec.callCount, 1);
-    assert.equal(saved.video.setAudioChannels.callCount, 1);
-    assert.equal(saved.video.setAudioFrequency.callCount, 1);
-    assert.equal(saved.video.addCommand.callCount, 1);
-    assert.equal(saved.video.save.callCount, 1);
+    assert.equal(saved.video.setAudioCodec.mock.calls.length, 1);
+    assert.equal(saved.video.setAudioChannels.mock.calls.length, 1);
+    assert.equal(saved.video.setAudioFrequency.mock.calls.length, 1);
+    assert.equal(saved.video.addCommand.mock.calls.length, 1);
+    assert.equal(saved.video.save.mock.calls.length, 1);
 });
 
 test('run logs success on conversion', async () => {
     const logger = createLogger();
-    const exit = sinon.spy();
+    const exit = mock.fn();
     const ffmpegMock = createFfmpegMock();
 
     await run({
@@ -144,6 +147,6 @@ test('run logs success on conversion', async () => {
         ffmpegModule: ffmpegMock,
     });
 
-    assert.equal(exit.callCount, 0);
-    assert.equal(logger.log.firstCall.args[0], 'Converted /abs/input.wav -> /abs/out.pcmu (mulaw)');
+    assert.equal(exit.mock.calls.length, 0);
+    assert.equal(getMockCallArgs(logger.log.mock.calls[0])[0], 'Converted /abs/input.wav -> /abs/out.pcmu (mulaw)');
 });
