@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mock } from 'node:test';
+
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
 function createReply() {
     return {
@@ -29,25 +30,41 @@ async function loadSmsHandler({
     openaiClient = null,
     isDev = false
 } = {}) {
-    mock.module('../env.js', /** @type {any} */ ({
-        DEFAULT_SMS_USER_LOCATION: { type: 'approximate', country: 'US', region: 'Washington' },
-        IS_DEV: isDev,
-        PRIMARY_CALLERS_SET: allowlist,
-        SECONDARY_CALLERS_SET: secondaryAllowlist,
-    }));
+    const env = await import('../env.js');
+    const prev = {
+        primary: new Set(env.PRIMARY_CALLERS_SET),
+        secondary: new Set(env.SECONDARY_CALLERS_SET),
+        isDev: process.env.NODE_ENV
+    };
 
-    mock.module('../init.js', /** @type {any} */ ({
-        openaiClient,
-        twilioClient,
-    }));
+    env.PRIMARY_CALLERS_SET.clear();
+    env.SECONDARY_CALLERS_SET.clear();
+    allowlist.forEach((value) => env.PRIMARY_CALLERS_SET.add(value));
+    secondaryAllowlist.forEach((value) => env.SECONDARY_CALLERS_SET.add(value));
+    process.env.NODE_ENV = isDev ? 'development' : 'test';
+
+    const init = await import('../init.js');
+    const prevClients = { openaiClient: init.openaiClient, twilioClient: init.twilioClient };
+    init.setInitClients({ openaiClient, twilioClient });
 
     const moduleUrl = new URL('./sms.js', import.meta.url).href + `?test=sms-${Math.random()}`;
     const { smsHandler } = await import(moduleUrl);
-    return smsHandler;
+
+    const cleanup = () => {
+        env.PRIMARY_CALLERS_SET.clear();
+        env.SECONDARY_CALLERS_SET.clear();
+        prev.primary.forEach((value) => env.PRIMARY_CALLERS_SET.add(value));
+        prev.secondary.forEach((value) => env.SECONDARY_CALLERS_SET.add(value));
+        if (prev.isDev == null) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = prev.isDev;
+        init.setInitClients(prevClients);
+    };
+
+    return { smsHandler, cleanup };
 }
 
 test('sms replies with restricted message for non-allowlisted sender', async () => {
-    const smsHandler = await loadSmsHandler({
+    const { smsHandler, cleanup } = await loadSmsHandler({
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(['+14255550101']),
         twilioClient: null,
@@ -59,15 +76,18 @@ test('sms replies with restricted message for non-allowlisted sender', async () 
     };
     const reply = createReply();
 
-    await smsHandler(request, reply);
+    try {
+        await smsHandler(request, reply);
 
-    assert.equal(reply.headers.type, 'text/xml');
-    assert.ok(String(reply.payload).includes('restricted'));
-    mock.reset();
+        assert.equal(reply.headers.type, 'text/xml');
+        assert.ok(String(reply.payload).includes('restricted'));
+    } finally {
+        cleanup();
+    }
 });
 
 test('sms replies with unconfigured message when Twilio client missing', async () => {
-    const smsHandler = await loadSmsHandler({
+    const { smsHandler, cleanup } = await loadSmsHandler({
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(),
         twilioClient: null,
@@ -79,11 +99,14 @@ test('sms replies with unconfigured message when Twilio client missing', async (
     };
     const reply = createReply();
 
-    await smsHandler(request, reply);
+    try {
+        await smsHandler(request, reply);
 
-    assert.equal(reply.headers.type, 'text/xml');
-    assert.ok(String(reply.payload).includes('not configured'));
-    mock.reset();
+        assert.equal(reply.headers.type, 'text/xml');
+        assert.ok(String(reply.payload).includes('not configured'));
+    } finally {
+        cleanup();
+    }
 });
 
 test('sms sends AI reply via Twilio', async () => {
@@ -108,7 +131,7 @@ test('sms sends AI reply via Twilio', async () => {
             }
         }
     };
-    const smsHandler = await loadSmsHandler({
+    const { smsHandler, cleanup } = await loadSmsHandler({
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(),
         twilioClient,
@@ -120,18 +143,21 @@ test('sms sends AI reply via Twilio', async () => {
     };
     const reply = createReply();
 
-    await smsHandler(request, reply);
+    try {
+        await smsHandler(request, reply);
 
-    assert.equal(calls.list.length, 2);
-    assert.equal(calls.create.length, 1);
-    assert.ok(calls.ai);
-    assert.equal(calls.ai.model, 'gpt-5.2');
-    assert.ok(String(calls.ai.input || '').includes('Latest request'));
-    assert.equal(calls.create[0].from, '+12065550101');
-    assert.equal(calls.create[0].to, '+12065550100');
-    assert.equal(calls.create[0].body, 'Sure, here you go.');
-    assert.equal(reply.headers.type, 'text/xml');
-    mock.reset();
+        assert.equal(calls.list.length, 2);
+        assert.equal(calls.create.length, 1);
+        assert.ok(calls.ai);
+        assert.equal(calls.ai.model, 'gpt-5.2');
+        assert.ok(String(calls.ai.input || '').includes('Latest request'));
+        assert.equal(calls.create[0].from, '+12065550101');
+        assert.equal(calls.create[0].to, '+12065550100');
+        assert.equal(calls.create[0].body, 'Sure, here you go.');
+        assert.equal(reply.headers.type, 'text/xml');
+    } finally {
+        cleanup();
+    }
 });
 
 test('sms uses AI error fallback text when OpenAI fails', async () => {
@@ -152,7 +178,7 @@ test('sms uses AI error fallback text when OpenAI fails', async () => {
             }
         }
     };
-    const smsHandler = await loadSmsHandler({
+    const { smsHandler, cleanup } = await loadSmsHandler({
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(),
         twilioClient,
@@ -164,12 +190,15 @@ test('sms uses AI error fallback text when OpenAI fails', async () => {
     };
     const reply = createReply();
 
-    await smsHandler(request, reply);
+    try {
+        await smsHandler(request, reply);
 
-    assert.equal(calls.create.length, 1);
-    assert.ok(String(calls.create[0].body).includes('SMS reply error'));
-    assert.equal(reply.headers.type, 'text/xml');
-    mock.reset();
+        assert.equal(calls.create.length, 1);
+        assert.ok(String(calls.create[0].body).includes('SMS reply error'));
+        assert.equal(reply.headers.type, 'text/xml');
+    } finally {
+        cleanup();
+    }
 });
 
 test('sms replies with TwiML when Twilio send fails', async () => {
@@ -186,7 +215,7 @@ test('sms replies with TwiML when Twilio send fails', async () => {
             create: async () => ({ output_text: 'Sure.' })
         }
     };
-    const smsHandler = await loadSmsHandler({
+    const { smsHandler, cleanup } = await loadSmsHandler({
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(),
         twilioClient,
@@ -198,9 +227,12 @@ test('sms replies with TwiML when Twilio send fails', async () => {
     };
     const reply = createReply();
 
-    await smsHandler(request, reply);
+    try {
+        await smsHandler(request, reply);
 
-    assert.equal(reply.headers.type, 'text/xml');
-    assert.ok(String(reply.payload).includes('SMS send error'));
-    mock.reset();
+        assert.equal(reply.headers.type, 'text/xml');
+        assert.ok(String(reply.payload).includes('SMS send error'));
+    } finally {
+        cleanup();
+    }
 });

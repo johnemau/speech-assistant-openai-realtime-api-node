@@ -23,10 +23,10 @@ if (!OPENAI_API_KEY) {
 }
 
 // Initialize OpenAI client
-export const openaiClient = createOpenAIClient({ apiKey: OPENAI_API_KEY });
+export let openaiClient = createOpenAIClient({ apiKey: OPENAI_API_KEY });
 
 // Initialize Twilio REST client (for SMS send/list). This is separate from the TwiML helper usage.
-export const twilioClient = createTwilioClient({
+export let twilioClient = createTwilioClient({
     accountSid: TWILIO_ACCOUNT_SID,
     authToken: TWILIO_AUTH_TOKEN,
     apiKey: TWILIO_API_KEY,
@@ -35,7 +35,7 @@ export const twilioClient = createTwilioClient({
 });
 
 // Initialize Nodemailer transporter (single sender) using service ID
-export const senderTransport = createEmailTransport({
+export let senderTransport = createEmailTransport({
     user: SMTP_USER,
     pass: SMTP_PASS,
     serviceId: SMTP_NODEMAILER_SERVICE_ID,
@@ -51,3 +51,13 @@ export const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
 export const SHOW_TIMING_MATH = IS_DEV;
 export const PORT = Number(process.env.PORT || 10000); // Render default PORT is 10000
 export { NGROK_DOMAIN };
+
+/**
+ * Test-only override for init clients.
+ * @param {{ openaiClient?: any, twilioClient?: any, senderTransport?: any }} overrides - Overrides to apply.
+ */
+export function setInitClients({ openaiClient: nextOpenAI, twilioClient: nextTwilio, senderTransport: nextSender } = {}) {
+    if (nextOpenAI !== undefined) openaiClient = nextOpenAI;
+    if (nextTwilio !== undefined) twilioClient = nextTwilio;
+    if (nextSender !== undefined) senderTransport = nextSender;
+}

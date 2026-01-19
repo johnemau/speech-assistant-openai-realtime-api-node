@@ -66,7 +66,7 @@ export function safeParseToolArguments(args) {
  *   clearPendingMessages: () => void,
  * }} Session helpers.
  */
-export function createAssistantSession({
+function realCreateAssistantSession({
     apiKey,
     model = 'gpt-realtime',
     temperature = 0.8,
@@ -215,4 +215,30 @@ export function createAssistantSession({
         },
         clearPendingMessages: () => { pendingOpenAiMessages.length = 0; },
     };
+}
+
+/** @type {(args: Parameters<typeof realCreateAssistantSession>[0]) => ReturnType<typeof realCreateAssistantSession>} */
+let createAssistantSessionImpl = realCreateAssistantSession;
+
+/**
+ * Create a realtime assistant session and wire event handlers.
+ *
+ * @param {Parameters<typeof realCreateAssistantSession>[0]} options - Session options.
+ * @returns {ReturnType<typeof realCreateAssistantSession>} Session helpers.
+ */
+export function createAssistantSession(options) {
+    return createAssistantSessionImpl(options);
+}
+
+/**
+ * Test-only override for createAssistantSession.
+ * @param {typeof realCreateAssistantSession} override - Replacement implementation.
+ */
+export function setCreateAssistantSessionForTests(override) {
+    createAssistantSessionImpl = override || realCreateAssistantSession;
+}
+
+/** Restore the default createAssistantSession implementation. */
+export function resetCreateAssistantSessionForTests() {
+    createAssistantSessionImpl = realCreateAssistantSession;
 }
