@@ -5,7 +5,7 @@ import {
     buildSmsThreadText,
     extractSmsRequest,
     mergeAndSortMessages,
-} from '../sms/utils.js';
+} from '../utils/sms.js';
 import {
     DEFAULT_SMS_USER_LOCATION,
     PRIMARY_CALLERS_SET,
