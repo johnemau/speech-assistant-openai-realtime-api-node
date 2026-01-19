@@ -1,18 +1,17 @@
 import assert from 'node:assert/strict';
-import { pathToFileURL } from 'node:url';
 import dotenv from 'dotenv';
-import { createAssistantSession, safeParseToolArguments } from '../src/assistant/session.js';
-import { getToolDefinitions, executeToolCall } from '../src/tools/index.js';
-import { judgeResponse } from '../src/testing/judge.js';
-import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../src/assistant/prompts.js';
-import { isTruthy } from '../src/utils/env.js';
-import { normalizeUSNumberToE164 } from '../src/utils/phone.js';
+import { createAssistantSession, safeParseToolArguments } from '../assistant/session.js';
+import { getToolDefinitions, executeToolCall } from '../tools/index.js';
+import { judgeResponse } from './judge.js';
+import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
+import { isTruthy } from '../utils/env.js';
+import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import {
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
     DEFAULT_SMS_USER_LOCATION
-} from '../src/env.js';
-import { createOpenAIClient, createTwilioClient, createEmailTransport } from '../src/utils/clients.js';
+} from '../env.js';
+import { createOpenAIClient, createTwilioClient, createEmailTransport } from '../utils/clients.js';
 
 dotenv.config();
 
@@ -225,15 +224,4 @@ export async function runVoiceTests({ callerTurns = [], expectedAssistant = [], 
     const failed = results.filter((r) => !r.pass);
     assert.equal(failed.length, 0, formatFailureSummary(failed));
     return results;
-}
-
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-    try {
-        const { callerTurns, expectedAssistant } = await import('../tests/voice-tests.js');
-        await runVoiceTests({ callerTurns, expectedAssistant });
-        console.log('All voice test turns passed.');
-    } catch (error) {
-        console.error(error?.message || error);
-        process.exit(1);
-    }
 }

@@ -6,9 +6,9 @@
   "scripts": {
     "start": "node index.js",
     "lint": "eslint .",
-    "test": "npm run lint",
+    "test": "npm run lint && node --test src/**/*.test.js tests/**/*.js",
     "test:unit": "node --test src/**/*.test.js",
-    "test:voice": "node scripts/voice-test-runner.js"
+    "test:voice": "node --test tests/voice-tests.js",
   },
   "keywords": [],
   "author": "",

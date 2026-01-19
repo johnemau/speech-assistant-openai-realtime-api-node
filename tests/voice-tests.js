@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { runVoiceTests } from '../scripts/voice-test-runner.js';
+import { runVoiceTests } from '../src/testing/voice-test-runner.js';
 
 export const callerTurns = [
     'Find coffee shops near Pike Place Market.',
