@@ -1,14 +1,15 @@
 import { getTimeGreeting, resolveCallerName } from '../calls/utils.js';
+import {
+    ALL_ALLOWED_CALLERS_SET,
+    PRIMARY_CALLERS_SET,
+    PRIMARY_USER_FIRST_NAME,
+    SECONDARY_CALLERS_SET,
+    SECONDARY_USER_FIRST_NAME,
+} from '../env/index.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
 export function registerIncomingCallRoute({ fastify, deps }) {
-    const {
-        allAllowedCallersSet,
-        primaryCallersSet,
-        secondaryCallersSet,
-        primaryUserFirstName,
-        secondaryUserFirstName,
-    } = deps;
+    void deps;
 
     // Route for Twilio to handle incoming calls
     // <Say> punctuation to improve text-to-speech translation
@@ -19,7 +20,7 @@ export function registerIncomingCallRoute({ fastify, deps }) {
         const toE164 = normalizeUSNumberToE164(toRaw);
         console.log('Incoming call from:', fromRaw, '=>', fromE164);
 
-        if (!fromE164 || !allAllowedCallersSet.has(fromE164)) {
+        if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
             const denyTwiml = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
                               <Say voice="Google.en-US-Chirp3-HD-Charon">Sorry, this line is restricted. Goodbye.</Say>
@@ -28,12 +29,12 @@ export function registerIncomingCallRoute({ fastify, deps }) {
             return reply.type('text/xml').send(denyTwiml);
         }
 
-        const primaryName = String(primaryUserFirstName || '').trim();
-        const secondaryName = String(secondaryUserFirstName || '').trim();
+        const primaryName = String(PRIMARY_USER_FIRST_NAME || '').trim();
+        const secondaryName = String(SECONDARY_USER_FIRST_NAME || '').trim();
         const callerName = resolveCallerName({
             callerE164: fromE164,
-            primaryCallersSet,
-            secondaryCallersSet,
+            primaryCallersSet: PRIMARY_CALLERS_SET,
+            secondaryCallersSet: SECONDARY_CALLERS_SET,
             primaryName,
             secondaryName,
             fallbackName: 'legend',

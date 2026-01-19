@@ -6,6 +6,16 @@ import { parseWavToUlaw } from '../media/audio.js';
 import { getToolDefinitions, executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
+import {
+    DEFAULT_SMS_USER_LOCATION,
+    PRIMARY_CALLERS_SET,
+    SECONDARY_CALLERS_SET,
+    WAIT_MUSIC_FILE,
+    WAIT_MUSIC_THRESHOLD_MS,
+    WAIT_MUSIC_VOLUME,
+    PRIMARY_USER_FIRST_NAME,
+    SECONDARY_USER_FIRST_NAME,
+} from '../env/index.js';
 
 export function registerMediaStreamRoute({ fastify, deps }) {
     const {
@@ -13,16 +23,10 @@ export function registerMediaStreamRoute({ fastify, deps }) {
         twilioClient,
         senderTransport,
         env,
-        primaryCallersSet,
-        secondaryCallersSet,
         voice,
         temperature,
-        waitMusicThresholdMs,
-        waitMusicVolume,
-        waitMusicFile,
         isDev,
         showTimingMath,
-        defaultUserLocation,
     } = deps;
 
     // WebSocket route for media-stream
@@ -79,16 +83,16 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                         event: 'wait_music.start',
                         reason,
                         streamSid,
-                        threshold_ms: waitMusicThresholdMs,
-                        file: waitMusicFile || null
+                        threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
+                        file: WAIT_MUSIC_FILE || null
                     });
                 } catch {}
                 // If audio file is provided and exists
-                if (waitMusicFile && fs.existsSync(waitMusicFile)) {
+                if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
                     try {
-                        if (waitMusicFile.toLowerCase().endsWith('.wav')) {
+                        if (WAIT_MUSIC_FILE.toLowerCase().endsWith('.wav')) {
                             // Parse WAV and pre-encode to µ-law buffer
-                            waitingMusicUlawBuffer = parseWavToUlaw(waitMusicFile, waitMusicVolume);
+                            waitingMusicUlawBuffer = parseWavToUlaw(WAIT_MUSIC_FILE, WAIT_MUSIC_VOLUME);
                             waitingMusicOffset = 0;
                             if (!waitingMusicInterval) {
                                 waitingMusicInterval = setInterval(() => {
@@ -110,7 +114,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                             }
                         } else {
                             // Non-WAV files are not supported without ffmpeg; waiting music disabled
-                            console.warn({ event: 'wait_music.unsupported_file', file: waitMusicFile });
+                            console.warn({ event: 'wait_music.unsupported_file', file: WAIT_MUSIC_FILE });
                         }
                     } catch (e) {
                         console.error('Failed to load waiting music file; disabling waiting music:', e?.message || e);
@@ -278,7 +282,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                     toolCallInProgress = true;
                     waitingMusicStartTimeout = setTimeout(() => {
                         if (toolCallInProgress) startWaitingMusic();
-                    }, waitMusicThresholdMs);
+                    }, WAIT_MUSIC_THRESHOLD_MS);
                 } else {
                     toolCallInProgress = true;
                 }
@@ -300,12 +304,12 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                         senderTransport,
                         env,
                         normalizeUSNumberToE164,
-                        primaryCallersSet,
-                        secondaryCallersSet,
+                        primaryCallersSet: PRIMARY_CALLERS_SET,
+                        secondaryCallersSet: SECONDARY_CALLERS_SET,
                         currentCallerE164,
                         currentTwilioNumberE164,
                         webSearchInstructions: WEB_SEARCH_INSTRUCTIONS,
-                        defaultUserLocation,
+                        defaultUserLocation: DEFAULT_SMS_USER_LOCATION,
                         allowLiveSideEffects: true,
                         micState,
                         applyNoiseReduction: (mode) => {
@@ -518,12 +522,12 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                                 currentTwilioNumberE164 = normalizeUSNumberToE164(rawTwilioNum);
                                 if (currentTwilioNumberE164) console.log('Twilio number (from TwiML Parameter):', rawTwilioNum, '=>', currentTwilioNumberE164);
                                 // Compute caller name based on group and send initial greeting
-                                const primaryName = String(env?.PRIMARY_USER_FIRST_NAME || '').trim();
-                                const secondaryName = String(env?.SECONDARY_USER_FIRST_NAME || '').trim();
+                                const primaryName = String(PRIMARY_USER_FIRST_NAME || '').trim();
+                                const secondaryName = String(SECONDARY_USER_FIRST_NAME || '').trim();
                                 let callerName = 'legend';
-                                if (currentCallerE164 && primaryCallersSet.has(currentCallerE164) && primaryName) {
+                                if (currentCallerE164 && PRIMARY_CALLERS_SET.has(currentCallerE164) && primaryName) {
                                     callerName = primaryName;
-                                } else if (currentCallerE164 && secondaryCallersSet.has(currentCallerE164) && secondaryName) {
+                                } else if (currentCallerE164 && SECONDARY_CALLERS_SET.has(currentCallerE164) && secondaryName) {
                                     callerName = secondaryName;
                                 }
                                 // Send the personalized greeting to OpenAI to speak first
@@ -532,7 +536,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                                 if (!firstAssistantAudioReceived) {
                                     waitingMusicStartTimeout = setTimeout(() => {
                                         if (!firstAssistantAudioReceived && !isWaitingMusic) startWaitingMusic('initial');
-                                    }, waitMusicThresholdMs);
+                                    }, WAIT_MUSIC_THRESHOLD_MS);
                                 }
                             } catch {
                                 console.warn('No custom caller parameter found on start event.');
@@ -542,7 +546,7 @@ export function registerMediaStreamRoute({ fastify, deps }) {
                                 if (!firstAssistantAudioReceived) {
                                     waitingMusicStartTimeout = setTimeout(() => {
                                         if (!firstAssistantAudioReceived && !isWaitingMusic) startWaitingMusic('initial');
-                                    }, waitMusicThresholdMs);
+                                    }, WAIT_MUSIC_THRESHOLD_MS);
                                 }
                             }
                             break;

@@ -6,6 +6,11 @@ import {
     extractSmsRequest,
     mergeAndSortMessages,
 } from '../sms/utils.js';
+import {
+    DEFAULT_SMS_USER_LOCATION,
+    PRIMARY_CALLERS_SET,
+    SECONDARY_CALLERS_SET,
+} from '../env/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { redactErrorDetail } from '../utils/redaction.js';
@@ -14,9 +19,6 @@ export function registerSmsRoute({ fastify, deps }) {
     const {
         twilioClient,
         openaiClient,
-        primaryCallersSet,
-        secondaryCallersSet,
-        defaultUserLocation,
         isDev,
         env,
         redactionKeys,
@@ -45,7 +47,7 @@ export function registerSmsRoute({ fastify, deps }) {
             });
 
             // Allowlist check: only PRIMARY or SECONDARY callers may use SMS auto-reply
-            const isAllowed = !!fromE164 && (primaryCallersSet.has(fromE164) || secondaryCallersSet.has(fromE164));
+            const isAllowed = !!fromE164 && (PRIMARY_CALLERS_SET.has(fromE164) || SECONDARY_CALLERS_SET.has(fromE164));
             if (!isAllowed) {
                 // Concise log for restricted access
                 console.warn({
@@ -137,7 +139,7 @@ export function registerSmsRoute({ fastify, deps }) {
                 reasoning: { effort: 'high' },
                 tools: [{
                     type: 'web_search',
-                    user_location: defaultUserLocation,
+                    user_location: DEFAULT_SMS_USER_LOCATION,
                 }],
                 instructions: SMS_REPLY_INSTRUCTIONS,
                 input: smsPrompt,
