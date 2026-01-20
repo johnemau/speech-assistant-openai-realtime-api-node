@@ -56,7 +56,7 @@ export async function incomingCallHandler(request, reply) {
     const twimlResponse = new VoiceResponse();
     twimlResponse.say(
         { voice: 'Google.en-US-Chirp3-HD-Charon' },
-        `${timeGreeting} ${callerName}. Connecting to your AI assistant momentarily.`
+        `${timeGreeting} ${callerName}—please hold for assistance`
     );
     const connect = twimlResponse.connect();
     const stream = connect.stream({

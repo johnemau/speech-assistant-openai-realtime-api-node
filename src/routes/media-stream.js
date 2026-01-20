@@ -412,7 +412,7 @@ export function mediaStreamHandler(connection, req) {
                             const subjectNote = lastEmailSubject
                                 ? ` Email sent: "${lastEmailSubject}".`
                                 : '';
-                            const body = `Your request is complete.${subjectNote} Reply if you want more.`;
+                            const body = `Your request is complete.${subjectNote}`;
                             if (IS_DEV)
                                 console.log('Post-hang-up completion SMS:', {
                                     from: fromNumber,

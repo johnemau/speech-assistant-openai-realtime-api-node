@@ -119,7 +119,7 @@ test('incoming-call responds with connect stream and parameters', async () => {
 
         const twiml = String(reply.payload);
         assert.equal(reply.headers.type, 'text/xml');
-        assert.ok(twiml.includes('Connecting to your AI assistant'));
+        assert.ok(twiml.includes('please hold for assistance'));
         assert.ok(twiml.includes('wss://example.com/media-stream'));
         assert.ok(twiml.includes('caller_number'));
         assert.ok(twiml.includes('twilio_number'));
