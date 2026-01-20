@@ -10,9 +10,9 @@
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
         "skipLibCheck": true,
-        "target": "es2022",
-        "module": "node16",
-        "moduleResolution": "node16",
+        "target": "esnext",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
         "types": ["node"]
     },
     "include": ["index.js", "scripts", "src", "tests", "tools"]
