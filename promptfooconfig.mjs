@@ -43,8 +43,14 @@ const config = {
         },
     ],
     tests: [
-        'tests/promptfoo/cases-voice.yaml',
-        'tests/promptfoo/cases-sms.yaml',
+        {
+            path: 'tests/promptfoo/cases-voice.yaml',
+            providers: [`openai:${REALTIME_MODEL}`],
+        },
+        {
+            path: 'tests/promptfoo/cases-sms.yaml',
+            providers: [`openai:${GPT_5_2_MODEL}-sms`],
+        },
     ],
 };
 
