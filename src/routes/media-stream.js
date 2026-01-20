@@ -1,11 +1,9 @@
 import WebSocket from 'ws';
 import fs from 'fs';
-import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
+import { SYSTEM_MESSAGE } from '../assistant/prompts.js';
 import { createAssistantSession, safeParseToolArguments } from '../assistant/session.js';
 import {
-    openaiClient,
     twilioClient,
-    senderTransport,
     env,
     VOICE as voice,
     TEMPERATURE as temperature,
@@ -16,7 +14,6 @@ import { getToolDefinitions, executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import {
-    DEFAULT_SMS_USER_LOCATION,
     IS_DEV,
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
@@ -323,17 +320,8 @@ export function mediaStreamHandler(connection, req) {
                     }
 
                     const toolContext = {
-                        openaiClient,
-                        twilioClient,
-                        senderTransport,
-                        env,
-                        normalizeUSNumberToE164,
-                        primaryCallersSet: PRIMARY_CALLERS_SET,
-                        secondaryCallersSet: SECONDARY_CALLERS_SET,
                         currentCallerE164,
                         currentTwilioNumberE164,
-                        webSearchInstructions: WEB_SEARCH_INSTRUCTIONS,
-                        defaultUserLocation: DEFAULT_SMS_USER_LOCATION,
                         allowLiveSideEffects: true,
                         micState,
                         applyNoiseReduction: (mode) => {

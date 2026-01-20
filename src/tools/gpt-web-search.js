@@ -1,3 +1,7 @@
+import { openaiClient } from '../init.js';
+import { WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
+import { DEFAULT_SMS_USER_LOCATION } from '../env.js';
+
 export const definition = {
     type: 'function',
     name: 'gpt_web_search',
@@ -29,14 +33,13 @@ export const definition = {
  *
  * @param {object} root0 - Tool inputs.
  * @param {{ query?: string, user_location?: object }} root0.args - Tool arguments.
- * @param {{ openaiClient: { responses: { create: Function } }, webSearchInstructions?: string, defaultUserLocation?: object }} root0.context - Tool context.
  * @returns {Promise<object>} Full OpenAI response.
  */
-export async function execute({ args, context }) {
-    const { openaiClient, webSearchInstructions, defaultUserLocation } = context;
+export async function execute({ args }) {
     const query = String(args?.query || '').trim();
     if (!query) throw new Error('Missing query.');
-    const effectiveLocation = args?.user_location ?? defaultUserLocation;
+    const effectiveLocation = args?.user_location ?? DEFAULT_SMS_USER_LOCATION;
+    /** @type {import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming} */
     const reqPayload = {
         model: 'gpt-5.2',
         reasoning: { effort: 'high' },
@@ -44,7 +47,7 @@ export async function execute({ args, context }) {
             type: 'web_search',
             user_location: effectiveLocation,
         }],
-        instructions: webSearchInstructions,
+        instructions: WEB_SEARCH_INSTRUCTIONS,
         input: query,
         tool_choice: 'required',
         truncation: 'auto',

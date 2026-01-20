@@ -3,14 +3,9 @@ import dotenv from 'dotenv';
 import { createAssistantSession, safeParseToolArguments } from '../assistant/session.js';
 import { getToolDefinitions, executeToolCall } from '../tools/index.js';
 import { judgeResponse } from './judge.js';
-import { SYSTEM_MESSAGE, WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
+import { SYSTEM_MESSAGE } from '../assistant/prompts.js';
 import { isTruthy } from '../utils/env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
-import {
-    PRIMARY_CALLERS_SET,
-    SECONDARY_CALLERS_SET,
-    DEFAULT_SMS_USER_LOCATION
-} from '../env.js';
 import { createOpenAIClient, createTwilioClient, createEmailTransport } from '../utils/clients.js';
 
 dotenv.config();
@@ -35,13 +30,12 @@ const senderTransport = createEmailTransport({
     serviceId: process.env.SMTP_NODEMAILER_SERVICE_ID,
     logger: console
 });
+const init = await import('../init.js');
+init.setInitClients({ openaiClient, twilioClient, senderTransport });
 
 const allowLiveSideEffects = isTruthy(process.env.ALLOW_LIVE_SIDE_EFFECTS);
 const passScoreThreshold = Number(process.env.JUDGE_PASS_SCORE || 0.7);
 const judgeModel = process.env.JUDGE_MODEL || 'gpt-5.2';
-
-const primarySet = PRIMARY_CALLERS_SET;
-const secondarySet = SECONDARY_CALLERS_SET;
 
 const fallbackCaller = (process.env.PRIMARY_USER_PHONE_NUMBERS || '').split(',')[0];
 const currentCallerE164 = normalizeUSNumberToE164(process.env.TEST_CALLER_NUMBER || fallbackCaller || '');
@@ -96,17 +90,8 @@ const assistantSession = createAssistantSession({
                 name: functionCall.name,
                 args: toolInput,
                 context: {
-                    openaiClient,
-                    twilioClient,
-                    senderTransport,
-                    env: process.env,
-                    normalizeUSNumberToE164,
-                    primaryCallersSet: primarySet,
-                    secondaryCallersSet: secondarySet,
                     currentCallerE164,
                     currentTwilioNumberE164,
-                    webSearchInstructions: WEB_SEARCH_INSTRUCTIONS,
-                    defaultUserLocation: DEFAULT_SMS_USER_LOCATION,
                     micState,
                     applyNoiseReduction: (mode) => {
                         micState.currentNoiseReductionType = mode;

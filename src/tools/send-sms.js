@@ -1,3 +1,6 @@
+import { twilioClient, env } from '../init.js';
+import { normalizeUSNumberToE164 } from '../utils/phone.js';
+
 export const definition = {
     type: 'function',
     name: 'send_sms',
@@ -24,9 +27,6 @@ export const definition = {
  */
 export async function execute({ args, context }) {
     const {
-        twilioClient,
-        env,
-        normalizeUSNumberToE164,
         currentCallerE164,
         currentTwilioNumberE164,
         allowLiveSideEffects,

@@ -1,3 +1,6 @@
+import { senderTransport, env } from '../init.js';
+import { PRIMARY_CALLERS_SET, SECONDARY_CALLERS_SET } from '../env.js';
+
 export const definition = {
     type: 'function',
     name: 'send_email',
@@ -24,14 +27,7 @@ export const definition = {
  * @returns {Promise<{ messageId: string, accepted: Array<string>, rejected: Array<string> }>} Send result.
  */
 export async function execute({ args, context }) {
-    const {
-        senderTransport,
-        env,
-        primaryCallersSet,
-        secondaryCallersSet,
-        currentCallerE164,
-        allowLiveSideEffects,
-    } = context;
+    const { currentCallerE164, allowLiveSideEffects } = context;
 
     if (!allowLiveSideEffects) {
         throw new Error('Live side effects disabled. Set ALLOW_LIVE_SIDE_EFFECTS=true to enable send_email.');
@@ -41,8 +37,8 @@ export async function execute({ args, context }) {
     if (!subject || !bodyHtml) throw new Error('Missing subject or body_html.');
 
     let group = null;
-    if (currentCallerE164 && primaryCallersSet?.has(currentCallerE164)) group = 'primary';
-    else if (currentCallerE164 && secondaryCallersSet?.has(currentCallerE164)) group = 'secondary';
+    if (currentCallerE164 && PRIMARY_CALLERS_SET?.has(currentCallerE164)) group = 'primary';
+    else if (currentCallerE164 && SECONDARY_CALLERS_SET?.has(currentCallerE164)) group = 'secondary';
 
     const fromEmail = env?.SENDER_FROM_EMAIL || null;
     const toEmail = group === 'primary'

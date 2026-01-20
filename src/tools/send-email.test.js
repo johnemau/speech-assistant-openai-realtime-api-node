@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { execute } from './send-email.js';
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
+
+const init = await import('../init.js');
+const envModule = await import('../env.js');
+const { execute } = await import('./send-email.js');
 
 test('send-email.execute blocks when side effects disabled', async () => {
     await assert.rejects(() => execute({
@@ -18,16 +22,38 @@ test('send-email.execute validates subject and body', async () => {
 });
 
 test('send-email.execute errors when email not configured', async () => {
-    await assert.rejects(() => execute({
-        args: { subject: 'Hi', body_html: '<p>Test</p>' },
-        context: {
-            allowLiveSideEffects: true,
-            senderTransport: null,
-            env: { SENDER_FROM_EMAIL: 'from@example.com', PRIMARY_TO_EMAIL: 'to@example.com' },
-            primaryCallersSet: new Set(['+12065550100']),
-            currentCallerE164: '+12065550100'
-        }
-    }), /Email is not configured/);
+    const prevClients = { senderTransport: init.senderTransport };
+    const prevPrimary = new Set(envModule.PRIMARY_CALLERS_SET);
+    const prevSecondary = new Set(envModule.SECONDARY_CALLERS_SET);
+    const prevEnv = {
+        SENDER_FROM_EMAIL: process.env.SENDER_FROM_EMAIL,
+        PRIMARY_TO_EMAIL: process.env.PRIMARY_TO_EMAIL,
+    };
+    process.env.SENDER_FROM_EMAIL = 'from@example.com';
+    process.env.PRIMARY_TO_EMAIL = 'to@example.com';
+    envModule.PRIMARY_CALLERS_SET.clear();
+    envModule.SECONDARY_CALLERS_SET.clear();
+    envModule.PRIMARY_CALLERS_SET.add('+12065550100');
+    init.setInitClients({ senderTransport: null });
+    try {
+        await assert.rejects(() => execute({
+            args: { subject: 'Hi', body_html: '<p>Test</p>' },
+            context: {
+                allowLiveSideEffects: true,
+                currentCallerE164: '+12065550100'
+            }
+        }), /Email is not configured/);
+    } finally {
+        envModule.PRIMARY_CALLERS_SET.clear();
+        envModule.SECONDARY_CALLERS_SET.clear();
+        prevPrimary.forEach((value) => envModule.PRIMARY_CALLERS_SET.add(value));
+        prevSecondary.forEach((value) => envModule.SECONDARY_CALLERS_SET.add(value));
+        if (prevEnv.SENDER_FROM_EMAIL == null) delete process.env.SENDER_FROM_EMAIL;
+        else process.env.SENDER_FROM_EMAIL = prevEnv.SENDER_FROM_EMAIL;
+        if (prevEnv.PRIMARY_TO_EMAIL == null) delete process.env.PRIMARY_TO_EMAIL;
+        else process.env.PRIMARY_TO_EMAIL = prevEnv.PRIMARY_TO_EMAIL;
+        init.setInitClients(prevClients);
+    }
 });
 
 test('send-email.execute sends email for primary caller', async () => {
@@ -38,24 +64,45 @@ test('send-email.execute sends email for primary caller', async () => {
             return { messageId: 'mid', accepted: ['to@example.com'], rejected: [] };
         }
     };
-    const res = await execute({
-        args: { subject: 'Hello', body_html: '<p>Body</p>' },
-        context: {
-            allowLiveSideEffects: true,
-            senderTransport,
-            env: { SENDER_FROM_EMAIL: 'from@example.com', PRIMARY_TO_EMAIL: 'to@example.com' },
-            primaryCallersSet: new Set(['+12065550100']),
-            secondaryCallersSet: new Set(),
-            currentCallerE164: '+12065550100'
-        }
-    });
+    const prevClients = { senderTransport: init.senderTransport };
+    const prevPrimary = new Set(envModule.PRIMARY_CALLERS_SET);
+    const prevSecondary = new Set(envModule.SECONDARY_CALLERS_SET);
+    const prevEnv = {
+        SENDER_FROM_EMAIL: process.env.SENDER_FROM_EMAIL,
+        PRIMARY_TO_EMAIL: process.env.PRIMARY_TO_EMAIL,
+    };
+    process.env.SENDER_FROM_EMAIL = 'from@example.com';
+    process.env.PRIMARY_TO_EMAIL = 'to@example.com';
+    envModule.PRIMARY_CALLERS_SET.clear();
+    envModule.SECONDARY_CALLERS_SET.clear();
+    envModule.PRIMARY_CALLERS_SET.add('+12065550100');
+    init.setInitClients({ senderTransport });
+    try {
+        const res = await execute({
+            args: { subject: 'Hello', body_html: '<p>Body</p>' },
+            context: {
+                allowLiveSideEffects: true,
+                currentCallerE164: '+12065550100'
+            }
+        });
 
-    assert.equal(res.messageId, 'mid');
-    if (!lastOptions) throw new Error('Missing sendMail options');
-    const opts = /** @type {any} */ (lastOptions);
-    assert.equal(opts.from, 'from@example.com');
-    assert.equal(opts.to, 'to@example.com');
-    assert.equal(opts.subject, 'Hello');
-    assert.equal(opts.html, '<p>Body</p>');
-    assert.equal(opts.headers['X-From-Ai-Assistant'], 'true');
+        assert.equal(res.messageId, 'mid');
+        if (!lastOptions) throw new Error('Missing sendMail options');
+        const opts = /** @type {any} */ (lastOptions);
+        assert.equal(opts.from, 'from@example.com');
+        assert.equal(opts.to, 'to@example.com');
+        assert.equal(opts.subject, 'Hello');
+        assert.equal(opts.html, '<p>Body</p>');
+        assert.equal(opts.headers['X-From-Ai-Assistant'], 'true');
+    } finally {
+        envModule.PRIMARY_CALLERS_SET.clear();
+        envModule.SECONDARY_CALLERS_SET.clear();
+        prevPrimary.forEach((value) => envModule.PRIMARY_CALLERS_SET.add(value));
+        prevSecondary.forEach((value) => envModule.SECONDARY_CALLERS_SET.add(value));
+        if (prevEnv.SENDER_FROM_EMAIL == null) delete process.env.SENDER_FROM_EMAIL;
+        else process.env.SENDER_FROM_EMAIL = prevEnv.SENDER_FROM_EMAIL;
+        if (prevEnv.PRIMARY_TO_EMAIL == null) delete process.env.PRIMARY_TO_EMAIL;
+        else process.env.PRIMARY_TO_EMAIL = prevEnv.PRIMARY_TO_EMAIL;
+        init.setInitClients(prevClients);
+    }
 });
