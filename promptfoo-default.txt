@@ -1,5 +1,0 @@
-System:
-{{system_prompt}}
-
-User:
-{{user_prompt}}

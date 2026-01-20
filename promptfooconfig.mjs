@@ -19,7 +19,7 @@ const {
 
 /** @type {import('promptfoo').Config} */
 const config = {
-    prompts: ['promptfoo-default.txt'],
+    prompts: ['tests/promptfoo/promptfoo-default-prompt.txt'],
     providers: [
         {
             id: `openai:${REALTIME_MODEL}`,
@@ -37,7 +37,10 @@ const config = {
             },
         },
     ],
-    tests: 'tests/promptfoo/cases.yaml',
+    tests: [
+        'tests/promptfoo/cases-voice.yaml',
+        'tests/promptfoo/cases-sms.yaml',
+    ],
 };
 
 export default config;
