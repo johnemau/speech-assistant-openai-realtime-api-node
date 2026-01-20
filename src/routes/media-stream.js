@@ -131,9 +131,7 @@ export function mediaStreamHandler(connection, req) {
                 });
                 const files = entries
                     .filter((entry) => entry.isFile())
-                    .map((entry) =>
-                        path.join(WAIT_MUSIC_FOLDER, entry.name)
-                    );
+                    .map((entry) => path.join(WAIT_MUSIC_FOLDER, entry.name));
                 if (files.length === 0) {
                     console.warn(
                         'Waiting music folder has no files; disabling waiting music:',

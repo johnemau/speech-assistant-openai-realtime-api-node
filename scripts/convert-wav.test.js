@@ -49,7 +49,7 @@ function createFfmpegMock(onSave) {
                 codec: null,
                 channels: null,
                 frequency: null,
-                command: null,
+                commands: [],
                 setAudioCodec: mock.fn((codec) => {
                     video.codec = codec;
                     return video;
@@ -63,7 +63,7 @@ function createFfmpegMock(onSave) {
                     return video;
                 }),
                 addCommand: mock.fn((command, value) => {
-                    video.command = { command, value };
+                    video.commands.push({ command, value });
                     return video;
                 }),
                 save: mock.fn((outputPath, callback) => {
@@ -115,7 +115,8 @@ test('run exits when directory missing', async () => {
         logger,
         exit,
         existsSyncFn: () => false,
-        resolvePath: (value) => (value.startsWith('/') ? value : `/abs/${value}`),
+        resolvePath: (value) =>
+            value.startsWith('/') ? value : `/abs/${value}`,
     });
 
     assert.equal(exit.mock.calls.length, 1);
@@ -135,8 +136,9 @@ test('run exits when target path is not a directory', async () => {
         logger,
         exit,
         existsSyncFn: () => true,
-        statSyncFn: () => ({ isDirectory: () => false }),
-        resolvePath: (value) => (value.startsWith('/') ? value : `/abs/${value}`),
+        statSyncFn: /** @type {any} */ (() => ({ isDirectory: () => false })),
+        resolvePath: (value) =>
+            value.startsWith('/') ? value : `/abs/${value}`,
     });
 
     assert.equal(exit.mock.calls.length, 1);
@@ -165,17 +167,20 @@ test('convertWithFfmpeg configures audio conversion', async () => {
         throw new Error('Expected ffmpeg save callback to run.');
     }
     assert.equal(saved.outputPath, '/abs/output.pcmu');
-    assert.equal(saved.video.codec, 'pcm_mulaw');
+    assert.equal(saved.video.codec, null);
     assert.equal(saved.video.channels, 1);
     assert.equal(saved.video.frequency, 8000);
-    assert.deepEqual(saved.video.command, {
-        command: '-af',
-        value: 'aresample=resampler=soxr:precision=28:dither_method=triangular',
-    });
-    assert.equal(saved.video.setAudioCodec.mock.calls.length, 1);
+    assert.deepEqual(saved.video.commands, [
+        { command: '-c:a', value: 'pcm_mulaw' },
+        {
+            command: '-af',
+            value: 'aresample=resampler=soxr:precision=28:dither_method=triangular',
+        },
+    ]);
+    assert.equal(saved.video.setAudioCodec.mock.calls.length, 0);
     assert.equal(saved.video.setAudioChannels.mock.calls.length, 1);
     assert.equal(saved.video.setAudioFrequency.mock.calls.length, 1);
-    assert.equal(saved.video.addCommand.mock.calls.length, 1);
+    assert.equal(saved.video.addCommand.mock.calls.length, 2);
     assert.equal(saved.video.save.mock.calls.length, 1);
 });
 
@@ -185,9 +190,15 @@ test('run logs success on conversion', async () => {
     const ffmpegMock = createFfmpegMock();
 
     const dirEntries = [
-        { isFile: () => true, name: 'tone.wav' },
-        { isFile: () => true, name: 'tone.mulaw.wav' },
-        { isFile: () => true, name: 'note.txt' },
+        /** @type {import('node:fs').Dirent} */ (
+            /** @type {any} */ ({ isFile: () => true, name: 'tone.wav' })
+        ),
+        /** @type {import('node:fs').Dirent} */ (
+            /** @type {any} */ ({ isFile: () => true, name: 'tone.mulaw.wav' })
+        ),
+        /** @type {import('node:fs').Dirent} */ (
+            /** @type {any} */ ({ isFile: () => true, name: 'note.txt' })
+        ),
     ];
 
     await run({
@@ -195,8 +206,8 @@ test('run logs success on conversion', async () => {
         logger,
         exit,
         existsSyncFn: () => true,
-        statSyncFn: () => ({ isDirectory: () => true }),
-        readdirSyncFn: () => dirEntries,
+        statSyncFn: /** @type {any} */ (() => ({ isDirectory: () => true })),
+        readdirSyncFn: /** @type {any} */ (() => dirEntries),
         resolvePath: (...values) => `/abs/${values.join('/')}`,
         ffmpegModule: ffmpegMock,
     });
@@ -217,9 +228,14 @@ test('run logs when no wav files are present', async () => {
         logger,
         exit,
         existsSyncFn: () => true,
-        statSyncFn: () => ({ isDirectory: () => true }),
-        readdirSyncFn: () => [{ isFile: () => true, name: 'tone.mulaw.wav' }],
-        resolvePath: (value) => (value.startsWith('/') ? value : `/abs/${value}`),
+        statSyncFn: /** @type {any} */ (() => ({ isDirectory: () => true })),
+        readdirSyncFn: /** @type {any} */ (() => [
+            /** @type {import('node:fs').Dirent} */ (
+                /** @type {any} */ ({ isFile: () => true, name: 'tone.mulaw.wav' })
+            ),
+        ]),
+        resolvePath: (value) =>
+            value.startsWith('/') ? value : `/abs/${value}`,
     });
 
     assert.equal(exit.mock.calls.length, 0);

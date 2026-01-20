@@ -80,9 +80,9 @@ export async function convertWithFfmpeg({
     const video = await ffmpegProcess;
     return new Promise((resolvePromise, rejectPromise) => {
         video
-            .setAudioCodec(codec)
             .setAudioChannels(1)
             .setAudioFrequency(8000)
+            .addCommand('-c:a', codec)
             .addCommand(
                 '-af',
                 'aresample=resampler=soxr:precision=28:dither_method=triangular'
@@ -171,7 +171,9 @@ export async function run({
             });
             logger.log(`Converted ${inputPath} -> ${outputPath} (${format})`);
         } catch (error) {
-            logger.error(`Failed to run ffmpeg: ${error?.message || JSON.stringify(error)}`);
+            logger.error(
+                `Failed to run ffmpeg: ${error?.message || JSON.stringify(error)}`
+            );
             exit(1);
             return;
         }
