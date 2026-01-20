@@ -1,6 +1,5 @@
 import WebSocket from 'ws';
 import fs from 'fs';
-import { SYSTEM_MESSAGE } from '../assistant/prompts.js';
 import { createAssistantSession, safeParseToolArguments } from '../assistant/session.js';
 import {
     twilioClient,
@@ -388,35 +387,34 @@ export function mediaStreamHandler(connection, req) {
             };
 
         const assistantSession = createAssistantSession({
-                apiKey: env?.OPENAI_API_KEY,
-                model: REALTIME_MODEL,
-                temperature,
-                instructions: SYSTEM_MESSAGE,
-                tools: getToolDefinitions(),
-                outputModalities: ['audio'],
-                audioConfig: {
-                    input: {
-                        format: { type: 'audio/pcmu' },
-                        turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
-                        noise_reduction: { type: micState.currentNoiseReductionType }
-                    },
-                    output: { format: { type: 'audio/pcmu' }, voice },
+            apiKey: env?.OPENAI_API_KEY,
+            model: REALTIME_MODEL,
+            temperature,
+            tools: getToolDefinitions(),
+            outputModalities: ['audio'],
+            audioConfig: {
+                input: {
+                    format: { type: 'audio/pcmu' },
+                    turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
+                    noise_reduction: { type: micState.currentNoiseReductionType }
                 },
-                onEvent: handleOpenAiEvent,
-                onAssistantOutput: handleAssistantOutput,
-                onToolCall: handleToolCall,
-                onOpen: () => console.log('Connected to the OpenAI Realtime API'),
-                onClose: () => {
-                    console.log('Disconnected from the OpenAI Realtime API');
-                    stopWaitingMusic();
-                    clearWaitingMusicInterval();
-                },
-                onError: (error) => {
-                    console.error('Error in the OpenAI WebSocket:', error);
-                    stopWaitingMusic();
-                    clearWaitingMusicInterval();
-                }
-            });
+                output: { format: { type: 'audio/pcmu' }, voice },
+            },
+            onEvent: handleOpenAiEvent,
+            onAssistantOutput: handleAssistantOutput,
+            onToolCall: handleToolCall,
+            onOpen: () => console.log('Connected to the OpenAI Realtime API'),
+            onClose: () => {
+                console.log('Disconnected from the OpenAI Realtime API');
+                stopWaitingMusic();
+                clearWaitingMusicInterval();
+            },
+            onError: (error) => {
+                console.error('Error in the OpenAI WebSocket:', error);
+                stopWaitingMusic();
+                clearWaitingMusicInterval();
+            }
+        });
 
             // Send initial conversation item using the caller's name once available
         const sendInitialConversationItem = (callerNameValue = 'legend') => {

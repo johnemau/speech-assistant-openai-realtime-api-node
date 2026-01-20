@@ -43,7 +43,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
   - Sends the reply via Twilio REST API; falls back to TwiML with concise error text when send fails.
 
 ## OpenAI Session & Tools
-- Session initialization sets `type: realtime`, `model: gpt-realtime`, audio I/O formats (`audio/pcmu`), `voice: cedar`, and concatenated `SYSTEM_MESSAGE` policy.
+- Session initialization sets `type: realtime`, `model: gpt-realtime`, audio I/O formats (`audio/pcmu`), `voice: cedar`, and concatenated `REALTIME_INSTRUCTIONS` policy.
 - Tools declared in session (implementations in [src/tools](../src/tools)):
   - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
   - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.

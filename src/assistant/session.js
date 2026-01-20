@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import JSON5 from 'json5';
 import { REALTIME_MODEL, REALTIME_TEMPERATURE } from '../config/openai-models.js';
+import { REALTIME_INSTRUCTIONS } from './prompts.js';
 
 /**
  * @typedef {Pick<WebSocket, 'readyState' | 'close'>} AssistantSessionWebSocket
@@ -62,7 +63,6 @@ export function safeParseToolArguments(args) {
  * @param {string} root0.apiKey - OpenAI API key.
  * @param {string} [root0.model] - Realtime model name.
  * @param {number} [root0.temperature] - Sampling temperature.
- * @param {string} [root0.instructions] - System instructions.
  * @param {Array<object>} [root0.tools] - Tool definitions.
  * @param {string[]} [root0.outputModalities] - Output modalities.
  * @param {object} [root0.audioConfig] - Audio session config.
@@ -86,7 +86,6 @@ function realCreateAssistantSession({
     apiKey,
     model = REALTIME_MODEL,
     temperature = REALTIME_TEMPERATURE,
-    instructions,
     tools = [],
     outputModalities = ['audio'],
     audioConfig,
@@ -139,7 +138,7 @@ function realCreateAssistantSession({
                 type: 'realtime',
                 model,
                 output_modalities: outputModalities,
-                instructions,
+                instructions: REALTIME_INSTRUCTIONS,
                 tools,
                 tool_choice: toolChoice,
             }

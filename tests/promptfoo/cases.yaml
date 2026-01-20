@@ -1,6 +1,6 @@
 - name: voice-coffee-near-pike-place
   vars:
-    system_prompt: file://src/assistant/prompts/system.md
+    system_prompt: file://src/assistant/prompts/realtime-instructions.md
     user_prompt: |
       Tool Output (web_search):
       Source: Yelp, January 2026.
