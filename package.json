@@ -5,7 +5,9 @@
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
-        "lint": "eslint .",
+        "lint": "npm run lint:eslint && npm run format",
+        "lint:eslint": "eslint .",
+        "lint:eslint:fix": "npm run lint:eslint -- --fix",
         "format": "prettier . --check",
         "format:write": "prettier . --write",
         "typecheck": "tsc -p tsconfig.json",
