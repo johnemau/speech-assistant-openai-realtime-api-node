@@ -76,7 +76,7 @@ export function safeParseToolArguments(args) {
  *   openAiWs: AssistantSessionWebSocket,
  *   send: (obj: unknown) => void,
  *   requestResponse: () => void,
- *   updateSession: (partialSession: object) => void,
+ *   updateSession: (partialSession: Partial<import('openai/resources/realtime/realtime').SessionUpdateEvent['session']>) => void,
  *   close: () => void,
  *   clearPendingMessages: () => void,
  * }} Session helpers.
