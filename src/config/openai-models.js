@@ -18,6 +18,28 @@ export const DEFAULT_WEB_SEARCH_USER_LOCATION = { type: 'approximate', country: 
 export const DEFAULT_SMS_USER_LOCATION = DEFAULT_WEB_SEARCH_USER_LOCATION;
 
 /**
+ * Build shared Realtime session config (excluding instructions/tools).
+ *
+ * @returns {import('openai/resources/realtime/realtime').SessionUpdateEvent['session']} Realtime session config.
+ */
+export function buildRealtimeSessionConfig() {
+    return {
+        type: 'realtime',
+        model: REALTIME_MODEL,
+        output_modalities: ['audio'],
+        tool_choice: 'auto',
+        audio: {
+            input: {
+                format: { type: 'audio/pcmu' },
+                turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
+                noise_reduction: { type: 'near_field' }
+            },
+            output: { format: { type: 'audio/pcmu' }, voice: 'cedar' },
+        },
+    };
+}
+
+/**
  * Build a web_search tool descriptor.
  *
  * @param {object} [options] - Tool options.

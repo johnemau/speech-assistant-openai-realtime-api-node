@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import JSON5 from 'json5';
-import { REALTIME_MODEL, REALTIME_TEMPERATURE } from '../config/openai-models.js';
+import { REALTIME_MODEL, REALTIME_TEMPERATURE, buildRealtimeSessionConfig } from '../config/openai-models.js';
 import { REALTIME_INSTRUCTIONS } from './prompts.js';
 import { getToolDefinitions } from '../tools/index.js';
 
@@ -123,20 +123,9 @@ function realCreateAssistantSession({
         const sessionPayload = {
             type: 'session.update',
             session: {
-                type: 'realtime',
-                model: REALTIME_MODEL,
-                output_modalities: ['audio'],
+                ...buildRealtimeSessionConfig(),
                 instructions: REALTIME_INSTRUCTIONS,
                 tools: getToolDefinitions(),
-                tool_choice: 'auto',
-                audio: {
-                    input: {
-                        format: { type: 'audio/pcmu' },
-                        turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
-                        noise_reduction: { type: 'near_field' }
-                    },
-                    output: { format: { type: 'audio/pcmu' }, voice: 'cedar' },
-                },
             },
         };
         openAiSend(sessionPayload);
