@@ -1,17 +1,8 @@
 import { getToolDefinitions } from './src/tools/index.js';
 import { DEFAULT_WEB_SEARCH_USER_LOCATION, REALTIME_MODEL, REALTIME_TEMPERATURE, GPT_5_2_MODEL } from './src/config/openai-models.js';
-
 const config = {
     prompts: [
-        {
-            label: 'default',
-            raw: `System:
-{{system_prompt}}
-
-User:
-{{user_prompt}}
-`,
-        },
+        'promptfoo-default.txt',
     ],
     providers: [
         {
