@@ -7,7 +7,11 @@ import {
     buildWebSearchResponseParams,
 } from './src/config/openai-models.js';
 
-const { input: _gpt52Input, instructions: _gpt52Instructions, ...gpt52WebSearchConfig } = buildWebSearchResponseParams({
+const {
+    input: _gpt52Input,
+    instructions: _gpt52Instructions,
+    ...gpt52WebSearchConfig
+} = buildWebSearchResponseParams({
     input: '',
     instructions: '',
     userLocation: DEFAULT_WEB_SEARCH_USER_LOCATION,
@@ -15,9 +19,7 @@ const { input: _gpt52Input, instructions: _gpt52Instructions, ...gpt52WebSearchC
 
 /** @type {import('promptfoo').Config} */
 const config = {
-    prompts: [
-        'promptfoo-default.txt',
-    ],
+    prompts: ['promptfoo-default.txt'],
     providers: [
         {
             id: `openai:${REALTIME_MODEL}`,
@@ -39,4 +41,9 @@ const config = {
 };
 
 export default config;
-export { DEFAULT_WEB_SEARCH_USER_LOCATION, REALTIME_MODEL, REALTIME_TEMPERATURE, GPT_5_2_MODEL };
+export {
+    DEFAULT_WEB_SEARCH_USER_LOCATION,
+    REALTIME_MODEL,
+    REALTIME_TEMPERATURE,
+    GPT_5_2_MODEL,
+};

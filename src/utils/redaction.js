@@ -23,7 +23,10 @@ export const DEFAULT_SECRET_ENV_KEYS = [
     'TWILIO_API_SECRET',
 ];
 
-export const REDACTION_KEYS = getSecretEnvKeys(process.env, DEFAULT_SECRET_ENV_KEYS);
+export const REDACTION_KEYS = getSecretEnvKeys(
+    process.env,
+    DEFAULT_SECRET_ENV_KEYS
+);
 
 /**
  * Patch console logging to redact configured secrets.
@@ -45,9 +48,14 @@ export function setupConsoleRedaction(env = process.env) {
         if (isTruthy(env.DISABLE_LOG_REDACTION)) {
             try {
                 disableLogRedaction();
-                console.log('Log redaction disabled via DISABLE_LOG_REDACTION env flag.');
+                console.log(
+                    'Log redaction disabled via DISABLE_LOG_REDACTION env flag.'
+                );
             } catch (err) {
-                console.warn('Failed to disable log redaction:', err?.message || err);
+                console.warn(
+                    'Failed to disable log redaction:',
+                    err?.message || err
+                );
             }
         }
     } catch (e) {
@@ -86,14 +94,17 @@ export function setupConsoleRedaction(env = process.env) {
                     // noop: best-effort discovery of sensitive values
                     void 0;
                 }
-                const secrets = Array.from(new Set([
-                    ...envSecretValues,
-                    ...guessed,
-                ]));
+                const secrets = Array.from(
+                    new Set([...envSecretValues, ...guessed])
+                );
 
                 return args.map((a) => {
                     try {
-                        if (typeof a === 'string' || (a && typeof a === 'object') || Array.isArray(a)) {
+                        if (
+                            typeof a === 'string' ||
+                            (a && typeof a === 'object') ||
+                            Array.isArray(a)
+                        ) {
                             return scrub(a, secrets);
                         }
                     } catch {
@@ -111,10 +122,15 @@ export function setupConsoleRedaction(env = process.env) {
             return { redactionDisabled, secretKeys, envSecretValues };
         } catch (e) {
             // If scrubber initialization fails, leave console untouched
-            console.warn('Secret scrubber initialization failed:', e?.message || e);
+            console.warn(
+                'Secret scrubber initialization failed:',
+                e?.message || e
+            );
         }
     } else {
-        console.warn('DISABLE_LOG_REDACTION is truthy; secret scrubber not initialized.');
+        console.warn(
+            'DISABLE_LOG_REDACTION is truthy; secret scrubber not initialized.'
+        );
     }
 
     const envSecretValues = getSecretEnvValues(env, secretKeys);
@@ -131,14 +147,25 @@ export function setupConsoleRedaction(env = process.env) {
  * @param {string[]} [root0.secretKeys] - Secret keys to use.
  * @returns {string} Redacted detail.
  */
-export function redactErrorDetail({ errorLike, detail, env = process.env, secretKeys = [] }) {
+export function redactErrorDetail({
+    errorLike,
+    detail,
+    env = process.env,
+    secretKeys = [],
+}) {
     let redacted = detail;
     try {
-        const keys = secretKeys.length > 0 ? secretKeys : getSecretEnvKeys(env, DEFAULT_SECRET_ENV_KEYS);
+        const keys =
+            secretKeys.length > 0
+                ? secretKeys
+                : getSecretEnvKeys(env, DEFAULT_SECRET_ENV_KEYS);
         const envVals = getSecretEnvValues(env, keys);
         let guessed = [];
-        const errorLikeObj = (errorLike && typeof errorLike === 'object') ? errorLike : {};
-        try { guessed = findSensitiveValues(errorLikeObj); } catch {
+        const errorLikeObj =
+            errorLike && typeof errorLike === 'object' ? errorLike : {};
+        try {
+            guessed = findSensitiveValues(errorLikeObj);
+        } catch {
             // noop: best-effort discovery of sensitive values
             void 0;
         }

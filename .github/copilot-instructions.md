@@ -3,6 +3,7 @@
 Use this repo to run a phone-call voice assistant that bridges Twilio Media Streams with OpenAI’s Realtime API. Start with the architectural flow and follow the established patterns in the files below.
 
 ## Big Picture
+
 - Twilio inbound call → TwiML webhook → Media Stream WebSocket → OpenAI Realtime WebSocket → audio round‑trip.
 - Core entry point: [index.js](../index.js). Reference [Readme.md](../Readme.md) for setup and behavior.
 - Fastify HTTP server exposes: `/` (root), `/healthz` (uptime), `/incoming-call` (TwiML), `/media-stream` (WebSocket for Twilio audio), and `/sms` (Twilio Messaging webhook for auto‑replies).
@@ -10,49 +11,54 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Realtime session + prompts live under [src/assistant](../src/assistant) (see [src/assistant/session.js](../src/assistant/session.js) and [src/assistant/prompts.js](../src/assistant/prompts.js)).
 
 ## Developer Workflow
+
 - Install and run:
-  - `npm install`
-  - `npm start`
+    - `npm install`
+    - `npm start`
 - Verify changes:
-  - `npm test` runs lint, typecheck, and unit tests.
-  - `npm run test:unit` for unit tests only.
-  - `npm run lint` and `npm run typecheck` for targeted checks.
+    - `npm test` runs lint, typecheck, and unit tests.
+    - `npm run test:unit` for unit tests only.
+    - `npm run lint` and `npm run typecheck` for targeted checks.
 - Prompt evaluations:
-  - `npm run pf:eval` and `npm run pf:view` (config in [promptfooconfig.mjs](../promptfooconfig.mjs)).
+    - `npm run pf:eval` and `npm run pf:view` (config in [promptfooconfig.mjs](../promptfooconfig.mjs)).
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
 - Public ingress: bind ngrok domain via `NGROK_DOMAIN` and optional `NGROK_AUTHTOKEN`. The server also runs locally without ngrok.
 - Minimal health checks: GET `/` and `/healthz`.
 
 ## Environment & Secrets
+
 - Required: `OPENAI_API_KEY`. Optional: `NGROK_DOMAIN`, `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`.
 - Email tool requires: `SENDER_FROM_EMAIL`, `SMTP_USER`, `SMTP_PASS`, `PRIMARY_TO_EMAIL`, `SECONDARY_TO_EMAIL`, `SMTP_NODEMAILER_SERVICE_ID`.
 - Call allowlists: `PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS` (comma‑separated E.164).
 - Logs are sanitized at startup using `redact-logs` and `@zapier/secret-scrubber`. Disable via `DISABLE_LOG_REDACTION=true`. Add any new secret env keys to `REDACT_ENV_KEYS` (comma‑separated).
 
 ## Routing & Twilio Integration
+
 - `/incoming-call`: returns TwiML that greets the caller, then `<Connect><Stream>` to `/media-stream`. Caller number is passed via `<Parameter name="caller_number" ...>` and used for allowlist and email recipient selection.
 - `/media-stream` (WebSocket):
-  - Forwards Twilio `media` frames to OpenAI (`input_audio_buffer.append`).
-  - Streams assistant audio deltas back to Twilio `media`.
-  - Handles interruption with `input_audio_buffer.speech_started` by truncating the current assistant item and clearing Twilio’s buffer.
-  - Uses “mark” messages to detect end of assistant playback for pacing.
+    - Forwards Twilio `media` frames to OpenAI (`input_audio_buffer.append`).
+    - Streams assistant audio deltas back to Twilio `media`.
+    - Handles interruption with `input_audio_buffer.speech_started` by truncating the current assistant item and clearing Twilio’s buffer.
+    - Uses “mark” messages to detect end of assistant playback for pacing.
 - `/sms` (Messaging webhook):
-  - Restricts usage to allowlisted numbers (`PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS`).
-  - Builds a 12‑hour recent thread (up to 10 messages, inbound+outbound) and composes a concise reply (≤320 chars).
-  - Calls OpenAI `responses.create` with `model: gpt-5.2`, `tools: [{ type: 'web_search' }]`, `tool_choice: 'required'`, and tailored SMS instructions.
-  - Sends the reply via Twilio REST API; falls back to TwiML with concise error text when send fails.
+    - Restricts usage to allowlisted numbers (`PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS`).
+    - Builds a 12‑hour recent thread (up to 10 messages, inbound+outbound) and composes a concise reply (≤320 chars).
+    - Calls OpenAI `responses.create` with `model: gpt-5.2`, `tools: [{ type: 'web_search' }]`, `tool_choice: 'required'`, and tailored SMS instructions.
+    - Sends the reply via Twilio REST API; falls back to TwiML with concise error text when send fails.
 
 ## OpenAI Session & Tools
+
 - Session initialization sets `type: realtime`, `model: gpt-realtime`, audio I/O formats (`audio/pcmu`), `voice: cedar`, and concatenated `REALTIME_INSTRUCTIONS` policy.
 - Tools declared in session (implementations in [src/tools](../src/tools)):
-  - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
-  - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.
-  - `send_sms`: Sends a concise SMS from the call’s Twilio number (or fallback) and returns `sid/status/length` as `function_call_output`.
-  - `update_mic_distance`: Toggles input noise reduction between `near_field` and `far_field`.
-  - `end_call`: Ends the Twilio stream after a brief farewell.
+    - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
+    - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.
+    - `send_sms`: Sends a concise SMS from the call’s Twilio number (or fallback) and returns `sid/status/length` as `function_call_output`.
+    - `update_mic_distance`: Toggles input noise reduction between `near_field` and `far_field`.
+    - `end_call`: Ends the Twilio stream after a brief farewell.
 - Dedupe: tool executions tracked by `call_id` to prevent duplicates. Always send `function_call_output` followed by `response.create`.
 
 ## SMS Auto‑Reply
+
 - Webhook: `/sms` — configure in Twilio Console under Messaging → “A message comes in”.
 - Allowlist: only numbers listed in `PRIMARY_USER_PHONE_NUMBERS` or `SECONDARY_USER_PHONE_NUMBERS` are allowed.
 - Context: fetches last 12 hours of messages (inbound/outbound), merges and includes up to 10 in the prompt.
@@ -61,17 +67,20 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Errors: returns concise user texts — AI error → “Sorry—SMS reply error.”; send error → “Sorry—SMS send error.” with brief details.
 
 ## Voice & Interruption Patterns
+
 - Keep answers voice‑friendly and concise; system prompts enforce style.
 - On `response.output_audio.delta`, immediately stop any waiting music and send deltas as Twilio `media` payloads.
 - On `input_audio_buffer.speech_started`, truncate current assistant response (`conversation.item.truncate`) and clear Twilio buffer to let the user speak.
 
 ## Waiting Music (Optional)
+
 - Controlled via `WAIT_MUSIC_THRESHOLD_MS`, `WAIT_MUSIC_VOLUME`, `WAIT_MUSIC_FILE`.
 - Only raw PCMU (G.711 µ‑law) files are supported; frames are sent at ~20 ms (160 bytes).
 - Use the conversion script when needed (requires `ffmpeg`): `npm run convert:wav -- input.wav output.pcmu --format=mulaw`.
 - Waiting music starts after the threshold when a tool call begins and stops on first assistant audio delta or caller speech.
 
 ## Conventions & Gotchas
+
 - ESM modules (`"type": "module"`). Use `import` syntax throughout.
 - Phone normalization is US‑focused: inputs normalized to E.164 with a leading `+1` when missing.
 - Allowlist empty → all calls rejected.
@@ -80,5 +89,6 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Greeting uses `PRIMARY_USER_FIRST_NAME`/`SECONDARY_USER_FIRST_NAME` only; there is no `USER_FIRST_NAME` env.
 
 ## Extending
+
 - Add a new tool: declare it in the session `tools`, then in `response.done` handle the `function_call` by parsing `arguments`, performing work, sending `function_call_output`, and following with `response.create`. Reuse the `call_id` dedupe pattern.
 - For new envs or integrations, update redaction keys and README examples, and keep WebSocket event handling consistent (append audio, handle deltas, interruption, and marks).

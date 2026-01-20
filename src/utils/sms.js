@@ -57,11 +57,13 @@ export function mergeAndSortMessages(inbound = [], outbound = []) {
  */
 export function buildSmsThreadText({ messages = [], fromE164, limit = 10 }) {
     const recent = messages.slice(0, limit);
-    return recent.map((m) => {
-        const ts = new Date(m.dateSent || m.dateCreated).toISOString();
-        const who = (m.from === fromE164) ? 'User' : 'Assistant';
-        return `${who} [${ts}]: ${m.body || ''}`;
-    }).join('\n');
+    return recent
+        .map((m) => {
+            const ts = new Date(m.dateSent || m.dateCreated).toISOString();
+            const who = m.from === fromE164 ? 'User' : 'Assistant';
+            return `${who} [${ts}]: ${m.body || ''}`;
+        })
+        .join('\n');
 }
 
 /**

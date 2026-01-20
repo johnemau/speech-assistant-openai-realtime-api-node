@@ -12,7 +12,11 @@ export const REALTIME_TEMPERATURE = 0.8;
 export const GPT_5_2_MODEL = 'gpt-5.2';
 
 /** @type {WebSearchUserLocation} */
-export const DEFAULT_WEB_SEARCH_USER_LOCATION = { type: 'approximate', country: 'US', region: 'Washington' };
+export const DEFAULT_WEB_SEARCH_USER_LOCATION = {
+    type: 'approximate',
+    country: 'US',
+    region: 'Washington',
+};
 
 // Backwards-friendly alias for existing imports
 export const DEFAULT_SMS_USER_LOCATION = DEFAULT_WEB_SEARCH_USER_LOCATION;
@@ -31,8 +35,13 @@ export function buildRealtimeSessionConfig() {
         audio: {
             input: {
                 format: { type: 'audio/pcmu' },
-                turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
-                noise_reduction: { type: 'near_field' }
+                turn_detection: {
+                    type: 'semantic_vad',
+                    eagerness: 'low',
+                    interrupt_response: true,
+                    create_response: false,
+                },
+                noise_reduction: { type: 'near_field' },
             },
             output: { format: { type: 'audio/pcmu' }, voice: 'cedar' },
         },
@@ -62,7 +71,11 @@ export function buildWebSearchTool({ userLocation } = {}) {
  * @param {WebSearchUserLocation} [options.userLocation] - Optional user location.
  * @returns {ResponseCreateParamsNonStreaming} Response API request payload.
  */
-export function buildWebSearchResponseParams({ input, instructions, userLocation }) {
+export function buildWebSearchResponseParams({
+    input,
+    instructions,
+    userLocation,
+}) {
     return {
         ...buildSearchModelConfig({ instructions, userLocation }),
         input,

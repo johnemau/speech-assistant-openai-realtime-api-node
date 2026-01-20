@@ -1,6 +1,10 @@
 import WebSocket from 'ws';
 import JSON5 from 'json5';
-import { REALTIME_MODEL, REALTIME_TEMPERATURE, buildRealtimeSessionConfig } from '../config/openai-models.js';
+import {
+    REALTIME_MODEL,
+    REALTIME_TEMPERATURE,
+    buildRealtimeSessionConfig,
+} from '../config/openai-models.js';
 import { REALTIME_INSTRUCTIONS } from './prompts.js';
 import { getToolDefinitions } from '../tools/index.js';
 
@@ -28,7 +32,8 @@ function toUtf8String(data) {
  */
 export function safeParseToolArguments(args) {
     if (args == null) return {};
-    if (typeof args === 'object') return /** @type {Record<string, unknown>} */ (args);
+    if (typeof args === 'object')
+        return /** @type {Record<string, unknown>} */ (args);
     let str = String(args);
     // Normalize and trim possible BOMs/whitespace
     str = str.replace(/^\uFEFF/, '').trim();
@@ -50,7 +55,10 @@ export function safeParseToolArguments(args) {
                 .replace(/,\s*([}\]])/g, '$1'); // remove trailing commas
 
             // Add quotes around unquoted property names at object boundaries
-            repaired = repaired.replace(/([{|,]\s*)([A-Za-z_][A-Za-z0-9_-]*)(\s*):/g, '$1"$2"$3:');
+            repaired = repaired.replace(
+                /([{|,]\s*)([A-Za-z_][A-Za-z0-9_-]*)(\s*):/g,
+                '$1"$2"$3:'
+            );
 
             return JSON5.parse(repaired);
         }
@@ -87,11 +95,14 @@ function realCreateAssistantSession({
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('Missing OpenAI API key.');
 
-    const openAiWs = new WebSocket(`wss://api.openai.com/v1/realtime?model=${REALTIME_MODEL}&temperature=${REALTIME_TEMPERATURE}`, {
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
+    const openAiWs = new WebSocket(
+        `wss://api.openai.com/v1/realtime?model=${REALTIME_MODEL}&temperature=${REALTIME_TEMPERATURE}`,
+        {
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+            },
         }
-    });
+    );
 
     const pendingOpenAiMessages = [];
     const openAiSend = (obj) => {
@@ -142,7 +153,10 @@ function realCreateAssistantSession({
             const response = JSON.parse(toUtf8String(data));
             onEvent?.(response);
 
-            if (response.type === 'response.output_audio.delta' && response.delta) {
+            if (
+                response.type === 'response.output_audio.delta' &&
+                response.delta
+            ) {
                 onAssistantOutput?.({
                     type: 'audio',
                     delta: response.delta,
@@ -151,7 +165,10 @@ function realCreateAssistantSession({
                 });
             }
 
-            if (response.type === 'response.output_text.delta' && response.delta != null) {
+            if (
+                response.type === 'response.output_text.delta' &&
+                response.delta != null
+            ) {
                 onAssistantOutput?.({
                     type: 'text',
                     delta: response.delta,
@@ -160,7 +177,10 @@ function realCreateAssistantSession({
                 });
             }
 
-            if (response.type === 'response.output_text.done' && response.text != null) {
+            if (
+                response.type === 'response.output_text.done' &&
+                response.text != null
+            ) {
                 onAssistantOutput?.({
                     type: 'text_done',
                     text: response.text,
@@ -176,7 +196,12 @@ function realCreateAssistantSession({
                 }
             }
         } catch (error) {
-            console.error('Error processing OpenAI message:', error, 'Raw message:', data);
+            console.error(
+                'Error processing OpenAI message:',
+                error,
+                'Raw message:',
+                data
+            );
         }
     });
 
@@ -200,17 +225,21 @@ function realCreateAssistantSession({
                 session: {
                     type: 'realtime',
                     ...partialSession,
-                }
+                },
             };
             openAiSend(sessionUpdateEvent);
         },
         close: () => {
-            try { openAiWs.close(); } catch {
+            try {
+                openAiWs.close();
+            } catch {
                 // noop: ignore close errors
                 void 0;
             }
         },
-        clearPendingMessages: () => { pendingOpenAiMessages.length = 0; },
+        clearPendingMessages: () => {
+            pendingOpenAiMessages.length = 0;
+        },
     };
 }
 

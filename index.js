@@ -55,9 +55,13 @@ fastify.register(async (fastify) => {
         // Optionally establish ngrok ingress if NGROK_DOMAIN is provided
         if (NGROK_DOMAIN) {
             if (!process.env.NGROK_AUTHTOKEN) {
-                console.warn('Warning: NGROK_AUTHTOKEN is not set. Ensure ngrok is authenticated for domain binding.');
+                console.warn(
+                    'Warning: NGROK_AUTHTOKEN is not set. Ensure ngrok is authenticated for domain binding.'
+                );
             }
-            const session = await new ngrok.SessionBuilder().authtokenFromEnv().connect();
+            const session = await new ngrok.SessionBuilder()
+                .authtokenFromEnv()
+                .connect();
             const endpointBuilder = session.httpEndpoint().domain(NGROK_DOMAIN);
             console.log(`ngrok forwarding active on domain ${NGROK_DOMAIN}`);
             const listener = await endpointBuilder.listen();

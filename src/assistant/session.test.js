@@ -34,7 +34,10 @@ test('assistant.createAssistantSession throws without api key', () => {
     const prevKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = '';
     try {
-        assert.throws(() => createAssistantSession({}), /Missing OpenAI API key/);
+        assert.throws(
+            () => createAssistantSession({}),
+            /Missing OpenAI API key/
+        );
     } finally {
         if (prevKey === undefined) delete process.env.OPENAI_API_KEY;
         else process.env.OPENAI_API_KEY = prevKey;

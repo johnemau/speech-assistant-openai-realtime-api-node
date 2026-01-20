@@ -1,4 +1,8 @@
-import { createOpenAIClient, createTwilioClient, createEmailTransport } from './utils/clients.js';
+import {
+    createOpenAIClient,
+    createTwilioClient,
+    createEmailTransport,
+} from './utils/clients.js';
 import { setupConsoleRedaction } from './utils/redaction.js';
 import { IS_DEV } from './env.js';
 import { REALTIME_TEMPERATURE } from './config/openai-models.js';
@@ -8,15 +12,16 @@ setupConsoleRedaction(process.env);
 
 // Retrieve required environment variables.
 const { OPENAI_API_KEY, NGROK_DOMAIN } = process.env;
-const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_API_KEY, TWILIO_API_SECRET } = process.env;
+const {
+    TWILIO_ACCOUNT_SID,
+    TWILIO_AUTH_TOKEN,
+    TWILIO_API_KEY,
+    TWILIO_API_SECRET,
+} = process.env;
 
 // Email-related environment variables
-const {
-    SENDER_FROM_EMAIL,
-    SMTP_USER,
-    SMTP_PASS,
-    SMTP_NODEMAILER_SERVICE_ID,
-} = process.env;
+const { SENDER_FROM_EMAIL, SMTP_USER, SMTP_PASS, SMTP_NODEMAILER_SERVICE_ID } =
+    process.env;
 
 if (!OPENAI_API_KEY) {
     console.error('Missing OpenAI API key. Please set it in the .env file.');
@@ -32,7 +37,7 @@ export let twilioClient = createTwilioClient({
     authToken: TWILIO_AUTH_TOKEN,
     apiKey: TWILIO_API_KEY,
     apiSecret: TWILIO_API_SECRET,
-    logger: console
+    logger: console,
 });
 
 // Initialize Nodemailer transporter (single sender) using service ID
@@ -40,10 +45,12 @@ export let senderTransport = createEmailTransport({
     user: SMTP_USER,
     pass: SMTP_PASS,
     serviceId: SMTP_NODEMAILER_SERVICE_ID,
-    logger: console
+    logger: console,
 });
 if (!SENDER_FROM_EMAIL) {
-    console.warn('SENDER_FROM_EMAIL missing; emails cannot be sent until configured.');
+    console.warn(
+        'SENDER_FROM_EMAIL missing; emails cannot be sent until configured.'
+    );
 }
 
 export const env = process.env;
@@ -57,7 +64,11 @@ export { NGROK_DOMAIN };
  * Test-only override for init clients.
  * @param {{ openaiClient?: any, twilioClient?: any, senderTransport?: any }} overrides - Overrides to apply.
  */
-export function setInitClients({ openaiClient: nextOpenAI, twilioClient: nextTwilio, senderTransport: nextSender } = {}) {
+export function setInitClients({
+    openaiClient: nextOpenAI,
+    twilioClient: nextTwilio,
+    senderTransport: nextSender,
+} = {}) {
     if (nextOpenAI !== undefined) openaiClient = nextOpenAI;
     if (nextTwilio !== undefined) twilioClient = nextTwilio;
     if (nextSender !== undefined) senderTransport = nextSender;

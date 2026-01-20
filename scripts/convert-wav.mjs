@@ -36,7 +36,12 @@ export function getCodecForFormat(format) {
     return format === 'mulaw' ? 'pcm_mulaw' : 'pcm_s16le';
 }
 
-export async function convertWithFfmpeg({ ffmpegModule, inputPath, outputPath, codec }) {
+export async function convertWithFfmpeg({
+    ffmpegModule,
+    inputPath,
+    outputPath,
+    codec,
+}) {
     const ffmpegProcess = new ffmpegModule(inputPath);
     /** @type {any} */
     const video = await ffmpegProcess;
@@ -45,7 +50,10 @@ export async function convertWithFfmpeg({ ffmpegModule, inputPath, outputPath, c
             .setAudioCodec(codec)
             .setAudioChannels(1)
             .setAudioFrequency(8000)
-            .addCommand('-af', 'aresample=resampler=soxr:precision=28:dither_method=triangular')
+            .addCommand(
+                '-af',
+                'aresample=resampler=soxr:precision=28:dither_method=triangular'
+            )
             .save(outputPath, (error, file) => {
                 if (error) {
                     rejectPromise(error);

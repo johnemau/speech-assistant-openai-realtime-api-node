@@ -17,20 +17,20 @@ function createConnection() {
         },
         on(event, handler) {
             handlers[event] = handler;
-        }
+        },
     };
 }
 
 async function loadMediaStreamHandler({
     primaryCallers = new Set(['+12065550100']),
     secondaryCallers = new Set(),
-    waitMusicThreshold = 10000
+    waitMusicThreshold = 10000,
 } = {}) {
     const sessionState = {
         sendCalls: [],
         requestResponseCalls: 0,
         onEvent: null,
-        onAssistantOutput: null
+        onAssistantOutput: null,
     };
 
     const env = await import('../env.js');
@@ -55,14 +55,18 @@ async function loadMediaStreamHandler({
         return {
             openAiWs: { readyState: 1, close: () => {} },
             send: (payload) => sessionState.sendCalls.push(payload),
-            requestResponse: () => { sessionState.requestResponseCalls += 1; },
+            requestResponse: () => {
+                sessionState.requestResponseCalls += 1;
+            },
             updateSession: () => {},
             close: () => {},
-            clearPendingMessages: () => {}
+            clearPendingMessages: () => {},
         };
     });
 
-    const moduleUrl = new URL('./media-stream.js', import.meta.url).href + `?test=media-${Math.random()}`;
+    const moduleUrl =
+        new URL('./media-stream.js', import.meta.url).href +
+        `?test=media-${Math.random()}`;
     const { mediaStreamHandler } = await import(moduleUrl);
 
     const cleanup = () => {
@@ -77,27 +81,32 @@ async function loadMediaStreamHandler({
 }
 
 test('media-stream start event sends initial greeting and response.create', async () => {
-    const { mediaStreamHandler, sessionState, cleanup } = await loadMediaStreamHandler();
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
     const connection = createConnection();
 
     try {
         mediaStreamHandler(connection, {});
-        connection.handlers.message(JSON.stringify({
-            event: 'start',
-            start: {
-                streamSid: 'SID123',
-                customParameters: {
-                    caller_number: '+1 (206) 555-0100',
-                    twilio_number: '+1 (425) 555-0101'
-                }
-            }
-        }));
+        connection.handlers.message(
+            JSON.stringify({
+                event: 'start',
+                start: {
+                    streamSid: 'SID123',
+                    customParameters: {
+                        caller_number: '+1 (206) 555-0100',
+                        twilio_number: '+1 (425) 555-0101',
+                    },
+                },
+            })
+        );
 
         assert.equal(sessionState.requestResponseCalls, 1);
         assert.equal(sessionState.sendCalls.length, 1);
         const greeting = sessionState.sendCalls[0];
         assert.equal(greeting.type, 'conversation.item.create');
-        assert.ok(String(greeting.item.content[0].text).includes('Greet the caller'));
+        assert.ok(
+            String(greeting.item.content[0].text).includes('Greet the caller')
+        );
     } finally {
         connection.close();
         cleanup();
@@ -105,20 +114,23 @@ test('media-stream start event sends initial greeting and response.create', asyn
 });
 
 test('media-stream media event appends input audio buffer', async () => {
-    const { mediaStreamHandler, sessionState, cleanup } = await loadMediaStreamHandler();
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
     const connection = createConnection();
 
     try {
         mediaStreamHandler(connection, {});
-        connection.handlers.message(JSON.stringify({
-            event: 'media',
-            media: { timestamp: 123, payload: 'BASE64AUDIO' }
-        }));
+        connection.handlers.message(
+            JSON.stringify({
+                event: 'media',
+                media: { timestamp: 123, payload: 'BASE64AUDIO' },
+            })
+        );
 
         assert.equal(sessionState.sendCalls.length, 1);
         assert.deepEqual(sessionState.sendCalls[0], {
             type: 'input_audio_buffer.append',
-            audio: 'BASE64AUDIO'
+            audio: 'BASE64AUDIO',
         });
     } finally {
         connection.close();
@@ -127,17 +139,27 @@ test('media-stream media event appends input audio buffer', async () => {
 });
 
 test('media-stream forwards assistant audio deltas to Twilio', async () => {
-    const { mediaStreamHandler, sessionState, cleanup } = await loadMediaStreamHandler();
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
     const connection = createConnection();
 
     try {
         mediaStreamHandler(connection, {});
-        connection.handlers.message(JSON.stringify({
-            event: 'start',
-            start: { streamSid: 'SID999', customParameters: { caller_number: '+12065550100' } }
-        }));
+        connection.handlers.message(
+            JSON.stringify({
+                event: 'start',
+                start: {
+                    streamSid: 'SID999',
+                    customParameters: { caller_number: '+12065550100' },
+                },
+            })
+        );
 
-        sessionState.onAssistantOutput({ type: 'audio', delta: 'AUDIODELTA', itemId: 'item1' });
+        sessionState.onAssistantOutput({
+            type: 'audio',
+            delta: 'AUDIODELTA',
+            itemId: 'item1',
+        });
 
         assert.equal(connection.sends.length, 2);
         const mediaEvent = JSON.parse(connection.sends[0]);

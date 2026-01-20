@@ -11,6 +11,10 @@ export function stringifyDeep(obj) {
     try {
         return inspect(obj, { depth: 10, colors: false, compact: false });
     } catch {
-        try { return JSON.stringify(obj); } catch { return String(obj); }
+        try {
+            return JSON.stringify(obj);
+        } catch {
+            return String(obj);
+        }
     }
 }

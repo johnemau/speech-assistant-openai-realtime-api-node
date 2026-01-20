@@ -25,43 +25,45 @@ export async function incomingCallHandler(request, reply) {
     const toE164 = normalizeUSNumberToE164(toRaw);
     console.log('Incoming call from:', fromRaw, '=>', fromE164);
 
-        if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
-            const { VoiceResponse } = twilio.twiml;
-            const denyTwiml = new VoiceResponse();
-            denyTwiml.say(
-                { voice: 'Google.en-US-Chirp3-HD-Charon' },
-                'Sorry, this line is restricted. Goodbye.'
-            );
-            denyTwiml.hangup();
-            if (IS_DEV) {
-                console.log('denyTwiml:', denyTwiml.toString());
-            }
-            return reply.type('text/xml').send(denyTwiml.toString());
-        }
-
-        const primaryName = String(PRIMARY_USER_FIRST_NAME || '').trim();
-        const secondaryName = String(SECONDARY_USER_FIRST_NAME || '').trim();
-        const callerName = resolveCallerName({
-            callerE164: fromE164,
-            primaryCallersSet: PRIMARY_CALLERS_SET,
-            secondaryCallersSet: SECONDARY_CALLERS_SET,
-            primaryName,
-            secondaryName,
-            fallbackName: 'legend',
-        });
-
-        const timeGreeting = getTimeGreeting({ timeZone: 'America/Los_Angeles' });
-
+    if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
         const { VoiceResponse } = twilio.twiml;
-        const twimlResponse = new VoiceResponse();
-        twimlResponse.say(
+        const denyTwiml = new VoiceResponse();
+        denyTwiml.say(
             { voice: 'Google.en-US-Chirp3-HD-Charon' },
-            `${timeGreeting} ${callerName}. Connecting to your AI assistant momentarily.`
+            'Sorry, this line is restricted. Goodbye.'
         );
-        const connect = twimlResponse.connect();
-        const stream = connect.stream({ url: `wss://${request.headers.host}/media-stream` });
-        stream.parameter({ name: 'caller_number', value: fromE164 });
-        stream.parameter({ name: 'twilio_number', value: toE164 || '' });
+        denyTwiml.hangup();
+        if (IS_DEV) {
+            console.log('denyTwiml:', denyTwiml.toString());
+        }
+        return reply.type('text/xml').send(denyTwiml.toString());
+    }
+
+    const primaryName = String(PRIMARY_USER_FIRST_NAME || '').trim();
+    const secondaryName = String(SECONDARY_USER_FIRST_NAME || '').trim();
+    const callerName = resolveCallerName({
+        callerE164: fromE164,
+        primaryCallersSet: PRIMARY_CALLERS_SET,
+        secondaryCallersSet: SECONDARY_CALLERS_SET,
+        primaryName,
+        secondaryName,
+        fallbackName: 'legend',
+    });
+
+    const timeGreeting = getTimeGreeting({ timeZone: 'America/Los_Angeles' });
+
+    const { VoiceResponse } = twilio.twiml;
+    const twimlResponse = new VoiceResponse();
+    twimlResponse.say(
+        { voice: 'Google.en-US-Chirp3-HD-Charon' },
+        `${timeGreeting} ${callerName}. Connecting to your AI assistant momentarily.`
+    );
+    const connect = twimlResponse.connect();
+    const stream = connect.stream({
+        url: `wss://${request.headers.host}/media-stream`,
+    });
+    stream.parameter({ name: 'caller_number', value: fromE164 });
+    stream.parameter({ name: 'twilio_number', value: toE164 || '' });
 
     if (IS_DEV) {
         console.log('twimlResponse:', twimlResponse.toString());

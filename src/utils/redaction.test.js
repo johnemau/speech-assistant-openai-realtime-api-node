@@ -10,7 +10,7 @@ test('redaction.redactErrorDetail removes secret values', () => {
         errorLike: { message: 'super-secret' },
         detail,
         env,
-        secretKeys: ['SECRET_ENV']
+        secretKeys: ['SECRET_ENV'],
     });
     assert.ok(!redacted.includes('super-secret'));
 });

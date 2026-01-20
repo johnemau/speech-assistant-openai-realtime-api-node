@@ -17,11 +17,14 @@ test('tools.executeToolCall executes end_call', async () => {
     const res = await executeToolCall({
         name: 'end_call',
         args: { reason: 'bye' },
-        context: { onEndCall: ({ reason }) => ({ status: 'done', reason }) }
+        context: { onEndCall: ({ reason }) => ({ status: 'done', reason }) },
     });
     assert.deepEqual(res, { status: 'done', reason: 'bye' });
 });
 
 test('tools.executeToolCall throws on unknown tool', async () => {
-    await assert.rejects(() => executeToolCall({ name: 'nope', args: {}, context: {} }), /Unknown tool/);
+    await assert.rejects(
+        () => executeToolCall({ name: 'nope', args: {}, context: {} }),
+        /Unknown tool/
+    );
 });

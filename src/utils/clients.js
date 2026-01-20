@@ -32,7 +32,7 @@ export function createTwilioClient({
     authToken,
     apiKey,
     apiSecret,
-    logger = console
+    logger = console,
 }) {
     try {
         // Prefer API Key + Secret with Account SID (recommended by Twilio for production)
@@ -44,13 +44,20 @@ export function createTwilioClient({
         if (accountSid && authToken) {
             // Fallback: Account SID + Auth Token (best for local testing)
             const client = twilio(accountSid, authToken);
-            logger.log('Twilio REST client initialized with Account SID + Auth Token.');
+            logger.log(
+                'Twilio REST client initialized with Account SID + Auth Token.'
+            );
             return client;
         }
-        logger.warn('Twilio credentials missing; provide API Key + Secret + Account SID or Account SID + Auth Token. SMS auto-reply will be unavailable.');
+        logger.warn(
+            'Twilio credentials missing; provide API Key + Secret + Account SID or Account SID + Auth Token. SMS auto-reply will be unavailable.'
+        );
         return null;
     } catch (e) {
-        logger.warn('Failed to initialize Twilio REST client:', e?.message || e);
+        logger.warn(
+            'Failed to initialize Twilio REST client:',
+            e?.message || e
+        );
         return null;
     }
 }
@@ -65,19 +72,32 @@ export function createTwilioClient({
  * @param {{ log: Function, warn: Function }} [root0.logger] - Logger.
  * @returns {import('nodemailer').Transporter | null} Email transport or null.
  */
-export function createEmailTransport({ user, pass, serviceId, logger = console }) {
+export function createEmailTransport({
+    user,
+    pass,
+    serviceId,
+    logger = console,
+}) {
     if (!user || !pass) {
-        logger.warn('SMTP credentials missing; send_email will be unavailable.');
+        logger.warn(
+            'SMTP credentials missing; send_email will be unavailable.'
+        );
         return null;
     }
     const transport = nodemailer.createTransport({
         service: serviceId,
         auth: { user, pass },
     });
-    transport.verify().then(() => {
-        logger.log('Email transporter verified.');
-    }).catch((err) => {
-        logger.warn('Email transporter verification failed:', err?.message || err);
-    });
+    transport
+        .verify()
+        .then(() => {
+            logger.log('Email transporter verified.');
+        })
+        .catch((err) => {
+            logger.warn(
+                'Email transporter verification failed:',
+                err?.message || err
+            );
+        });
     return transport;
 }

@@ -100,7 +100,10 @@ test('run exits when input file missing', async () => {
 
     assert.equal(exit.mock.calls.length, 1);
     assert.equal(getMockCallArgs(exit.mock.calls[0])[0], 1);
-    assert.equal(getMockCallArgs(logger.error.mock.calls[0])[0], 'Input file not found: /abs/missing.wav');
+    assert.equal(
+        getMockCallArgs(logger.error.mock.calls[0])[0],
+        'Input file not found: /abs/missing.wav'
+    );
 });
 
 test('convertWithFfmpeg configures audio conversion', async () => {
@@ -139,7 +142,13 @@ test('run logs success on conversion', async () => {
     const ffmpegMock = createFfmpegMock();
 
     await run({
-        argv: ['node', 'convert-wav.mjs', '--format=mulaw', 'input.wav', 'out.pcmu'],
+        argv: [
+            'node',
+            'convert-wav.mjs',
+            '--format=mulaw',
+            'input.wav',
+            'out.pcmu',
+        ],
         logger,
         exit,
         existsSyncFn: () => true,
@@ -148,5 +157,8 @@ test('run logs success on conversion', async () => {
     });
 
     assert.equal(exit.mock.calls.length, 0);
-    assert.equal(getMockCallArgs(logger.log.mock.calls[0])[0], 'Converted /abs/input.wav -> /abs/out.pcmu (mulaw)');
+    assert.equal(
+        getMockCallArgs(logger.log.mock.calls[0])[0],
+        'Converted /abs/input.wav -> /abs/out.pcmu (mulaw)'
+    );
 });

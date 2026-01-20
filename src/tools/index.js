@@ -1,16 +1,33 @@
-import { definition as gptWebSearchDefinition, execute as executeGptWebSearch } from './gpt-web-search.js';
-import { definition as sendEmailDefinition, execute as executeSendEmail } from './send-email.js';
-import { definition as sendSmsDefinition, execute as executeSendSms } from './send-sms.js';
-import { definition as updateMicDistanceDefinition, execute as executeUpdateMicDistance } from './update-mic-distance.js';
-import { definition as endCallDefinition, execute as executeEndCall } from './end-call.js';
+import {
+    definition as gptWebSearchDefinition,
+    execute as executeGptWebSearch,
+} from './gpt-web-search.js';
+import {
+    definition as sendEmailDefinition,
+    execute as executeSendEmail,
+} from './send-email.js';
+import {
+    definition as sendSmsDefinition,
+    execute as executeSendSms,
+} from './send-sms.js';
+import {
+    definition as updateMicDistanceDefinition,
+    execute as executeUpdateMicDistance,
+} from './update-mic-distance.js';
+import {
+    definition as endCallDefinition,
+    execute as executeEndCall,
+} from './end-call.js';
 
-const toolExecutors = new Map(/** @type {Array<[string, (input: { args: object, context: object }) => Promise<unknown>]>} */ ([
-    ['gpt_web_search', executeGptWebSearch],
-    ['send_email', executeSendEmail],
-    ['send_sms', executeSendSms],
-    ['update_mic_distance', executeUpdateMicDistance],
-    ['end_call', executeEndCall],
-]));
+const toolExecutors = new Map(
+    /** @type {Array<[string, (input: { args: object, context: object }) => Promise<unknown>]>} */ ([
+        ['gpt_web_search', executeGptWebSearch],
+        ['send_email', executeSendEmail],
+        ['send_sms', executeSendSms],
+        ['update_mic_distance', executeUpdateMicDistance],
+        ['end_call', executeEndCall],
+    ])
+);
 
 /**
  * Get tool definitions for the assistant session.

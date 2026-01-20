@@ -11,10 +11,14 @@ test('send-email.execute blocks when side effects disabled', async () => {
     const prevAllow = envModule.ALLOW_SEND_EMAIL;
     envModule.setAllowSendEmail(false);
     try {
-        await assert.rejects(() => execute({
-            args: { subject: 'Hi', body_html: '<p>Test</p>' },
-            context: {}
-        }), /Email sending disabled/);
+        await assert.rejects(
+            () =>
+                execute({
+                    args: { subject: 'Hi', body_html: '<p>Test</p>' },
+                    context: {},
+                }),
+            /Email sending disabled/
+        );
     } finally {
         envModule.setAllowSendEmail(prevAllow);
     }
@@ -24,10 +28,14 @@ test('send-email.execute validates subject and body', async () => {
     const prevAllow = envModule.ALLOW_SEND_EMAIL;
     envModule.setAllowSendEmail(true);
     try {
-        await assert.rejects(() => execute({
-            args: { subject: '', body_html: '<p>Test</p>' },
-            context: {}
-        }), /Missing subject or body_html/);
+        await assert.rejects(
+            () =>
+                execute({
+                    args: { subject: '', body_html: '<p>Test</p>' },
+                    context: {},
+                }),
+            /Missing subject or body_html/
+        );
     } finally {
         envModule.setAllowSendEmail(prevAllow);
     }
@@ -50,20 +58,30 @@ test('send-email.execute errors when email not configured', async () => {
     init.setInitClients({ senderTransport: null });
     envModule.setAllowSendEmail(true);
     try {
-        await assert.rejects(() => execute({
-            args: { subject: 'Hi', body_html: '<p>Test</p>' },
-            context: {
-                currentCallerE164: '+12065550100'
-            }
-        }), /Email is not configured/);
+        await assert.rejects(
+            () =>
+                execute({
+                    args: { subject: 'Hi', body_html: '<p>Test</p>' },
+                    context: {
+                        currentCallerE164: '+12065550100',
+                    },
+                }),
+            /Email is not configured/
+        );
     } finally {
         envModule.PRIMARY_CALLERS_SET.clear();
         envModule.SECONDARY_CALLERS_SET.clear();
-        prevPrimary.forEach((value) => envModule.PRIMARY_CALLERS_SET.add(value));
-        prevSecondary.forEach((value) => envModule.SECONDARY_CALLERS_SET.add(value));
-        if (prevEnv.SENDER_FROM_EMAIL == null) delete process.env.SENDER_FROM_EMAIL;
+        prevPrimary.forEach((value) =>
+            envModule.PRIMARY_CALLERS_SET.add(value)
+        );
+        prevSecondary.forEach((value) =>
+            envModule.SECONDARY_CALLERS_SET.add(value)
+        );
+        if (prevEnv.SENDER_FROM_EMAIL == null)
+            delete process.env.SENDER_FROM_EMAIL;
         else process.env.SENDER_FROM_EMAIL = prevEnv.SENDER_FROM_EMAIL;
-        if (prevEnv.PRIMARY_TO_EMAIL == null) delete process.env.PRIMARY_TO_EMAIL;
+        if (prevEnv.PRIMARY_TO_EMAIL == null)
+            delete process.env.PRIMARY_TO_EMAIL;
         else process.env.PRIMARY_TO_EMAIL = prevEnv.PRIMARY_TO_EMAIL;
         init.setInitClients(prevClients);
         envModule.setAllowSendEmail(prevAllow);
@@ -75,8 +93,12 @@ test('send-email.execute sends email for primary caller', async () => {
     const senderTransport = {
         sendMail: async (options) => {
             lastOptions = options;
-            return { messageId: 'mid', accepted: ['to@example.com'], rejected: [] };
-        }
+            return {
+                messageId: 'mid',
+                accepted: ['to@example.com'],
+                rejected: [],
+            };
+        },
     };
     const prevClients = { senderTransport: init.senderTransport };
     const prevPrimary = new Set(envModule.PRIMARY_CALLERS_SET);
@@ -97,8 +119,8 @@ test('send-email.execute sends email for primary caller', async () => {
         const res = await execute({
             args: { subject: 'Hello', body_html: '<p>Body</p>' },
             context: {
-                currentCallerE164: '+12065550100'
-            }
+                currentCallerE164: '+12065550100',
+            },
         });
 
         assert.equal(res.messageId, 'mid');
@@ -112,11 +134,17 @@ test('send-email.execute sends email for primary caller', async () => {
     } finally {
         envModule.PRIMARY_CALLERS_SET.clear();
         envModule.SECONDARY_CALLERS_SET.clear();
-        prevPrimary.forEach((value) => envModule.PRIMARY_CALLERS_SET.add(value));
-        prevSecondary.forEach((value) => envModule.SECONDARY_CALLERS_SET.add(value));
-        if (prevEnv.SENDER_FROM_EMAIL == null) delete process.env.SENDER_FROM_EMAIL;
+        prevPrimary.forEach((value) =>
+            envModule.PRIMARY_CALLERS_SET.add(value)
+        );
+        prevSecondary.forEach((value) =>
+            envModule.SECONDARY_CALLERS_SET.add(value)
+        );
+        if (prevEnv.SENDER_FROM_EMAIL == null)
+            delete process.env.SENDER_FROM_EMAIL;
         else process.env.SENDER_FROM_EMAIL = prevEnv.SENDER_FROM_EMAIL;
-        if (prevEnv.PRIMARY_TO_EMAIL == null) delete process.env.PRIMARY_TO_EMAIL;
+        if (prevEnv.PRIMARY_TO_EMAIL == null)
+            delete process.env.PRIMARY_TO_EMAIL;
         else process.env.PRIMARY_TO_EMAIL = prevEnv.PRIMARY_TO_EMAIL;
         init.setInitClients(prevClients);
         envModule.setAllowSendEmail(prevAllow);

@@ -8,6 +8,12 @@ function readPrompt(relativePath) {
     return fs.readFileSync(path.join(__dirname, relativePath), 'utf8');
 }
 
-export const REALTIME_INSTRUCTIONS = readPrompt('prompts/realtime-instructions.md');
-export const WEB_SEARCH_INSTRUCTIONS = readPrompt('prompts/web-search-instructions.md');
-export const SMS_REPLY_INSTRUCTIONS = readPrompt('prompts/sms-reply-instructions.md');
+export const REALTIME_INSTRUCTIONS = readPrompt(
+    'prompts/realtime-instructions.md'
+);
+export const WEB_SEARCH_INSTRUCTIONS = readPrompt(
+    'prompts/web-search-instructions.md'
+);
+export const SMS_REPLY_INSTRUCTIONS = readPrompt(
+    'prompts/sms-reply-instructions.md'
+);

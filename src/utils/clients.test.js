@@ -1,10 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createOpenAIClient, createTwilioClient, createEmailTransport } from './clients.js';
+import {
+    createOpenAIClient,
+    createTwilioClient,
+    createEmailTransport,
+} from './clients.js';
 
 test('clients.createOpenAIClient throws without api key', () => {
-    assert.throws(() => createOpenAIClient({ apiKey: '' }), /Missing OpenAI API key/);
+    assert.throws(
+        () => createOpenAIClient({ apiKey: '' }),
+        /Missing OpenAI API key/
+    );
 });
 
 test('clients.createOpenAIClient returns client with api key', () => {
@@ -19,7 +26,7 @@ test('clients.createTwilioClient returns null when missing credentials', () => {
         authToken: '',
         apiKey: '',
         apiSecret: '',
-        logger: console
+        logger: console,
     });
     assert.equal(client, null);
 });
@@ -28,12 +35,17 @@ test('clients.createTwilioClient returns a client with auth token', () => {
     const client = createTwilioClient({
         accountSid: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
         authToken: 'token',
-        logger: console
+        logger: console,
     });
     assert.ok(client);
 });
 
 test('clients.createEmailTransport returns null without credentials', () => {
-    const transport = createEmailTransport({ user: '', pass: '', serviceId: '', logger: console });
+    const transport = createEmailTransport({
+        user: '',
+        pass: '',
+        serviceId: '',
+        logger: console,
+    });
     assert.equal(transport, null);
 });

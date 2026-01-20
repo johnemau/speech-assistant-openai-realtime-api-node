@@ -5,7 +5,9 @@
  * @returns {boolean} True if value is a truthy env string.
  */
 export function isTruthy(val) {
-    const v = String(val || '').trim().toLowerCase();
+    const v = String(val || '')
+        .trim()
+        .toLowerCase();
     return v === '1' || v === 'true' || v === 'yes' || v === 'on';
 }
 

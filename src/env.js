@@ -4,7 +4,8 @@ import { isTruthy } from './utils/env.js';
 
 dotenv.config();
 
-export const IS_DEV = String(process.env.NODE_ENV || '').toLowerCase() === 'development';
+export const IS_DEV =
+    String(process.env.NODE_ENV || '').toLowerCase() === 'development';
 
 export const PRIMARY_CALLERS_SET = new Set(
     (process.env.PRIMARY_USER_PHONE_NUMBERS || '')
@@ -27,7 +28,9 @@ export const ALL_ALLOWED_CALLERS_SET = new Set([
 ]);
 
 // Waiting music configuration (optional)
-export const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 500);
+export const WAIT_MUSIC_THRESHOLD_MS = Number(
+    process.env.WAIT_MUSIC_THRESHOLD_MS || 500
+);
 export const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
 export const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.pcmu
 

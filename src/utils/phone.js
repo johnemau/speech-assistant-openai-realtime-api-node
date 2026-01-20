@@ -18,6 +18,6 @@ export function normalizeUSNumberToE164(input) {
     const digits = trimmed.replace(/[^0-9]/g, '');
     if (!digits) return null;
     // Ensure leading country code 1 for US
-    const withCountry = digits.startsWith('1') ? digits : ('1' + digits);
+    const withCountry = digits.startsWith('1') ? digits : '1' + digits;
     return '+' + withCountry;
 }

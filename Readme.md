@@ -1,12 +1,13 @@
-#  Speech Assistant with Twilio Voice and the OpenAI Realtime API (Node.js)
+# Speech Assistant with Twilio Voice and the OpenAI Realtime API (Node.js)
 
-This application demonstrates how to use Node.js, [Twilio Voice](https://www.twilio.com/docs/voice) and [Media Streams](https://www.twilio.com/docs/voice/media-streams), and [OpenAI's Realtime API](https://platform.openai.com/docs/) to make a phone call to speak with an AI Assistant. 
+This application demonstrates how to use Node.js, [Twilio Voice](https://www.twilio.com/docs/voice) and [Media Streams](https://www.twilio.com/docs/voice/media-streams), and [OpenAI's Realtime API](https://platform.openai.com/docs/) to make a phone call to speak with an AI Assistant.
 
 The application opens websockets with the OpenAI Realtime API and Twilio, and sends voice audio from one to the other to enable a two-way conversation.
 
 See [here](https://www.twilio.com/en-us/blog/voice-ai-assistant-openai-realtime-api-node) for a tutorial overview of the code.
 
 This application uses the following Twilio products in conjunction with OpenAI's Realtime API:
+
 - Voice (and TwiML, Media Streams)
 - Phone Numbers
 
@@ -15,39 +16,45 @@ This application uses the following Twilio products in conjunction with OpenAI's
 
 ## Prerequisites
 
-To use the app, you will  need:
+To use the app, you will need:
 
 - **Node.js 18+** We used \`18.20.4\` for development; download from [here](https://nodejs.org/).
 - **A Twilio account.** You can sign up for a free trial [here](https://www.twilio.com/try-twilio).
 - **A Twilio number with _Voice_ capabilities.** [Here are instructions](https://help.twilio.com/articles/223135247-How-to-Search-for-and-Buy-a-Twilio-Phone-Number-from-Console) to purchase a phone number.
 - **An OpenAI account and an OpenAI API Key.** You can sign up [here](https://platform.openai.com/).
-  - **OpenAI Realtime API access.**
+    - **OpenAI Realtime API access.**
 
 ## Local Setup
 
 There are 4 required steps to get the app up-and-running locally for development and testing:
+
 1. Run ngrok or another tunneling solution to expose your local server to the internet for testing. Download ngrok [here](https://ngrok.com/).
 2. Install the packages
 3. Twilio setup
 4. Update the .env file
 
 ### Open an ngrok tunnel
+
 When developing & testing locally, you'll need to open a tunnel to forward requests to your local development server. These instructions use ngrok.
 
 Open a Terminal and run:
+
 ```
 ngrok http 10000
 ```
+
 Once the tunnel has been opened, copy the Forwarding URL. It will look something like: `https://[your-ngrok-subdomain].ngrok.app`. You will
 need this when configuring your Twilio number setup.
 
 Notes:
+
 - The app defaults to `PORT=10000`. If you change the port via the `PORT` environment variable, update the `ngrok http` command accordingly.
 - If you use a custom domain, ensure it's reserved in your ngrok account and set `NGROK_DOMAIN` to that domain. When `NGROK_DOMAIN` is set, the server binds that domain automatically at startup.
 
 ### Install required packages
 
 Open a Terminal and run:
+
 ```
 npm install
 ```
@@ -55,10 +62,13 @@ npm install
 ### Run tests
 
 Quickly verify code changes:
+
 ```
 npm test
 ```
+
 Notes:
+
 - `npm test` runs lint, typecheck, and the unit test suite.
 - Run `npm run lint` for ESLint checks.
 - Run `npm run typecheck` for TypeScript type checking (JS + JSDoc).
@@ -82,6 +92,7 @@ OPENAI_API_KEY=sk-...
 ```
 
 Notes:
+
 - Uses the same .env conventions as the rest of the repo. Add any extra secrets to `REDACT_ENV_KEYS` to keep logs scrubbed.
 - The prompt suite mirrors the voice and SMS policies used in [src/assistant/prompts.js](src/assistant/prompts.js).
 - If you do not have access to `gpt-realtime`, remove that provider from [promptfooconfig.yaml](promptfooconfig.yaml).
@@ -173,6 +184,7 @@ ngrok forwarding active on domain your-subdomain.ngrok.app
 ```
 
 Quick local checks:
+
 - Visit http://localhost:10000/ to confirm the root endpoint.
 - Visit http://localhost:10000/healthz for a simple health check.
 - Run `npm test` to lint, typecheck, and verify tests.
@@ -188,6 +200,7 @@ Let the assistant auto‑reply to SMS using GPT‑5.2 with the `web_search` tool
 - Reply style: concise, friendly SMS (≤320 chars). When citing sources, include a URL for each cited source if one is available.
 
 Error handling:
+
 - AI reply failure → returns a concise message: “Sorry—SMS reply error.” with brief details.
 - Twilio send failure → falls back to TwiML: “Sorry—SMS send error.” with brief details.
 
@@ -206,6 +219,7 @@ SECONDARY_USER_PHONE_NUMBERS=+14255550123,+14255550124
 ```
 
 Notes:
+
 - Replies are sent via Twilio REST API from the same Twilio number that received the message.
 - The SMS webhook responds with empty TwiML to avoid duplicate replies.
 - If credentials are missing or the number is not allowed, the webhook returns a short TwiML message.
@@ -225,6 +239,7 @@ TWILIO_SMS_FROM_NUMBER=+12065551234   # Fallback if TwiML param is missing
 ```
 
 Implementation details:
+
 - The `/incoming-call` TwiML now includes `<Parameter name="twilio_number" value="[To]" />`.
 - The media stream stores this number on `start` and the tool sends via the shared Twilio REST client.
 - Tool execution returns `sid/status/length` via `function_call_output`, then the assistant briefly confirms.
@@ -243,14 +258,17 @@ SECONDARY_USER_FIRST_NAME=Taylor
 If a name is not set for the matching caller group, the assistant will greet you as "legend".
 
 ## Test the app
+
 With the development server running, call the phone number you purchased in the **Prerequisites**. After the introduction, you should be able to talk to the AI Assistant. Have fun!
 
 ## Special features
 
 ### Assistant speaks first (default)
+
 The assistant sends a short greeting on stream start and then speaks first. To customize the greeting, edit the `sendInitialConversationItem` helper in [src/routes/media-stream.js](src/routes/media-stream.js). The TwiML webhook also greets the caller by name before connecting the media stream.
 
 ### Interrupt handling/AI preemption
+
 When the user speaks and OpenAI sends `input_audio_buffer.speech_started`, the code will clear the Twilio Media Streams buffer and send OpenAI `conversation.item.truncate`.
 
 Depending on your application's needs, you may want to use the [`input_audio_buffer.speech_stopped`](https://platform.openai.com/docs/api-reference/realtime-server-events/input_audio_buffer/speech_stopped) event, instead.
@@ -268,6 +286,7 @@ WAIT_MUSIC_FILE=melodyloops-relaxing-jazz.pcmu
 ```
 
 Notes:
+
 - Audio must be raw PCMU (G.711 µ-law), 8 kHz, mono; frames are sent at ~20 ms cadence to Twilio.
 - Use the conversion script to generate a compatible file (requires `ffmpeg` on your PATH):
 
@@ -296,11 +315,13 @@ Optimize input noise reduction when the caller switches to/from speakerphone.
 - Debounce: Repeated requests within ~2s are ignored; no-ops are skipped when the requested mode equals the current mode.
 
 Implementation details:
+
 - The Realtime session initializes with `audio.input.noise_reduction.type = near_field`.
 - On tool call, the server sends a partial `session.update` that sets `audio.input.noise_reduction.type` to the requested mode.
 - After the tool result is sent, the model speaks a brief confirmation.
 
 Notes:
+
 - `noise_reduction` improves VAD/turn detection and input clarity. Use `near_field` for close-talking mics (headsets) and `far_field` for speakerphone/laptop mics.
 - Events: `session.updated` is logged for visibility.
 
@@ -318,6 +339,7 @@ SECONDARY_USER_PHONE_NUMBERS=+14255550123,+14255550124
 ```
 
 Notes:
+
 - Twilio sends the caller number as `From` in E.164 format.
 - If both lists are empty, all incoming calls will be rejected.
 - Non-listed callers receive a brief message and the call is hung up.
@@ -346,16 +368,19 @@ SECONDARY_TO_EMAIL=secondary.recipient@example.com
 ```
 
 Behavior:
+
 - The app adds a TwiML `<Parameter name="caller_number" ...>` so Twilio passes the caller number into the Media Stream `start` event.
 - If the caller is in `PRIMARY_USER_PHONE_NUMBERS`, email is sent to `PRIMARY_TO_EMAIL`; if in `SECONDARY_USER_PHONE_NUMBERS`, email is sent to `SECONDARY_TO_EMAIL`.
 - A custom header `X-From-Ai-Assistant: true` is included with each message.
 - If required config is missing (`SENDER_FROM_EMAIL`, `SMTP_USER`, `SMTP_PASS`, or the matching `*_TO_EMAIL`), the assistant responds briefly that email isn’t configured for this caller.
 
 Provider notes:
+
 - Many providers require app passwords for SMTP.
 - For ProtonMail, set `SMTP_NODEMAILER_SERVICE_ID=protonmail` and use an app password.
 
 Usage:
+
 - Say "email me that" after the assistant provides information.
 - The assistant will compose a short subject and an HTML-only body, then confirm send status.
 

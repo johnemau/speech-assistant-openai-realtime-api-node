@@ -17,13 +17,13 @@ function createReply() {
         send(payload) {
             this.payload = payload;
             return this;
-        }
+        },
     };
 }
 
 async function setCallerAllowlists({
     primaryCaller = '+12065550100',
-    secondaryCaller = '+14255550101'
+    secondaryCaller = '+14255550101',
 } = {}) {
     const env = await import('../env.js');
     const prev = {
@@ -56,7 +56,9 @@ async function setCallerAllowlists({
 }
 
 async function loadIncomingCallHandler() {
-    const moduleUrl = new URL('./incoming-call.js', import.meta.url).href + `?test=incoming-${Math.random()}`;
+    const moduleUrl =
+        new URL('./incoming-call.js', import.meta.url).href +
+        `?test=incoming-${Math.random()}`;
     const { incomingCallHandler } = await import(moduleUrl);
     return incomingCallHandler;
 }
@@ -66,7 +68,7 @@ test('incoming-call denies callers not in allowlist', async () => {
     const incomingCallHandler = await loadIncomingCallHandler();
     const request = {
         body: { From: '+19995550000', To: '+12065550100' },
-        headers: { host: 'example.com' }
+        headers: { host: 'example.com' },
     };
     const reply = createReply();
 
@@ -86,7 +88,7 @@ test('incoming-call responds with connect stream and parameters', async () => {
     const incomingCallHandler = await loadIncomingCallHandler();
     const request = {
         body: { From: '+1 (206) 555-0100', To: '+1 (425) 555-0101' },
-        headers: { host: 'example.com' }
+        headers: { host: 'example.com' },
     };
     const reply = createReply();
 

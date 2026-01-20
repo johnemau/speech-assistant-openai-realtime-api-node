@@ -19,7 +19,7 @@ function createReply() {
         send(payload) {
             this.payload = payload;
             return this;
-        }
+        },
     };
 }
 
@@ -28,13 +28,13 @@ async function loadSmsHandler({
     secondaryAllowlist = new Set(['+14255550101']),
     twilioClient = null,
     openaiClient = null,
-    isDev = false
+    isDev = false,
 } = {}) {
     const env = await import('../env.js');
     const prev = {
         primary: new Set(env.PRIMARY_CALLERS_SET),
         secondary: new Set(env.SECONDARY_CALLERS_SET),
-        isDev: process.env.NODE_ENV
+        isDev: process.env.NODE_ENV,
     };
 
     env.PRIMARY_CALLERS_SET.clear();
@@ -44,10 +44,15 @@ async function loadSmsHandler({
     process.env.NODE_ENV = isDev ? 'development' : 'test';
 
     const init = await import('../init.js');
-    const prevClients = { openaiClient: init.openaiClient, twilioClient: init.twilioClient };
+    const prevClients = {
+        openaiClient: init.openaiClient,
+        twilioClient: init.twilioClient,
+    };
     init.setInitClients({ openaiClient, twilioClient });
 
-    const moduleUrl = new URL('./sms.js', import.meta.url).href + `?test=sms-${Math.random()}`;
+    const moduleUrl =
+        new URL('./sms.js', import.meta.url).href +
+        `?test=sms-${Math.random()}`;
     const { smsHandler } = await import(moduleUrl);
 
     const cleanup = () => {
@@ -68,11 +73,13 @@ test('sms replies with restricted message for non-allowlisted sender', async () 
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(['+14255550101']),
         twilioClient: null,
-        openaiClient: { responses: { create: async () => ({ output_text: 'ok' }) } }
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'ok' }) },
+        },
     });
 
     const request = {
-        body: { Body: 'Hello', From: '+19995550000', To: '+12065550100' }
+        body: { Body: 'Hello', From: '+19995550000', To: '+12065550100' },
     };
     const reply = createReply();
 
@@ -91,11 +98,13 @@ test('sms replies with unconfigured message when Twilio client missing', async (
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(),
         twilioClient: null,
-        openaiClient: { responses: { create: async () => ({ output_text: 'ok' }) } }
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'ok' }) },
+        },
     });
 
     const request = {
-        body: { Body: 'Hello', From: '+12065550100', To: '+12065550101' }
+        body: { Body: 'Hello', From: '+12065550100', To: '+12065550101' },
     };
     const reply = createReply();
 
@@ -120,26 +129,30 @@ test('sms sends AI reply via Twilio', async () => {
             create: async (params) => {
                 calls.create.push(params);
                 return { sid: 'SM123' };
-            }
-        }
+            },
+        },
     };
     const openaiClient = {
         responses: {
             create: async (payload) => {
                 calls.ai = payload;
                 return { output_text: 'Sure, here you go.' };
-            }
-        }
+            },
+        },
     };
     const { smsHandler, cleanup } = await loadSmsHandler({
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(),
         twilioClient,
-        openaiClient
+        openaiClient,
     });
 
     const request = {
-        body: { Body: 'Latest request', From: '+12065550100', To: '+12065550101' }
+        body: {
+            Body: 'Latest request',
+            From: '+12065550100',
+            To: '+12065550101',
+        },
     };
     const reply = createReply();
 
@@ -168,25 +181,25 @@ test('sms uses AI error fallback text when OpenAI fails', async () => {
             create: async (params) => {
                 calls.create.push(params);
                 return { sid: 'SM456' };
-            }
-        }
+            },
+        },
     };
     const openaiClient = {
         responses: {
             create: async () => {
                 throw new Error('OpenAI down');
-            }
-        }
+            },
+        },
     };
     const { smsHandler, cleanup } = await loadSmsHandler({
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(),
         twilioClient,
-        openaiClient
+        openaiClient,
     });
 
     const request = {
-        body: { Body: 'Hello', From: '+12065550100', To: '+12065550101' }
+        body: { Body: 'Hello', From: '+12065550100', To: '+12065550101' },
     };
     const reply = createReply();
 
@@ -207,23 +220,23 @@ test('sms replies with TwiML when Twilio send fails', async () => {
             list: async () => [],
             create: async () => {
                 throw new Error('Twilio send failed');
-            }
-        }
+            },
+        },
     };
     const openaiClient = {
         responses: {
-            create: async () => ({ output_text: 'Sure.' })
-        }
+            create: async () => ({ output_text: 'Sure.' }),
+        },
     };
     const { smsHandler, cleanup } = await loadSmsHandler({
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(),
         twilioClient,
-        openaiClient
+        openaiClient,
     });
 
     const request = {
-        body: { Body: 'Hello', From: '+12065550100', To: '+12065550101' }
+        body: { Body: 'Hello', From: '+12065550100', To: '+12065550101' },
     };
     const reply = createReply();
 
