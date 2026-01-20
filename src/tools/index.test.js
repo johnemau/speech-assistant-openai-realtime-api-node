@@ -5,7 +5,7 @@ import { getToolDefinitions, executeToolCall } from './index.js';
 
 test('tools.getToolDefinitions returns known tools', () => {
     const defs = getToolDefinitions();
-    const names = defs.map((d) => d.name);
+    const names = defs.map((d) => /** @type {any} */ (d).name);
     assert.ok(names.includes('gpt_web_search'));
     assert.ok(names.includes('send_email'));
     assert.ok(names.includes('send_sms'));
@@ -17,7 +17,10 @@ test('tools.executeToolCall executes end_call', async () => {
     const res = await executeToolCall({
         name: 'end_call',
         args: { reason: 'bye' },
-        context: { onEndCall: ({ reason }) => ({ status: 'done', reason }) },
+        context: {
+            /** @param {{ reason?: string }} root0 */
+            onEndCall: ({ reason }) => ({ status: 'done', reason }),
+        },
     });
     assert.deepEqual(res, { status: 'done', reason: 'bye' });
 });

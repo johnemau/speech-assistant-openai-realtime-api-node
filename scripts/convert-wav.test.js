@@ -15,43 +15,51 @@ function createLogger() {
     };
 }
 
+/** @param {any} call */
 function getMockCallArgs(call) {
     return Array.isArray(call) ? call : call?.arguments;
 }
 
+/**
+ * @param {(payload: { outputPath: string, video: any }) => void} [onSave]
+ * @returns {any}
+ */
 function createFfmpegMock(onSave) {
-    return function FfmpegMock(inputPath) {
-        /** @type {any} */
-        const video = {
-            inputPath,
-            codec: null,
-            channels: null,
-            frequency: null,
-            command: null,
-            setAudioCodec: mock.fn((codec) => {
-                video.codec = codec;
-                return video;
-            }),
-            setAudioChannels: mock.fn((channels) => {
-                video.channels = channels;
-                return video;
-            }),
-            setAudioFrequency: mock.fn((freq) => {
-                video.frequency = freq;
-                return video;
-            }),
-            addCommand: mock.fn((command, value) => {
-                video.command = { command, value };
-                return video;
-            }),
-            save: mock.fn((outputPath, callback) => {
-                if (onSave) {
-                    onSave({ outputPath, video });
-                }
-                callback(null, outputPath);
-            }),
-        };
-        return Promise.resolve(video);
+    return class FfmpegMock {
+        /** @param {string} inputPath */
+        constructor(inputPath) {
+            /** @type {any} */
+            const video = {
+                inputPath,
+                codec: null,
+                channels: null,
+                frequency: null,
+                command: null,
+                setAudioCodec: mock.fn((codec) => {
+                    video.codec = codec;
+                    return video;
+                }),
+                setAudioChannels: mock.fn((channels) => {
+                    video.channels = channels;
+                    return video;
+                }),
+                setAudioFrequency: mock.fn((freq) => {
+                    video.frequency = freq;
+                    return video;
+                }),
+                addCommand: mock.fn((command, value) => {
+                    video.command = { command, value };
+                    return video;
+                }),
+                save: mock.fn((outputPath, callback) => {
+                    if (onSave) {
+                        onSave({ outputPath, video });
+                    }
+                    callback(null, outputPath);
+                }),
+            };
+            return Promise.resolve(video);
+        }
     };
 }
 

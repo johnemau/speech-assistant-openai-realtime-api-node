@@ -5,7 +5,7 @@
         "checkJs": true,
         "noEmit": true,
         "strict": true,
-        "noImplicitAny": false,
+        "noImplicitAny": true,
         "useUnknownInCatchVariables": false,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,

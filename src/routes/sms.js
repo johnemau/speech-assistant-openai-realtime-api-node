@@ -98,7 +98,9 @@ export async function smsHandler(request, reply) {
         const now = new Date();
         const startWindow = new Date(now.getTime() - 12 * 60 * 60 * 1000);
 
+        /** @type {Array<any>} */
         let inbound = [];
+        /** @type {Array<any>} */
         let outbound = [];
         try {
             // Inbound: from caller → our Twilio number

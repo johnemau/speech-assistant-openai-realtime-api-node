@@ -19,8 +19,8 @@ export const definition = {
  * Execute end_call tool.
  *
  * @param {object} root0 - Tool inputs.
- * @param {object} root0.args - Tool arguments.
- * @param {object} root0.context - Tool context.
+ * @param {{ reason?: string }} root0.args - Tool arguments.
+ * @param {{ onEndCall?: (input: { reason?: string }) => any }} root0.context - Tool context.
  * @returns {Promise<{ status: string, reason?: string }>} Tool result.
  */
 export async function execute({ args, context }) {

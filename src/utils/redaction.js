@@ -35,7 +35,9 @@ export const REDACTION_KEYS = getSecretEnvKeys(
  * @returns {{ redactionDisabled: boolean, secretKeys: string[], envSecretValues: string[] }} Redaction state.
  */
 export function setupConsoleRedaction(env = process.env) {
+    /** @type {null | (() => void)} */
     let disableLogRedaction = null;
+    /** @type {string[]} */
     let secretKeys = [];
 
     try {
@@ -77,7 +79,9 @@ export function setupConsoleRedaction(env = process.env) {
                 info: console.info.bind(console),
             };
 
+            /** @param {unknown[]} args */
             const sanitizeArgs = (args) => {
+                /** @type {string[]} */
                 let guessed = [];
                 try {
                     for (const a of args) {
@@ -160,6 +164,7 @@ export function redactErrorDetail({
                 ? secretKeys
                 : getSecretEnvKeys(env, DEFAULT_SECRET_ENV_KEYS);
         const envVals = getSecretEnvValues(env, keys);
+        /** @type {string[]} */
         let guessed = [];
         const errorLikeObj =
             errorLike && typeof errorLike === 'object' ? errorLike : {};

@@ -32,7 +32,7 @@ export const definition = {
  *
  * @param {object} root0 - Tool inputs.
  * @param {{ subject?: string, body_html?: string }} root0.args - Tool arguments.
- * @param {object} root0.context - Tool context.
+ * @param {{ currentCallerE164?: string | null }} root0.context - Tool context.
  * @returns {Promise<{ messageId: string, accepted: Array<string>, rejected: Array<string> }>} Send result.
  */
 export async function execute({ args, context }) {

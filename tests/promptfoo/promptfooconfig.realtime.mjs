@@ -4,7 +4,7 @@ import {
     buildRealtimeModelConfig,
 } from '../../src/config/openai-models.js';
 
-/** @type {import('promptfoo').Config} */
+/** @type {any} */
 const config = {
     prompts: ['tests/promptfoo/promptfoo-default-prompt.txt'],
     providers: [

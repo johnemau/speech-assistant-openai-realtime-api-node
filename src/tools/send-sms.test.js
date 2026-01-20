@@ -101,6 +101,7 @@ test('send-sms.execute sends trimmed text and returns metadata', async () => {
     let lastOptions = null;
     const twilioClient = {
         messages: {
+            /** @param {any} options */
             create: async (options) => {
                 lastOptions = options;
                 return { sid: 'sid', status: 'sent' };

@@ -91,6 +91,7 @@ test('send-email.execute errors when email not configured', async () => {
 test('send-email.execute sends email for primary caller', async () => {
     let lastOptions = null;
     const senderTransport = {
+        /** @param {any} options */
         sendMail: async (options) => {
             lastOptions = options;
             return {

@@ -1,19 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+/**
+ * @returns {{
+ *  headers: Record<string, string>,
+ *  statusCode: number | null,
+ *  payload: unknown,
+ *  type: (contentType: string) => any,
+ *  code: (status: number) => any,
+ *  send: (payload: unknown) => any,
+ * }}
+ */
 function createReply() {
     return {
         headers: {},
         statusCode: null,
         payload: null,
+        /** @param {string} contentType */
         type(contentType) {
             this.headers.type = contentType;
             return this;
         },
+        /** @param {number} status */
         code(status) {
             this.statusCode = status;
             return this;
         },
+        /** @param {unknown} payload */
         send(payload) {
             this.payload = payload;
             return this;

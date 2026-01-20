@@ -27,7 +27,7 @@ export const definition = {
  *
  * @param {object} root0 - Tool inputs.
  * @param {{ mode?: string, reason?: string }} root0.args - Tool arguments.
- * @param {object} root0.context - Tool context.
+ * @param {{ micState?: { currentNoiseReductionType?: string, lastMicDistanceToggleTs?: number, farToggles: number, nearToggles: number, skippedNoOp: number }, applyNoiseReduction?: (mode: 'near_field' | 'far_field') => void }} root0.context - Tool context.
  * @returns {Promise<{ status: string, applied: boolean, reason?: string, mode?: string, current?: string, counters?: { farToggles: number, nearToggles: number, skippedNoOp: number } }>} Update result.
  */
 export async function execute({ args, context }) {
@@ -65,18 +65,20 @@ export async function execute({ args, context }) {
         };
     }
 
-    applyNoiseReduction?.(requestedMode);
+    /** @type {'near_field' | 'far_field'} */
+    const normalizedMode = requestedMode === 'far_field' ? 'far_field' : 'near_field';
+    applyNoiseReduction?.(normalizedMode);
     if (micState) {
-        micState.currentNoiseReductionType = requestedMode;
+        micState.currentNoiseReductionType = normalizedMode;
         micState.lastMicDistanceToggleTs = now;
-        if (requestedMode === 'far_field') micState.farToggles += 1;
+        if (normalizedMode === 'far_field') micState.farToggles += 1;
         else micState.nearToggles += 1;
     }
 
     return {
         status: 'ok',
         applied: true,
-        mode: requestedMode,
+        mode: normalizedMode,
         current: micState?.currentNoiseReductionType,
         reason,
         counters: micState

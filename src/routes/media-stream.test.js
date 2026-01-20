@@ -3,18 +3,31 @@ import assert from 'node:assert/strict';
 
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
+/**
+ * @returns {{
+ *  handlers: Record<string, Function>,
+ *  sends: string[],
+ *  send: (payload: string) => void,
+ *  close: () => void,
+ *  on: (event: string, handler: Function) => void,
+ * }}
+ */
 function createConnection() {
+    /** @type {Record<string, Function>} */
     const handlers = {};
+    /** @type {string[]} */
     const sends = [];
     return {
         handlers,
         sends,
+        /** @param {string} payload */
         send(payload) {
             sends.push(payload);
         },
         close() {
             handlers.close?.();
         },
+        /** @param {string} event @param {Function} handler */
         on(event, handler) {
             handlers[event] = handler;
         },

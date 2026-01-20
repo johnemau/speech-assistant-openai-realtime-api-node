@@ -32,6 +32,7 @@ test('gpt-web-search.execute calls OpenAI with default location', async () => {
     let payload = null;
     const openaiClient = {
         responses: {
+            /** @param {any} req */
             create: async (req) => {
                 payload = req;
                 return { output_text: 'ok' };
@@ -59,6 +60,7 @@ test('gpt-web-search.execute uses explicit user_location', async () => {
     let payload = null;
     const openaiClient = {
         responses: {
+            /** @param {any} req */
             create: async (req) => {
                 payload = req;
                 return { output_text: 'ok' };

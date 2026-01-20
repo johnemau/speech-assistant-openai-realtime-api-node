@@ -4,7 +4,7 @@ import {
 } from '../../src/config/openai-models.js';
 import { SMS_REPLY_INSTRUCTIONS } from '../../src/assistant/prompts.js';
 
-/** @type {import('promptfoo').Config} */
+/** @type {any} */
 const config = {
     prompts: ['tests/promptfoo/promptfoo-default-prompt.txt'],
     providers: [

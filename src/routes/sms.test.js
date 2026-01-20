@@ -3,19 +3,32 @@ import assert from 'node:assert/strict';
 
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
+/**
+ * @returns {{
+ *  headers: Record<string, string>,
+ *  statusCode: number | null,
+ *  payload: unknown,
+ *  type: (contentType: string) => any,
+ *  code: (status: number) => any,
+ *  send: (payload: unknown) => any,
+ * }}
+ */
 function createReply() {
     return {
         headers: {},
         statusCode: null,
         payload: null,
+        /** @param {string} contentType */
         type(contentType) {
             this.headers.type = contentType;
             return this;
         },
+        /** @param {number} status */
         code(status) {
             this.statusCode = status;
             return this;
         },
+        /** @param {unknown} payload */
         send(payload) {
             this.payload = payload;
             return this;
@@ -131,10 +144,12 @@ test('sms sends AI reply via Twilio', async () => {
     const calls = { list: [], create: [] };
     const twilioClient = {
         messages: {
+            /** @param {any} params */
             list: async (params) => {
                 calls.list.push(params);
                 return [];
             },
+            /** @param {any} params */
             create: async (params) => {
                 calls.create.push(params);
                 return { sid: 'SM123' };
@@ -143,6 +158,7 @@ test('sms sends AI reply via Twilio', async () => {
     };
     const openaiClient = {
         responses: {
+            /** @param {any} payload */
             create: async (payload) => {
                 calls.ai = payload;
                 return { output_text: 'Sure, here you go.' };
@@ -188,6 +204,7 @@ test('sms uses AI error fallback text when OpenAI fails', async () => {
     const twilioClient = {
         messages: {
             list: async () => [],
+            /** @param {any} params */
             create: async (params) => {
                 calls.create.push(params);
                 return { sid: 'SM456' };

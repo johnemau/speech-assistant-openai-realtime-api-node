@@ -8,7 +8,15 @@ test('update-mic-distance.execute rejects invalid mode', async () => {
         () =>
             execute({
                 args: { mode: 'invalid' },
-                context: { micState: {} },
+                context: {
+                    micState: {
+                        currentNoiseReductionType: 'near_field',
+                        lastMicDistanceToggleTs: 0,
+                        farToggles: 0,
+                        nearToggles: 0,
+                        skippedNoOp: 0,
+                    },
+                },
             }),
         /Invalid mode/
     );
@@ -61,6 +69,7 @@ test('update-mic-distance.execute applies update and updates counters', async ()
         args: { mode: 'far_field', reason: 'speaker' },
         context: {
             micState,
+            /** @param {'near_field' | 'far_field'} mode */
             applyNoiseReduction: (mode) => {
                 applied = mode;
             },

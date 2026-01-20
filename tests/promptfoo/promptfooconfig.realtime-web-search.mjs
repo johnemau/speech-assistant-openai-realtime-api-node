@@ -4,7 +4,7 @@ import {
 } from '../../src/config/openai-models.js';
 import { REALTIME_WEB_SEARCH_INSTRUCTIONS } from '../../src/assistant/prompts.js';
 
-/** @type {import('promptfoo').Config} */
+/** @type {any} */
 const config = {
     prompts: ['tests/promptfoo/promptfoo-default-prompt.txt'],
     providers: [

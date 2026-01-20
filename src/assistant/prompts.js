@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * @param {string} relativePath
+ */
 function readPrompt(relativePath) {
     return fs.readFileSync(path.join(__dirname, relativePath), 'utf8');
 }

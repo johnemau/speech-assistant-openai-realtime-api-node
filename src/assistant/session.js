@@ -102,7 +102,9 @@ function realCreateAssistantSession({
         }
     );
 
+    /** @type {string[]} */
     const pendingOpenAiMessages = [];
+    /** @param {unknown} obj */
     const openAiSend = (obj) => {
         try {
             const payload = JSON.stringify(obj);
@@ -121,7 +123,7 @@ function realCreateAssistantSession({
         try {
             while (pendingOpenAiMessages.length > 0) {
                 const msg = pendingOpenAiMessages.shift();
-                openAiWs.send(msg);
+                if (msg != null) openAiWs.send(msg);
             }
         } catch (e) {
             console.error('Failed to flush OpenAI queued messages:', e);

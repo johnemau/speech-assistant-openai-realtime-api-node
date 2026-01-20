@@ -32,15 +32,22 @@ export function extractSmsRequest({ body = {}, normalizeUSNumberToE164 }) {
 /**
  * Merge inbound and outbound messages and sort newest-first.
  *
- * @param {Array<object>} inbound - Inbound messages.
- * @param {Array<object>} outbound - Outbound messages.
- * @returns {Array<object>} Combined, sorted messages.
+ * @typedef {{
+ *  dateSent?: string | Date | null,
+ *  dateCreated?: string | Date | null,
+ *  from?: string,
+ *  body?: string,
+ * }} SmsMessage
+ *
+ * @param {Array<SmsMessage>} inbound - Inbound messages.
+ * @param {Array<SmsMessage>} outbound - Outbound messages.
+ * @returns {Array<SmsMessage>} Combined, sorted messages.
  */
 export function mergeAndSortMessages(inbound = [], outbound = []) {
     const combined = [...inbound, ...outbound];
     combined.sort((a, b) => {
-        const ta = new Date(a.dateSent || a.dateCreated).getTime();
-        const tb = new Date(b.dateSent || b.dateCreated).getTime();
+        const ta = new Date(a.dateSent || a.dateCreated || 0).getTime();
+        const tb = new Date(b.dateSent || b.dateCreated || 0).getTime();
         return tb - ta; // newest first
     });
     return combined;
@@ -50,7 +57,7 @@ export function mergeAndSortMessages(inbound = [], outbound = []) {
  * Build a text thread from recent messages.
  *
  * @param {object} root0 - Thread inputs.
- * @param {Array<object>} [root0.messages] - Messages.
+ * @param {Array<SmsMessage>} [root0.messages] - Messages.
  * @param {string} root0.fromE164 - Caller number in E.164.
  * @param {number} [root0.limit] - Max messages to include.
  * @returns {string} Thread text.
@@ -59,7 +66,7 @@ export function buildSmsThreadText({ messages = [], fromE164, limit = 10 }) {
     const recent = messages.slice(0, limit);
     return recent
         .map((m) => {
-            const ts = new Date(m.dateSent || m.dateCreated).toISOString();
+            const ts = new Date(m.dateSent || m.dateCreated || 0).toISOString();
             const who = m.from === fromE164 ? 'User' : 'Assistant';
             return `${who} [${ts}]: ${m.body || ''}`;
         })

@@ -44,14 +44,21 @@ export function mediaStreamHandler(connection, req) {
     console.log('Client connected');
 
     // Connection-specific state
+    /** @type {string | null} */
     let streamSid = null;
+    /** @type {string | null} */
     let currentCallerE164 = null;
+    /** @type {string | null} */
     let currentTwilioNumberE164 = null;
     let latestMediaTimestamp = 0;
+    /** @type {string | null} */
     let lastAssistantItem = null;
+    /** @type {string[]} */
     let markQueue = [];
+    /** @type {number | null} */
     let responseStartTimestampTwilio = null;
     let pendingDisconnect = false;
+    /** @type {NodeJS.Timeout | null} */
     let pendingDisconnectTimeout = null;
 
     // Track response lifecycle to avoid overlapping response.create calls
@@ -60,7 +67,9 @@ export function mediaStreamHandler(connection, req) {
     // Post-hang-up behavior: suppress audio, continue tools, then SMS
     let postHangupSilentMode = false; // when true, do not send any audio back to Twilio
     let postHangupSmsSent = false; // ensure the completion SMS is sent at most once
+    /** @type {string | null} */
     let lastWebSearchQuery = null; // capture recent query to summarize
+    /** @type {string | null} */
     let lastEmailSubject = null; // capture subject to summarize
     let hangupDuringTools = false; // true if caller hung up while tools were pending/active
 
@@ -75,12 +84,15 @@ export function mediaStreamHandler(connection, req) {
 
     // Waiting music state
     let isWaitingMusic = false;
+    /** @type {NodeJS.Timeout | null} */
     let waitingMusicInterval = null;
+    /** @type {NodeJS.Timeout | null} */
     let waitingMusicStartTimeout = null;
     let toolCallInProgress = false;
     // Track the very first assistant audio to stop initial wait music
     let firstAssistantAudioReceived = false;
     // ffmpeg removed; we only support WAV files; no tone fallback
+    /** @type {Buffer | null} */
     let waitingMusicUlawBuffer = null;
     let waitingMusicOffset = 0;
 
@@ -217,6 +229,7 @@ export function mediaStreamHandler(connection, req) {
         }
     }
 
+    /** @param {{ type?: string, delta?: string, itemId?: string }} payload */
     const handleAssistantOutput = (payload) => {
         if (payload?.type !== 'audio' || !payload?.delta) return;
         // Suppress audio entirely after hang-up; otherwise, stream to Twilio
@@ -249,6 +262,7 @@ export function mediaStreamHandler(connection, req) {
         }
     };
 
+    /** @param {any} response */
     const handleOpenAiEvent = (response) => {
         if (LOG_EVENT_TYPES.includes(response.type)) {
             if (IS_DEV)
@@ -369,6 +383,7 @@ export function mediaStreamHandler(connection, req) {
         }
     };
 
+    /** @param {any} functionCall */
     const handleToolCall = async (functionCall) => {
         console.log('Function call detected:', functionCall.name);
         const callId = functionCall.call_id;
@@ -394,7 +409,11 @@ export function mediaStreamHandler(connection, req) {
             const toolInput = safeParseToolArguments(functionCall.arguments);
             if (postHangupSilentMode) hangupDuringTools = true;
             if (toolName === 'gpt_web_search') {
-                lastWebSearchQuery = toolInput?.query || lastWebSearchQuery;
+                const queryValue =
+                    typeof toolInput?.query === 'string'
+                        ? toolInput.query
+                        : null;
+                lastWebSearchQuery = queryValue || lastWebSearchQuery;
             }
             if (toolName === 'send_email') {
                 const subjectRaw = String(toolInput?.subject || '').trim();
@@ -405,6 +424,7 @@ export function mediaStreamHandler(connection, req) {
                 currentCallerE164,
                 currentTwilioNumberE164,
                 micState,
+                /** @param {'near_field' | 'far_field'} mode */
                 applyNoiseReduction: (mode) => {
                     const sessionUpdate = {
                         audio: {
@@ -420,6 +440,7 @@ export function mediaStreamHandler(connection, req) {
                         );
                     assistantSession.updateSession(sessionUpdate);
                 },
+                /** @param {{ reason?: string }} root0 */
                 onEndCall: ({ reason }) => {
                     // Enter silent mode: do not send any audio; allow tools to finish
                     postHangupSilentMode = true;
@@ -522,11 +543,16 @@ export function mediaStreamHandler(connection, req) {
     };
 
     // Helper to log and send tool errors to OpenAI WS
+    /**
+     * @param {string} callId
+     * @param {unknown} errorLike
+     */
     function sendOpenAiToolError(callId, errorLike) {
         const msg =
             typeof errorLike === 'string'
                 ? errorLike
-                : errorLike?.message || String(errorLike);
+                : /** @type {any} */ (errorLike)?.message ||
+                  String(errorLike);
         try {
             console.error('Sending tool error to OpenAI WS:', msg);
             const toolErrorEvent = {
@@ -584,6 +610,10 @@ export function mediaStreamHandler(connection, req) {
     };
 
     // Send mark messages to Media Streams so we know if and when AI response playback is finished
+    /**
+     * @param {import('ws').WebSocket} connection
+     * @param {string | null} streamSid
+     */
     const sendMark = (connection, streamSid) => {
         if (streamSid) {
             const markEvent = {
