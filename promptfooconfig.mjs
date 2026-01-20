@@ -1,4 +1,4 @@
-import { getToolDefinitions } from './src/tools/definitions.js';
+import { getToolDefinitions } from './src/tools/index.js';
 
 export default {
     prompts: [
