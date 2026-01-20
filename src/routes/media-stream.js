@@ -286,7 +286,6 @@ export function mediaStreamHandler(connection, req) {
         };
 
         const handleToolCall = async (functionCall) => {
-                if (IS_DEV) console.log('LLM response.done received');
                 console.log('Function call detected:', functionCall.name);
                 const callId = functionCall.call_id;
                 if (!callId) {
