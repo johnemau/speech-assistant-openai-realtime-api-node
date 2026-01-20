@@ -11,10 +11,18 @@ providers:
   - id: openai:gpt-realtime
     label: gpt-realtime
     config:
-      temperature: 0.6
+      temperature: 0.8
   - id: openai:gpt-5.2
     label: gpt-5.2
     config:
-      temperature: 0.2
+      reasoning:
+        effort: high
+      tools:
+        - type: web_search
+          user_location:
+            type: approximate
+            country: US
+            region: Washington
+      tool_choice: required
 
 tests: tests/promptfoo/cases.yaml
