@@ -42,7 +42,9 @@ fastify.post('/sms', smsHandler);
 fastify.all('/incoming-call', incomingCallHandler);
 
 // WebSocket route for media-stream
-fastify.get('/media-stream', { websocket: true }, mediaStreamHandler);
+fastify.register(async (fastify) => {
+    fastify.get('/media-stream', { websocket: true }, mediaStreamHandler);
+});
 
 // Start server and establish ngrok ingress using SessionBuilder
 (async () => {
