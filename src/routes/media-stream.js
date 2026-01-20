@@ -98,8 +98,6 @@ export function mediaStreamHandler(connection, req) {
     // ffmpeg removed; we only support WAV files; no tone fallback
     /** @type {Buffer | null} */
     let waitingMusicUlawBuffer = null;
-    /** @type {string | null} */
-    let waitingMusicFilePath = null;
     let waitingMusicOffset = 0;
 
     function scheduleWaitingMusic(reason = 'unknown') {
@@ -144,7 +142,6 @@ export function mediaStreamHandler(connection, req) {
                     }
                     const selectedFile =
                         files[Math.floor(Math.random() * files.length)];
-                    waitingMusicFilePath = selectedFile;
                     console.info('Waiting music file selected:', selectedFile);
                     // Read raw PCMU and pre-load into µ-law buffer
                     waitingMusicUlawBuffer = readPcmuFile(selectedFile);
@@ -240,7 +237,6 @@ export function mediaStreamHandler(connection, req) {
         if (shouldResetTrack) {
             // Reset track selection when caller/AI interrupts or stream ends
             waitingMusicUlawBuffer = null;
-            waitingMusicFilePath = null;
             waitingMusicOffset = 0;
         }
         // Ensure any playback interval is cleared
