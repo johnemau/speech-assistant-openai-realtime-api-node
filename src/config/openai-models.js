@@ -3,6 +3,8 @@
  * Keep Promptfoo and runtime configs consistent.
  */
 
+import { REALTIME_INSTRUCTIONS } from '../assistant/prompts.js';
+
 /** @typedef {import('openai/resources/responses/responses').WebSearchTool.UserLocation} WebSearchUserLocation */
 /** @typedef {import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming} ResponseCreateParamsNonStreaming */
 
@@ -22,7 +24,7 @@ export const DEFAULT_WEB_SEARCH_USER_LOCATION = {
 export const DEFAULT_SMS_USER_LOCATION = DEFAULT_WEB_SEARCH_USER_LOCATION;
 
 /**
- * Build shared Realtime model config (excluding instructions/tools).
+ * Build shared Realtime model config (excluding tools).
  *
  * @returns {Omit<import('openai/resources/realtime/realtime').RealtimeSessionCreateRequest, 'type'>} Realtime model config.
  */
@@ -31,6 +33,7 @@ export function buildRealtimeModelConfig() {
         model: REALTIME_MODEL,
         output_modalities: ['audio'],
         tool_choice: 'auto',
+        instructions: REALTIME_INSTRUCTIONS,
         audio: {
             input: {
                 format: { type: 'audio/pcmu' },
@@ -48,7 +51,7 @@ export function buildRealtimeModelConfig() {
 }
 
 /**
- * Build shared Realtime model config (excluding instructions/tools).
+ * Build shared Realtime model config (excluding tools).
  *
  * @returns {import('openai/resources/realtime/realtime').RealtimeSessionCreateRequest} Realtime model sesssion.
  */
@@ -60,7 +63,7 @@ export function buildRealtimeSession() {
 }
 
 /**
- * Build shared Realtime session config (excluding instructions/tools).
+ * Build shared Realtime session config (excluding tools).
  *
  * @returns {import('openai/resources/realtime/realtime').SessionUpdateEvent['session']} Realtime session config.
  */

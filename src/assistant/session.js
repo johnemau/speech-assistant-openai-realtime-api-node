@@ -5,7 +5,6 @@ import {
     REALTIME_TEMPERATURE,
     buildRealtimeSessionConfig,
 } from '../config/openai-models.js';
-import { REALTIME_INSTRUCTIONS } from './prompts.js';
 import { getToolDefinitions } from '../tools/index.js';
 
 /**
@@ -135,7 +134,6 @@ function realCreateAssistantSession({
             type: 'session.update',
             session: {
                 ...buildRealtimeSessionConfig(),
-                instructions: REALTIME_INSTRUCTIONS,
                 tools: getToolDefinitions(),
             },
         };
