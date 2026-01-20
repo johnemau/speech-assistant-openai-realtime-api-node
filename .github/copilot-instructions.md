@@ -7,14 +7,18 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Core entry point: [index.js](../index.js). Reference [Readme.md](../Readme.md) for setup and behavior.
 - Fastify HTTP server exposes: `/` (root), `/healthz` (uptime), `/incoming-call` (TwiML), `/media-stream` (WebSocket for Twilio audio), and `/sms` (Twilio Messaging webhook for auto‑replies).
 - Audio from Twilio is forwarded to OpenAI via `input_audio_buffer.append`; assistant audio returns via `response.output_audio.delta` and is streamed back to Twilio.
+- Realtime session + prompts live under [src/assistant](../src/assistant) (see [src/assistant/session.js](../src/assistant/session.js) and [src/assistant/prompts.js](../src/assistant/prompts.js)).
 
 ## Developer Workflow
 - Install and run:
   - `npm install`
   - `npm start`
 - Verify changes:
-  - `npm test` (unit tests), `npm run lint`, and `npm run typecheck` as needed.
-  - Prefer `npm ci` to run lint, typecheck, and unit tests sequentially.
+  - `npm test` runs lint, typecheck, and unit tests.
+  - `npm run test:unit` for unit tests only.
+  - `npm run lint` and `npm run typecheck` for targeted checks.
+- Prompt evaluations:
+  - `npm run pf:eval` and `npm run pf:view` (config in [promptfooconfig.yaml](../promptfooconfig.yaml)).
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
 - Public ingress: bind ngrok domain via `NGROK_DOMAIN` and optional `NGROK_AUTHTOKEN`. The server also runs locally without ngrok.
 - Minimal health checks: GET `/` and `/healthz`.
@@ -40,7 +44,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 
 ## OpenAI Session & Tools
 - Session initialization sets `type: realtime`, `model: gpt-realtime`, audio I/O formats (`audio/pcmu`), `voice: cedar`, and concatenated `SYSTEM_MESSAGE` policy.
-- Tools declared in session:
+- Tools declared in session (implementations in [src/tools](../src/tools)):
   - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
   - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.
   - `send_sms`: Sends a concise SMS from the call’s Twilio number (or fallback) and returns `sid/status/length` as `function_call_output`.
