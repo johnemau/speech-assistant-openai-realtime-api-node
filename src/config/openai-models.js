@@ -4,27 +4,28 @@
  */
 
 import { REALTIME_INSTRUCTIONS } from '../assistant/prompts.js';
-
-/** @typedef {import('openai/resources/responses/responses').WebSearchTool.UserLocation} WebSearchUserLocation */
-/** @typedef {import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming} ResponseCreateParamsNonStreaming */
+import { getToolDefinitions } from '../tools/index.js';
+import {
+    GPT_5_2_MODEL,
+    DEFAULT_WEB_SEARCH_USER_LOCATION,
+    DEFAULT_SMS_USER_LOCATION,
+    buildWebSearchTool,
+    buildSearchModelConfig,
+    buildWebSearchResponseParams,
+} from './web-search-models.js';
+import { REALTIME_TEMPERATURE } from './constants.js';
 
 export const REALTIME_MODEL = 'gpt-realtime';
-export const REALTIME_TEMPERATURE = 0.8;
+export { REALTIME_TEMPERATURE };
 
-export const GPT_5_2_MODEL = 'gpt-5.2';
-
-/** @type {WebSearchUserLocation} */
-export const DEFAULT_WEB_SEARCH_USER_LOCATION = {
-    type: 'approximate',
-    country: 'US',
-    region: 'Washington',
+export {
+    GPT_5_2_MODEL,
+    DEFAULT_WEB_SEARCH_USER_LOCATION,
+    DEFAULT_SMS_USER_LOCATION,
 };
 
-// Backwards-friendly alias for existing imports
-export const DEFAULT_SMS_USER_LOCATION = DEFAULT_WEB_SEARCH_USER_LOCATION;
-
 /**
- * Build shared Realtime model config (excluding tools).
+ * Build shared Realtime model config.
  *
  * @returns {Omit<import('openai/resources/realtime/realtime').RealtimeSessionCreateRequest, 'type'>} Realtime model config.
  */
@@ -34,6 +35,7 @@ export function buildRealtimeModelConfig() {
         output_modalities: ['audio'],
         tool_choice: 'auto',
         instructions: REALTIME_INSTRUCTIONS,
+        tools: getToolDefinitions(),
         audio: {
             input: {
                 format: { type: 'audio/pcmu' },
@@ -51,7 +53,7 @@ export function buildRealtimeModelConfig() {
 }
 
 /**
- * Build shared Realtime model config (excluding tools).
+ * Build shared Realtime model config.
  *
  * @returns {import('openai/resources/realtime/realtime').RealtimeSessionCreateRequest} Realtime model sesssion.
  */
@@ -63,7 +65,7 @@ export function buildRealtimeSession() {
 }
 
 /**
- * Build shared Realtime session config (excluding tools).
+ * Build shared Realtime session config.
  *
  * @returns {import('openai/resources/realtime/realtime').SessionUpdateEvent['session']} Realtime session config.
  */
@@ -74,55 +76,8 @@ export function buildRealtimeSessionConfig() {
     };
 }
 
-/**
- * Build a web_search tool descriptor.
- *
- * @param {object} [options] - Tool options.
- * @param {WebSearchUserLocation} [options.userLocation] - Explicit user location.
- * @returns {{ type: 'web_search', user_location: WebSearchUserLocation }} Tool config.
- */
-export function buildWebSearchTool({ userLocation } = {}) {
-    return {
-        type: 'web_search',
-        user_location: userLocation ?? DEFAULT_WEB_SEARCH_USER_LOCATION,
-    };
-}
-
-/**
- * Build Response API params for GPT‑5.2 with web search.
- *
- * @param {object} options - Request inputs.
- * @param {string} options.input - Input prompt text.
- * @param {string} options.instructions - System/tool instructions.
- * @param {WebSearchUserLocation} [options.userLocation] - Optional user location.
- * @returns {ResponseCreateParamsNonStreaming} Response API request payload.
- */
-export function buildWebSearchResponseParams({
-    input,
-    instructions,
-    userLocation,
-}) {
-    return {
-        ...buildSearchModelConfig({ instructions, userLocation }),
-        input,
-    };
-}
-
-/**
- * Build shared model config for web search requests (excluding input).
- *
- * @param {object} options - Request inputs.
- * @param {string} options.instructions - System/tool instructions.
- * @param {WebSearchUserLocation} [options.userLocation] - Optional user location.
- * @returns {Omit<ResponseCreateParamsNonStreaming, 'input'>} Response API config.
- */
-export function buildSearchModelConfig({ instructions, userLocation }) {
-    return {
-        model: GPT_5_2_MODEL,
-        reasoning: { effort: 'high' },
-        tools: [buildWebSearchTool({ userLocation })],
-        instructions,
-        tool_choice: 'required',
-        truncation: 'auto',
-    };
-}
+export {
+    buildWebSearchTool,
+    buildSearchModelConfig,
+    buildWebSearchResponseParams,
+};

@@ -5,7 +5,6 @@ import {
     REALTIME_TEMPERATURE,
     buildRealtimeSessionConfig,
 } from '../config/openai-models.js';
-import { getToolDefinitions } from '../tools/index.js';
 
 /**
  * @typedef {Pick<WebSocket, 'readyState' | 'close'>} AssistantSessionWebSocket
@@ -134,7 +133,6 @@ function realCreateAssistantSession({
             type: 'session.update',
             session: {
                 ...buildRealtimeSessionConfig(),
-                tools: getToolDefinitions(),
             },
         };
         openAiSend(sessionPayload);

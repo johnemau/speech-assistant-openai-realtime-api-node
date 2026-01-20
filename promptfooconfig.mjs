@@ -1,4 +1,3 @@
-import { getToolDefinitions } from './src/tools/index.js';
 import {
     DEFAULT_WEB_SEARCH_USER_LOCATION,
     REALTIME_MODEL,
@@ -28,7 +27,6 @@ const config = {
             config: {
                 ...buildRealtimeModelConfig(),
                 temperature: REALTIME_TEMPERATURE,
-                tools: getToolDefinitions(),
             },
         },
         {

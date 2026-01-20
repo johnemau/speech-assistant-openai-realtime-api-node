@@ -5,7 +5,7 @@ import {
 } from './utils/clients.js';
 import { setupConsoleRedaction } from './utils/redaction.js';
 import { IS_DEV } from './env.js';
-import { REALTIME_TEMPERATURE } from './config/openai-models.js';
+import { REALTIME_TEMPERATURE } from './config/constants.js';
 
 // Enable redaction of sensitive env vars from console and stdout
 setupConsoleRedaction(process.env);

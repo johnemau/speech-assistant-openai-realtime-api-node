@@ -3,7 +3,7 @@ import { WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
 import {
     buildWebSearchResponseParams,
     DEFAULT_SMS_USER_LOCATION,
-} from '../config/openai-models.js';
+} from '../config/web-search-models.js';
 
 export const definition = {
     type: 'function',
