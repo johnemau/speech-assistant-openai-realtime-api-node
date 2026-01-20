@@ -75,9 +75,24 @@ export async function convertWithFfmpeg({
     outputPath,
     codec,
 }) {
-    const ffmpegProcess = new ffmpegModule(inputPath);
+    let ffmpegProcess;
+    try {
+        ffmpegProcess = new ffmpegModule(inputPath);
+    } catch (error) {
+        throw new Error(
+            `Failed to initialize ffmpeg for ${inputPath}: ${
+                error?.message || String(error)
+            }`
+        );
+    }
     /** @type {any} */
     const video = await ffmpegProcess;
+    if (!video || typeof video.addCommand !== 'function') {
+        throw new Error(
+            `ffmpeg did not return a valid processor for ${inputPath}. ` +
+                'Ensure ffmpeg is installed and the input file is a valid media file.'
+        );
+    }
     return new Promise((resolvePromise, rejectPromise) => {
         video
             .setAudioChannels(1)
