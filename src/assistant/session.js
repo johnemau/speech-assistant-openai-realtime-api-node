@@ -87,21 +87,7 @@ function realCreateAssistantSession({
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('Missing OpenAI API key.');
 
-    const model = REALTIME_MODEL;
-    const temperature = REALTIME_TEMPERATURE;
-    const tools = getToolDefinitions();
-    const outputModalities = ['audio'];
-    const toolChoice = 'auto';
-    const audioConfig = {
-        input: {
-            format: { type: 'audio/pcmu' },
-            turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
-            noise_reduction: { type: 'near_field' }
-        },
-        output: { format: { type: 'audio/pcmu' }, voice: 'cedar' },
-    };
-
-    const openAiWs = new WebSocket(`wss://api.openai.com/v1/realtime?model=${model}&temperature=${temperature}`, {
+    const openAiWs = new WebSocket(`wss://api.openai.com/v1/realtime?model=${REALTIME_MODEL}&temperature=${REALTIME_TEMPERATURE}`, {
         headers: {
             Authorization: `Bearer ${apiKey}`,
         }
@@ -138,16 +124,21 @@ function realCreateAssistantSession({
             type: 'session.update',
             session: {
                 type: 'realtime',
-                model,
-                output_modalities: outputModalities,
+                model: REALTIME_MODEL,
+                output_modalities: ['audio'],
                 instructions: REALTIME_INSTRUCTIONS,
-                tools,
-                tool_choice: toolChoice,
+                tools: getToolDefinitions(),
+                tool_choice: 'auto',
+                audio: {
+                    input: {
+                        format: { type: 'audio/pcmu' },
+                        turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
+                        noise_reduction: { type: 'near_field' }
+                    },
+                    output: { format: { type: 'audio/pcmu' }, voice: 'cedar' },
+                },
             }
         };
-        if (audioConfig) {
-            sessionPayload.session.audio = audioConfig;
-        }
         openAiSend(sessionPayload);
         flushPendingOpenAiMessages();
     };
