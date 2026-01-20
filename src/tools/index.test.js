@@ -18,7 +18,10 @@ test('tools.executeToolCall executes end_call', async () => {
         name: 'end_call',
         args: { reason: 'bye' },
         context: {
-            /** @param {{ reason?: string }} root0 */
+            /**
+             * @param {{ reason?: string }} root0 - End-call arguments.
+             * @returns {{ status: string, reason?: string }} Result payload.
+             */
             onEndCall: ({ reason }) => ({ status: 'done', reason }),
         },
     });

@@ -233,7 +233,9 @@ export function mediaStreamHandler(connection, req) {
         }
     }
 
-    /** @param {{ type?: string, delta?: string, itemId?: string }} payload */
+    /**
+     * @param {{ type?: string, delta?: string, itemId?: string }} payload - Assistant output event payload.
+     */
     const handleAssistantOutput = (payload) => {
         if (payload?.type !== 'audio' || !payload?.delta) return;
         // Suppress audio entirely after hang-up; otherwise, stream to Twilio
@@ -266,7 +268,7 @@ export function mediaStreamHandler(connection, req) {
         }
     };
 
-    /** @param {any} response */
+    /** @param {any} response - Raw OpenAI event payload. */
     const handleOpenAiEvent = (response) => {
         if (LOG_EVENT_TYPES.includes(response.type)) {
             if (IS_DEV)
@@ -413,7 +415,7 @@ export function mediaStreamHandler(connection, req) {
         }
     };
 
-    /** @param {any} functionCall */
+    /** @param {any} functionCall - Function call payload from OpenAI. */
     const handleToolCall = async (functionCall) => {
         console.log('Function call detected:', functionCall.name);
         const callId = functionCall.call_id;
@@ -454,7 +456,10 @@ export function mediaStreamHandler(connection, req) {
                 currentCallerE164,
                 currentTwilioNumberE164,
                 micState,
-                /** @param {'near_field' | 'far_field'} mode */
+                /**
+                 * @param {'near_field' | 'far_field'} mode - Noise reduction mode.
+                 * @returns {void}
+                 */
                 applyNoiseReduction: (mode) => {
                     const sessionUpdate = {
                         audio: {
@@ -578,8 +583,8 @@ export function mediaStreamHandler(connection, req) {
 
     // Helper to log and send tool errors to OpenAI WS
     /**
-     * @param {string} callId
-     * @param {unknown} errorLike
+     * @param {string} callId - Tool call identifier.
+     * @param {unknown} errorLike - Error payload or message.
      */
     function sendOpenAiToolError(callId, errorLike) {
         const msg =
@@ -644,8 +649,8 @@ export function mediaStreamHandler(connection, req) {
 
     // Send mark messages to Media Streams so we know if and when AI response playback is finished
     /**
-     * @param {import('ws').WebSocket} connection
-     * @param {string | null} streamSid
+     * @param {import('ws').WebSocket} connection - Twilio WebSocket connection.
+     * @param {string | null} streamSid - Active stream SID.
      */
     const sendMark = (connection, streamSid) => {
         if (streamSid) {

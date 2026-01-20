@@ -69,7 +69,10 @@ test('update-mic-distance.execute applies update and updates counters', async ()
         args: { mode: 'far_field', reason: 'speaker' },
         context: {
             micState,
-            /** @param {'near_field' | 'far_field'} mode */
+            /**
+             * @param {'near_field' | 'far_field'} mode - Desired noise reduction mode.
+             * @returns {void}
+             */
             applyNoiseReduction: (mode) => {
                 applied = mode;
             },

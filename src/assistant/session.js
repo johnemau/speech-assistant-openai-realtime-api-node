@@ -104,7 +104,7 @@ function realCreateAssistantSession({
 
     /** @type {string[]} */
     const pendingOpenAiMessages = [];
-    /** @param {unknown} obj */
+    /** @param {unknown} obj - Message payload to send to OpenAI. */
     const openAiSend = (obj) => {
         try {
             const payload = JSON.stringify(obj);

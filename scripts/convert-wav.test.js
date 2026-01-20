@@ -15,18 +15,21 @@ function createLogger() {
     };
 }
 
-/** @param {any} call */
+/**
+ * @param {any} call - Mock call object or arguments array.
+ * @returns {any[] | undefined} Call arguments array when available.
+ */
 function getMockCallArgs(call) {
     return Array.isArray(call) ? call : call?.arguments;
 }
 
 /**
- * @param {(payload: { outputPath: string, video: any }) => void} [onSave]
- * @returns {any}
+ * @param {(payload: { outputPath: string, video: any }) => void} [onSave] - Callback when save is invoked.
+ * @returns {any} Ffmpeg mock class.
  */
 function createFfmpegMock(onSave) {
     return class FfmpegMock {
-        /** @param {string} inputPath */
+        /** @param {string} inputPath - Input media path. */
         constructor(inputPath) {
             /** @type {any} */
             const video = {

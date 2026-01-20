@@ -11,24 +11,33 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
  *  type: (contentType: string) => any,
  *  code: (status: number) => any,
  *  send: (payload: unknown) => any,
- * }}
+ * }} Reply mock for tests.
  */
 function createReply() {
     return {
         headers: {},
         statusCode: null,
         payload: null,
-        /** @param {string} contentType */
+        /**
+         * @param {string} contentType - Response content type.
+         * @returns {any} Reply for chaining.
+         */
         type(contentType) {
             this.headers.type = contentType;
             return this;
         },
-        /** @param {number} status */
+        /**
+         * @param {number} status - HTTP status code.
+         * @returns {any} Reply for chaining.
+         */
         code(status) {
             this.statusCode = status;
             return this;
         },
-        /** @param {unknown} payload */
+        /**
+         * @param {unknown} payload - Reply payload.
+         * @returns {any} Reply for chaining.
+         */
         send(payload) {
             this.payload = payload;
             return this;
@@ -37,12 +46,13 @@ function createReply() {
 }
 
 /**
- * @param {object} [options]
- * @param {Set<string>} [options.allowlist]
- * @param {Set<string>} [options.secondaryAllowlist]
- * @param {any} [options.twilioClient]
- * @param {any} [options.openaiClient]
- * @param {boolean} [options.isDev]
+ * @param {object} [options] - Handler options.
+ * @param {Set<string>} [options.allowlist] - Primary allowlist.
+ * @param {Set<string>} [options.secondaryAllowlist] - Secondary allowlist.
+ * @param {any} [options.twilioClient] - Twilio client override.
+ * @param {any} [options.openaiClient] - OpenAI client override.
+ * @param {boolean} [options.isDev] - Use dev mode toggle.
+ * @returns {Promise<{ smsHandler: Function, cleanup: Function }>} Loaded handler and cleanup.
  */
 async function loadSmsHandler({
     allowlist = new Set(['+12065550100']),
@@ -144,12 +154,18 @@ test('sms sends AI reply via Twilio', async () => {
     const calls = { list: [], create: [] };
     const twilioClient = {
         messages: {
-            /** @param {any} params */
+            /**
+             * @param {any} params - Message list params.
+             * @returns {Promise<any[]>} Listed messages.
+             */
             list: async (params) => {
                 calls.list.push(params);
                 return [];
             },
-            /** @param {any} params */
+            /**
+             * @param {any} params - Message create params.
+             * @returns {Promise<{ sid: string }>} Create result.
+             */
             create: async (params) => {
                 calls.create.push(params);
                 return { sid: 'SM123' };
@@ -158,7 +174,10 @@ test('sms sends AI reply via Twilio', async () => {
     };
     const openaiClient = {
         responses: {
-            /** @param {any} payload */
+            /**
+             * @param {any} payload - OpenAI request payload.
+             * @returns {Promise<{ output_text: string }>} OpenAI response.
+             */
             create: async (payload) => {
                 calls.ai = payload;
                 return { output_text: 'Sure, here you go.' };
@@ -204,7 +223,10 @@ test('sms uses AI error fallback text when OpenAI fails', async () => {
     const twilioClient = {
         messages: {
             list: async () => [],
-            /** @param {any} params */
+            /**
+             * @param {any} params - Message create params.
+             * @returns {Promise<{ sid: string }>} Create result.
+             */
             create: async (params) => {
                 calls.create.push(params);
                 return { sid: 'SM456' };

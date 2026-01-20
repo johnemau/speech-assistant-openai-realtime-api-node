@@ -9,7 +9,10 @@ import {
 } from './sms.js';
 
 test('sms.extractSmsRequest extracts fields and normalizes', () => {
-    /** @param {string} input */
+    /**
+     * @param {string} input - Raw phone number input.
+     * @returns {string | null} Normalized E.164 number.
+     */
     const normalizeUSNumberToE164 = (input) =>
         input ? '+1' + input.replace(/\D/g, '') : null;
     const body = {

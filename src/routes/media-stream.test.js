@@ -10,7 +10,7 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
  *  send: (payload: string) => void,
  *  close: () => void,
  *  on: (event: string, handler: Function) => void,
- * }}
+ * }} Connection mock for tests.
  */
 function createConnection() {
     /** @type {Record<string, Function>} */
@@ -20,7 +20,7 @@ function createConnection() {
     return {
         handlers,
         sends,
-        /** @param {string} payload */
+        /** @param {string} payload - Raw payload to record. */
         send(payload) {
             sends.push(payload);
         },
@@ -28,8 +28,9 @@ function createConnection() {
             handlers.close?.();
         },
         /**
-         * @param {string} event @param {Function} handler
-         * @param handler
+         * @param {string} event - Event name.
+         * @param {Function} handler - Handler to register.
+         * @returns {void}
          */
         on(event, handler) {
             handlers[event] = handler;

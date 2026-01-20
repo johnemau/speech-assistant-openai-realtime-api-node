@@ -9,24 +9,33 @@ import assert from 'node:assert/strict';
  *  type: (contentType: string) => any,
  *  code: (status: number) => any,
  *  send: (payload: unknown) => any,
- * }}
+ * }} Reply mock for tests.
  */
 function createReply() {
     return {
         headers: {},
         statusCode: null,
         payload: null,
-        /** @param {string} contentType */
+        /**
+         * @param {string} contentType - Response content type.
+         * @returns {any} Reply for chaining.
+         */
         type(contentType) {
             this.headers.type = contentType;
             return this;
         },
-        /** @param {number} status */
+        /**
+         * @param {number} status - HTTP status code.
+         * @returns {any} Reply for chaining.
+         */
         code(status) {
             this.statusCode = status;
             return this;
         },
-        /** @param {unknown} payload */
+        /**
+         * @param {unknown} payload - Reply payload.
+         * @returns {any} Reply for chaining.
+         */
         send(payload) {
             this.payload = payload;
             return this;
