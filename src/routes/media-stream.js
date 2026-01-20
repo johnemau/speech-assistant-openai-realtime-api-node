@@ -441,7 +441,7 @@ export function mediaStreamHandler(connection, req) {
                 }
             }
 
-            // Handle interruption when the caller's speech starts
+        // Handle interruption when the caller's speech starts
         const handleSpeechStartedEvent = () => {
                 if (markQueue.length > 0 && responseStartTimestampTwilio != null) {
                     const elapsedTime = latestMediaTimestamp - responseStartTimestampTwilio;
