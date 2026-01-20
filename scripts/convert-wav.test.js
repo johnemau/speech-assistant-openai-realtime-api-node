@@ -4,6 +4,7 @@ import {
     convertWithFfmpeg,
     getCodecForFormat,
     isSupportedFormat,
+    isConvertibleWav,
     parseArgs,
     run,
 } from './convert-wav.mjs';
@@ -77,55 +78,72 @@ function createFfmpegMock(onSave) {
     };
 }
 
-test('parseArgs defaults format and strips flag', () => {
-    const result = parseArgs(['--format=pcm', 'input.wav', 'output.wav']);
-    assert.equal(result.format, 'pcm');
-    assert.deepEqual(result.args, ['input.wav', 'output.wav']);
+test('parseArgs defaults format and directory', () => {
+    const result = parseArgs(['--format=mulaw', '--dir=assets']);
+    assert.equal(result.format, 'mulaw');
+    assert.equal(result.dir, 'assets');
 
-    const defaulted = parseArgs(['input.wav', 'output.wav']);
+    const defaulted = parseArgs([]);
     assert.equal(defaulted.format, 'mulaw');
+    assert.equal(defaulted.dir, '/music');
 
-    const aliased = parseArgs(['-f', 'pcm', 'input.wav', 'output.wav']);
-    assert.equal(aliased.format, 'pcm');
-    assert.deepEqual(aliased.args, ['input.wav', 'output.wav']);
+    const aliased = parseArgs(['-f', 'mulaw', '-d', 'assets']);
+    assert.equal(aliased.format, 'mulaw');
+    assert.equal(aliased.dir, 'assets');
 });
 
 test('format helpers validate formats and codecs', () => {
     assert.equal(isSupportedFormat('mulaw'), true);
-    assert.equal(isSupportedFormat('pcm'), true);
+    assert.equal(isSupportedFormat('pcm'), false);
     assert.equal(isSupportedFormat('mp3'), false);
     assert.equal(getCodecForFormat('mulaw'), 'pcm_mulaw');
-    assert.equal(getCodecForFormat('pcm'), 'pcm_s16le');
 });
 
-test('run exits with usage when missing args', async () => {
-    const logger = createLogger();
-    const exit = mock.fn();
-
-    await run({ argv: ['node', 'convert-wav.mjs'], logger, exit });
-
-    assert.equal(exit.mock.calls.length, 1);
-    assert.equal(getMockCallArgsOrThrow(exit.mock.calls[0], 'exit')[0], 1);
-    assert.equal(logger.log.mock.calls.length, 2);
+test('isConvertibleWav excludes .mulaw.wav files', () => {
+    assert.equal(isConvertibleWav('tone.wav'), true);
+    assert.equal(isConvertibleWav('tone.mulaw.wav'), false);
+    assert.equal(isConvertibleWav('TONE.MULAW.WAV'), false);
+    assert.equal(isConvertibleWav('tone.mp3'), false);
 });
 
-test('run exits when input file missing', async () => {
+test('run exits when directory missing', async () => {
     const logger = createLogger();
     const exit = mock.fn();
 
     await run({
-        argv: ['node', 'convert-wav.mjs', 'missing.wav', 'out.pcmu'],
+        argv: ['node', 'convert-wav.mjs'],
         logger,
         exit,
         existsSyncFn: () => false,
-        resolvePath: (value) => `/abs/${value}`,
+        resolvePath: (value) => (value.startsWith('/') ? value : `/abs/${value}`),
     });
 
     assert.equal(exit.mock.calls.length, 1);
     assert.equal(getMockCallArgsOrThrow(exit.mock.calls[0], 'exit')[0], 1);
     assert.equal(
         getMockCallArgsOrThrow(logger.error.mock.calls[0], 'logger.error')[0],
-        'Input file not found: /abs/missing.wav'
+        'Directory not found: /music'
+    );
+});
+
+test('run exits when target path is not a directory', async () => {
+    const logger = createLogger();
+    const exit = mock.fn();
+
+    await run({
+        argv: ['node', 'convert-wav.mjs', '--dir=files'],
+        logger,
+        exit,
+        existsSyncFn: () => true,
+        statSyncFn: () => ({ isDirectory: () => false }),
+        resolvePath: (value) => (value.startsWith('/') ? value : `/abs/${value}`),
+    });
+
+    assert.equal(exit.mock.calls.length, 1);
+    assert.equal(getMockCallArgsOrThrow(exit.mock.calls[0], 'exit')[0], 1);
+    assert.equal(
+        getMockCallArgsOrThrow(logger.error.mock.calls[0], 'logger.error')[0],
+        'Not a directory: /abs/files'
     );
 });
 
@@ -166,24 +184,47 @@ test('run logs success on conversion', async () => {
     const exit = mock.fn();
     const ffmpegMock = createFfmpegMock();
 
+    const dirEntries = [
+        { isFile: () => true, name: 'tone.wav' },
+        { isFile: () => true, name: 'tone.mulaw.wav' },
+        { isFile: () => true, name: 'note.txt' },
+    ];
+
     await run({
-        argv: [
-            'node',
-            'convert-wav.mjs',
-            '--format=mulaw',
-            'input.wav',
-            'out.pcmu',
-        ],
+        argv: ['node', 'convert-wav.mjs', '--format=mulaw', '--dir=music'],
         logger,
         exit,
         existsSyncFn: () => true,
-        resolvePath: (value) => `/abs/${value}`,
+        statSyncFn: () => ({ isDirectory: () => true }),
+        readdirSyncFn: () => dirEntries,
+        resolvePath: (...values) => `/abs/${values.join('/')}`,
         ffmpegModule: ffmpegMock,
     });
 
     assert.equal(exit.mock.calls.length, 0);
     assert.equal(
         getMockCallArgsOrThrow(logger.log.mock.calls[0], 'logger.log')[0],
-        'Converted /abs/input.wav -> /abs/out.pcmu (mulaw)'
+        'Converted /abs/music/tone.wav -> /abs/music/tone.mulaw.wav (mulaw)'
+    );
+});
+
+test('run logs when no wav files are present', async () => {
+    const logger = createLogger();
+    const exit = mock.fn();
+
+    await run({
+        argv: ['node', 'convert-wav.mjs'],
+        logger,
+        exit,
+        existsSyncFn: () => true,
+        statSyncFn: () => ({ isDirectory: () => true }),
+        readdirSyncFn: () => [{ isFile: () => true, name: 'tone.mulaw.wav' }],
+        resolvePath: (value) => (value.startsWith('/') ? value : `/abs/${value}`),
+    });
+
+    assert.equal(exit.mock.calls.length, 0);
+    assert.equal(
+        getMockCallArgsOrThrow(logger.log.mock.calls[0], 'logger.log')[0],
+        'No .wav files to convert in /music'
     );
 });

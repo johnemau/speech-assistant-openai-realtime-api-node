@@ -283,12 +283,13 @@ Enable via environment flags in `.env`:
 ```
 WAIT_MUSIC_THRESHOLD_MS=700
 WAIT_MUSIC_VOLUME=0.12
-WAIT_MUSIC_FILE=melodyloops-relaxing-jazz.pcmu
+WAIT_MUSIC_FOLDER=music/waiting
 ```
 
 Notes:
 
 - Audio must be raw PCMU (G.711 µ-law), 8 kHz, mono; frames are sent at ~20 ms cadence to Twilio.
+- Each time waiting music starts, a random file from the folder is selected.
 - Use the conversion script to generate a compatible file (requires `ffmpeg` on your PATH):
 
 ```

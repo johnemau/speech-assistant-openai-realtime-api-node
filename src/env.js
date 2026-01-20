@@ -38,7 +38,7 @@ export const WAIT_MUSIC_THRESHOLD_MS = Number(
     process.env.WAIT_MUSIC_THRESHOLD_MS || 500
 );
 export const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
-export const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.pcmu
+export const WAIT_MUSIC_FOLDER = process.env.WAIT_MUSIC_FOLDER || 'music';
 
 export const PRIMARY_USER_FIRST_NAME = process.env.PRIMARY_USER_FIRST_NAME;
 export const SECONDARY_USER_FIRST_NAME = process.env.SECONDARY_USER_FIRST_NAME;

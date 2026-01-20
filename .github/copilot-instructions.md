@@ -79,7 +79,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 
 ## Waiting Music (Optional)
 
-- Controlled via `WAIT_MUSIC_THRESHOLD_MS` and `WAIT_MUSIC_FILE` (raw PCMU only).
+- Controlled via `WAIT_MUSIC_THRESHOLD_MS` and `WAIT_MUSIC_FOLDER` (raw PCMU only).
 - Only raw PCMU (G.711 µ‑law) files are supported; frames are sent at ~20 ms (160 bytes).
 - Use the conversion script when needed (requires `ffmpeg`): `npm run convert:wav -- input.wav output.pcmu --format=mulaw`.
 - Waiting music starts after the threshold when a tool call begins and stops on first assistant audio delta or caller speech.

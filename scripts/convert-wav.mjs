@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import ffmpeg from 'ffmpeg';
 import minimist from 'minimist';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 /**
@@ -13,23 +13,26 @@ import { pathToFileURL } from 'node:url';
  * @param {Logger} logger
  */
 export function printUsage(logger = console) {
-    logger.log('Usage: npm run convert:wav -- <input.wav> <output.wav>');
-    logger.log('Options: --format=mulaw|pcm (default: mulaw)');
+    logger.log('Usage: npm run convert:wav -- [--dir=music]');
+    logger.log(
+        'Converts all .wav files (excluding .mulaw.wav) in the directory to .mulaw.wav.'
+    );
+    logger.log('Default directory: music');
+    logger.log('Options: --format=mulaw (default: mulaw)');
 }
 
 /**
  * @param {string[]} rawArgs
- * @returns {{ format: string, args: string[] }}
+ * @returns {{ format: string, dir: string }}
  */
 export function parseArgs(rawArgs) {
     const parsed = minimist(rawArgs, {
-        string: ['format'],
-        default: { format: 'mulaw' },
-        alias: { format: 'f' },
+        string: ['format', 'dir'],
+        default: { format: 'mulaw', dir: 'music' },
+        alias: { format: 'f', dir: 'd' },
     });
-    const { format } = parsed;
-    const args = parsed._;
-    return { format, args };
+    const { format, dir } = parsed;
+    return { format, dir };
 }
 
 /**
@@ -37,7 +40,7 @@ export function parseArgs(rawArgs) {
  * @returns {boolean}
  */
 export function isSupportedFormat(format) {
-    return format === 'mulaw' || format === 'pcm';
+    return format === 'mulaw';
 }
 
 /**
@@ -45,7 +48,16 @@ export function isSupportedFormat(format) {
  * @returns {string}
  */
 export function getCodecForFormat(format) {
-    return format === 'mulaw' ? 'pcm_mulaw' : 'pcm_s16le';
+    return 'pcm_mulaw';
+}
+
+/**
+ * @param {string} filename
+ * @returns {boolean}
+ */
+export function isConvertibleWav(filename) {
+    const lower = filename.toLowerCase();
+    return lower.endsWith('.wav') && !lower.endsWith('.mulaw.wav');
 }
 
 /**
@@ -97,6 +109,8 @@ export async function convertWithFfmpeg({
  *  logger?: Logger,
  *  exit?: (code?: number) => void,
  *  existsSyncFn?: (path: import('node:fs').PathLike) => boolean,
+ *  readdirSyncFn?: typeof readdirSync,
+ *  statSyncFn?: typeof statSync,
  *  resolvePath?: (...paths: string[]) => string,
  *  ffmpegModule?: any
  * }=} options
@@ -106,11 +120,13 @@ export async function run({
     logger = console,
     exit = process.exit,
     existsSyncFn = existsSync,
+    readdirSyncFn = readdirSync,
+    statSyncFn = statSync,
     resolvePath = resolve,
     ffmpegModule = ffmpeg,
 } = {}) {
     const rawArgs = argv.slice(2);
-    const { format, args } = parseArgs(rawArgs);
+    const { format, dir } = parseArgs(rawArgs);
 
     if (!isSupportedFormat(format)) {
         logger.error(`Unsupported format: ${format}`);
@@ -119,29 +135,46 @@ export async function run({
         return;
     }
 
-    if (args.length < 2) {
-        printUsage(logger);
-        exit(1);
-        return;
-    }
-
-    const inputPath = resolvePath(args[0]);
-    const outputPath = resolvePath(args[1]);
-
-    if (!existsSyncFn(inputPath)) {
-        logger.error(`Input file not found: ${inputPath}`);
-        exit(1);
-        return;
-    }
-
     const codec = getCodecForFormat(format);
 
-    try {
-        await convertWithFfmpeg({ ffmpegModule, inputPath, outputPath, codec });
-        logger.log(`Converted ${inputPath} -> ${outputPath} (${format})`);
-    } catch (error) {
-        logger.error(`Failed to run ffmpeg: ${error?.message || error}`);
+    const targetDir = resolvePath(dir || 'music');
+    if (!existsSyncFn(targetDir)) {
+        logger.error(`Directory not found: ${targetDir}`);
         exit(1);
+        return;
+    }
+
+    if (!statSyncFn(targetDir).isDirectory()) {
+        logger.error(`Not a directory: ${targetDir}`);
+        exit(1);
+        return;
+    }
+
+    const entries = readdirSyncFn(targetDir, { withFileTypes: true });
+    const wavFiles = entries
+        .filter((entry) => entry.isFile() && isConvertibleWav(entry.name))
+        .map((entry) => join(targetDir, entry.name));
+
+    if (wavFiles.length === 0) {
+        logger.log(`No .wav files to convert in ${targetDir}`);
+        return;
+    }
+
+    for (const inputPath of wavFiles) {
+        const outputPath = inputPath.replace(/\.wav$/i, '.mulaw.wav');
+        try {
+            await convertWithFfmpeg({
+                ffmpegModule,
+                inputPath,
+                outputPath,
+                codec,
+            });
+            logger.log(`Converted ${inputPath} -> ${outputPath} (${format})`);
+        } catch (error) {
+            logger.error(`Failed to run ffmpeg: ${error?.message || JSON.stringify(error)}`);
+            exit(1);
+            return;
+        }
     }
 }
 

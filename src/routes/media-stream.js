@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import fs from 'fs';
+import path from 'node:path';
 import {
     createAssistantSession,
     safeParseToolArguments,
@@ -17,7 +18,7 @@ import {
     IS_DEV,
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
-    WAIT_MUSIC_FILE,
+    WAIT_MUSIC_FOLDER,
     WAIT_MUSIC_THRESHOLD_MS,
     PRIMARY_USER_FIRST_NAME,
     SECONDARY_USER_FIRST_NAME,
@@ -110,21 +111,41 @@ export function mediaStreamHandler(connection, req) {
     function startWaitingMusic(reason = 'unknown') {
         if (!streamSid || isWaitingMusic) return;
         isWaitingMusic = true;
+        waitingMusicUlawBuffer = null;
+        waitingMusicOffset = 0;
         console.info(
-            `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS} file=${WAIT_MUSIC_FILE || ''}`,
+            `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS} folder=${WAIT_MUSIC_FOLDER || ''}`,
             {
                 event: 'wait_music.start',
                 reason,
                 streamSid,
                 threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
-                file: WAIT_MUSIC_FILE || null,
+                folder: WAIT_MUSIC_FOLDER || null,
             }
         );
-        // If audio file is provided and exists
-        if (WAIT_MUSIC_FILE && fs.existsSync(WAIT_MUSIC_FILE)) {
+        // If audio folder is provided and exists
+        if (WAIT_MUSIC_FOLDER && fs.existsSync(WAIT_MUSIC_FOLDER)) {
             try {
+                const entries = fs.readdirSync(WAIT_MUSIC_FOLDER, {
+                    withFileTypes: true,
+                });
+                const files = entries
+                    .filter((entry) => entry.isFile())
+                    .map((entry) =>
+                        path.join(WAIT_MUSIC_FOLDER, entry.name)
+                    );
+                if (files.length === 0) {
+                    console.warn(
+                        'Waiting music folder has no files; disabling waiting music:',
+                        WAIT_MUSIC_FOLDER
+                    );
+                    return;
+                }
+                const selectedFile =
+                    files[Math.floor(Math.random() * files.length)];
+                console.info('Waiting music file selected:', selectedFile);
                 // Read raw PCMU and pre-load into µ-law buffer
-                waitingMusicUlawBuffer = readPcmuFile(WAIT_MUSIC_FILE);
+                waitingMusicUlawBuffer = readPcmuFile(selectedFile);
                 waitingMusicOffset = 0;
                 if (!waitingMusicInterval) {
                     waitingMusicInterval = setInterval(() => {
