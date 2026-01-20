@@ -1,5 +1,6 @@
 import { twilioClient, env } from '../init.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
+import { ALLOW_SEND_SMS } from '../env.js';
 
 export const definition = {
     type: 'function',
@@ -29,10 +30,9 @@ export async function execute({ args, context }) {
     const {
         currentCallerE164,
         currentTwilioNumberE164,
-        allowSendSms,
     } = context;
 
-    if (!allowSendSms) {
+    if (!ALLOW_SEND_SMS) {
         throw new Error('SMS sending disabled. Set ALLOW_SEND_SMS=true to enable send_sms.');
     }
     let bodyText = String(args?.body_text || '').trim();

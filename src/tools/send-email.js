@@ -1,5 +1,5 @@
 import { senderTransport, env } from '../init.js';
-import { PRIMARY_CALLERS_SET, SECONDARY_CALLERS_SET } from '../env.js';
+import { PRIMARY_CALLERS_SET, SECONDARY_CALLERS_SET, ALLOW_SEND_EMAIL } from '../env.js';
 
 export const definition = {
     type: 'function',
@@ -27,9 +27,9 @@ export const definition = {
  * @returns {Promise<{ messageId: string, accepted: Array<string>, rejected: Array<string> }>} Send result.
  */
 export async function execute({ args, context }) {
-    const { currentCallerE164, allowSendEmail } = context;
+    const { currentCallerE164 } = context;
 
-    if (!allowSendEmail) {
+    if (!ALLOW_SEND_EMAIL) {
         throw new Error('Email sending disabled. Set ALLOW_SEND_EMAIL=true to enable send_email.');
     }
     const subject = String(args?.subject || '').trim();
