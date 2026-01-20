@@ -137,7 +137,7 @@ function realCreateAssistantSession({
                     },
                     output: { format: { type: 'audio/pcmu' }, voice: 'cedar' },
                 },
-            }
+            },
         };
         openAiSend(sessionPayload);
         flushPendingOpenAiMessages();
