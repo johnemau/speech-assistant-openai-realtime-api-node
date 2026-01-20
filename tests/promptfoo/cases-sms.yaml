@@ -6,5 +6,5 @@
           Latest user message:
           Find coffee shops near Pike Place Market.
   assert:
-    - type: llm-rubric
-      value: Provides at least one coffee shop with hours and phone numbers.
+      - type: llm-rubric
+        value: Provides at least one coffee shop with hours and phone numbers.

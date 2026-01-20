@@ -79,7 +79,10 @@ export function setupConsoleRedaction(env = process.env) {
                 info: console.info.bind(console),
             };
 
-            /** @param {unknown[]} args */
+            /**
+             * @param {unknown[]} args - Console arguments to sanitize.
+             * @returns {unknown[]} Sanitized arguments.
+             */
             const sanitizeArgs = (args) => {
                 /** @type {string[]} */
                 let guessed = [];

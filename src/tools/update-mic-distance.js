@@ -66,7 +66,8 @@ export async function execute({ args, context }) {
     }
 
     /** @type {'near_field' | 'far_field'} */
-    const normalizedMode = requestedMode === 'far_field' ? 'far_field' : 'near_field';
+    const normalizedMode =
+        requestedMode === 'far_field' ? 'far_field' : 'near_field';
     applyNoiseReduction?.(normalizedMode);
     if (micState) {
         micState.currentNoiseReductionType = normalizedMode;

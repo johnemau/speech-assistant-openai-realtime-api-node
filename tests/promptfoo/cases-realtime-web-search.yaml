@@ -2,5 +2,5 @@
   vars:
       user_prompt: Who is the president?
   assert:
-    - type: llm-rubric
-      value: Answers with name of the current president of the United States.
+      - type: llm-rubric
+        value: Answers with name of the current president of the United States.

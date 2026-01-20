@@ -470,7 +470,10 @@ export function mediaStreamHandler(connection, req) {
                         );
                     assistantSession.updateSession(sessionUpdate);
                 },
-                /** @param {{ reason?: string }} root0 */
+                /**
+                 * @param {{ reason?: string }} root0 - End-call inputs.
+                 * @returns {{ status: string, pending_disconnect: boolean, reason?: string, silent: boolean }} End-call result.
+                 */
                 onEndCall: ({ reason }) => {
                     // Enter silent mode: do not send any audio; allow tools to finish
                     postHangupSilentMode = true;
@@ -582,8 +585,7 @@ export function mediaStreamHandler(connection, req) {
         const msg =
             typeof errorLike === 'string'
                 ? errorLike
-                : /** @type {any} */ (errorLike)?.message ||
-                  String(errorLike);
+                : /** @type {any} */ (errorLike)?.message || String(errorLike);
         try {
             console.error('Sending tool error to OpenAI WS:', msg);
             const toolErrorEvent = {

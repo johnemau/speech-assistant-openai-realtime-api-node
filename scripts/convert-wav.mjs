@@ -78,13 +78,15 @@ export async function convertWithFfmpeg({
             .save(
                 outputPath,
                 /** @type {(error: Error | null, file: string) => void} */
-                ((error, file) => {
-                if (error) {
-                    rejectPromise(error);
-                    return;
-                }
-                resolvePromise(file);
-                })
+                (
+                    (error, file) => {
+                        if (error) {
+                            rejectPromise(error);
+                            return;
+                        }
+                        resolvePromise(file);
+                    }
+                )
             );
     });
 }
