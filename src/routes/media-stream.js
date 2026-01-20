@@ -403,7 +403,6 @@ export function mediaStreamHandler(connection, req) {
                 apiKey: env?.OPENAI_API_KEY,
                 model: 'gpt-realtime',
                 temperature,
-                voice,
                 instructions: SYSTEM_MESSAGE,
                 tools: getToolDefinitions(),
                 outputModalities: ['audio'],

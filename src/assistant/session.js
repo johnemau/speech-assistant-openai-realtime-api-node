@@ -61,7 +61,6 @@ export function safeParseToolArguments(args) {
  * @param {string} root0.apiKey - OpenAI API key.
  * @param {string} [root0.model] - Realtime model name.
  * @param {number} [root0.temperature] - Sampling temperature.
- * @param {string} [root0.voice] - Voice id.
  * @param {string} [root0.instructions] - System instructions.
  * @param {Array<object>} [root0.tools] - Tool definitions.
  * @param {string[]} [root0.outputModalities] - Output modalities.
@@ -86,7 +85,6 @@ function realCreateAssistantSession({
     apiKey,
     model = 'gpt-realtime',
     temperature = 0.8,
-    voice,
     instructions,
     tools = [],
     outputModalities = ['audio'],
@@ -147,9 +145,6 @@ function realCreateAssistantSession({
         };
         if (audioConfig) {
             sessionPayload.session.audio = audioConfig;
-        }
-        if (voice) {
-            sessionPayload.session.voice = voice;
         }
         openAiSend(sessionPayload);
         flushPendingOpenAiMessages();
