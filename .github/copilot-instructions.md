@@ -19,8 +19,9 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
     - `npm test` runs lint, typecheck, and unit tests.
     - `npm run test:unit` for unit tests only.
     - `npm run lint` and `npm run typecheck` for targeted checks.
+    - `npm run lint:eslint:fix` and `npm run format:write` for autofixes.
 - Prompt evaluations:
-    - `npm run pf:eval` and `npm run pf:view` (config in [promptfooconfig.mjs](../promptfooconfig.mjs)).
+    - `npm run pf:eval:realtime-web-search`, `npm run pf:eval:sms`, `npm run pf:eval`, and `npm run pf:view` (configs in [tests/promptfoo](../tests/promptfoo)).
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
 - Public ingress: bind ngrok domain via `NGROK_DOMAIN` and optional `NGROK_AUTHTOKEN`. The server also runs locally without ngrok.
 - Minimal health checks: GET `/` and `/healthz`.
@@ -30,16 +31,20 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Required: `OPENAI_API_KEY`. Optional: `NGROK_DOMAIN`, `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`.
 - Email tool requires: `SENDER_FROM_EMAIL`, `SMTP_USER`, `SMTP_PASS`, `PRIMARY_TO_EMAIL`, `SECONDARY_TO_EMAIL`, `SMTP_NODEMAILER_SERVICE_ID`.
 - Call allowlists: `PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS` (comma‑separated E.164).
+- Tool toggles: `ALLOW_SEND_SMS=true` and `ALLOW_SEND_EMAIL=true` to enable `send_sms`/`send_email`.
+- SMS send fallback: `TWILIO_SMS_FROM_NUMBER` when the TwiML parameter is missing.
 - Logs are sanitized at startup using `redact-logs` and `@zapier/secret-scrubber`. Disable via `DISABLE_LOG_REDACTION=true`. Add any new secret env keys to `REDACT_ENV_KEYS` (comma‑separated).
 
 ## Routing & Twilio Integration
 
 - `/incoming-call`: returns TwiML that greets the caller, then `<Connect><Stream>` to `/media-stream`. Caller number is passed via `<Parameter name="caller_number" ...>` and used for allowlist and email recipient selection.
+- `/incoming-call` also passes `<Parameter name="twilio_number" ...>` so `send_sms` can reply from the same Twilio number.
 - `/media-stream` (WebSocket):
     - Forwards Twilio `media` frames to OpenAI (`input_audio_buffer.append`).
     - Streams assistant audio deltas back to Twilio `media`.
     - Handles interruption with `input_audio_buffer.speech_started` by truncating the current assistant item and clearing Twilio’s buffer.
     - Uses “mark” messages to detect end of assistant playback for pacing.
+    - After the initial greeting, turn detection is updated to manual response creation (see `input_audio_buffer.speech_stopped`).
 - `/sms` (Messaging webhook):
     - Restricts usage to allowlisted numbers (`PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS`).
     - Builds a 12‑hour recent thread (up to 10 messages, inbound+outbound) and composes a concise reply (≤320 chars).
@@ -74,7 +79,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 
 ## Waiting Music (Optional)
 
-- Controlled via `WAIT_MUSIC_THRESHOLD_MS`, `WAIT_MUSIC_VOLUME`, `WAIT_MUSIC_FILE`.
+- Controlled via `WAIT_MUSIC_THRESHOLD_MS` and `WAIT_MUSIC_FILE` (raw PCMU only).
 - Only raw PCMU (G.711 µ‑law) files are supported; frames are sent at ~20 ms (160 bytes).
 - Use the conversion script when needed (requires `ffmpeg`): `npm run convert:wav -- input.wav output.pcmu --format=mulaw`.
 - Waiting music starts after the threshold when a tool call begins and stops on first assistant audio delta or caller speech.

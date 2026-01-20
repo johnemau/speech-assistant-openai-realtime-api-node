@@ -18,7 +18,7 @@ This application uses the following Twilio products in conjunction with OpenAI's
 
 To use the app, you will need:
 
-- **Node.js 18+** We used \`18.20.4\` for development; download from [here](https://nodejs.org/).
+- **Node.js 24.x** Required by the repo (see `engines.node` in package.json); download from [here](https://nodejs.org/).
 - **A Twilio account.** You can sign up for a free trial [here](https://www.twilio.com/try-twilio).
 - **A Twilio number with _Voice_ capabilities.** [Here are instructions](https://help.twilio.com/articles/223135247-How-to-Search-for-and-Buy-a-Twilio-Phone-Number-from-Console) to purchase a phone number.
 - **An OpenAI account and an OpenAI API Key.** You can sign up [here](https://platform.openai.com/).
@@ -71,17 +71,19 @@ Notes:
 
 - `npm test` runs lint, typecheck, and the unit test suite.
 - Run `npm run lint` for ESLint checks.
+- Run `npm run lint:eslint:fix` to auto-fix ESLint issues.
 - Run `npm run typecheck` for TypeScript type checking (JS + JSDoc).
 - Run `npm run test:unit` to execute unit tests only.
 
 ### Promptfoo evals (prompt-only)
 
-Run prompt evaluations without touching runtime code. The root config lives in [promptfooconfig.mjs](promptfooconfig.mjs) and the suite assets live in [tests/promptfoo](tests/promptfoo).
+Run prompt evaluations without touching runtime code. The configs live in [tests/promptfoo/promptfooconfig.realtime-web-search.mjs](tests/promptfoo/promptfooconfig.realtime-web-search.mjs) and [tests/promptfoo/promptfooconfig.sms.mjs](tests/promptfoo/promptfooconfig.sms.mjs); the suite assets live in [tests/promptfoo](tests/promptfoo).
 
 Commands:
 
 ```
-npm run pf:eval
+npm run pf:eval:realtime-web-search
+npm run pf:eval:sms
 npm run pf:view
 ```
 
@@ -95,7 +97,6 @@ Notes:
 
 - Uses the same .env conventions as the rest of the repo. Add any extra secrets to `REDACT_ENV_KEYS` to keep logs scrubbed.
 - The prompt suite mirrors the voice and SMS policies used in [src/assistant/prompts.js](src/assistant/prompts.js).
-- If you do not have access to `gpt-realtime`, remove that provider from [promptfooconfig.yaml](promptfooconfig.yaml).
 
 ### Redact sensitive env values in logs
 
