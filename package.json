@@ -20,6 +20,9 @@
     "keywords": [],
     "author": "",
     "license": "ISC",
+    "engines": {
+        "node": "24.x"
+    },
     "type": "module",
     "dependencies": {
         "@fastify/formbody": "^8.0.0",
@@ -38,6 +41,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.39.2",
+        "@tsconfig/node24": "^24.0.4",
         "@types/ffmpeg": "^1.0.7",
         "@types/minimist": "^1.2.5",
         "@types/node": "^22.13.1",
