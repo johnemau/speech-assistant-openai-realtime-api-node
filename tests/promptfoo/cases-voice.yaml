@@ -1,5 +1,4 @@
 - name: voice-coffee-near-pike-place
-  provider: gpt-realtime
   vars:
       user_prompt: |
           Tool Output (web_search):

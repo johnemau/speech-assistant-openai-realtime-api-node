@@ -6,7 +6,7 @@ import {
 
 /** @type {any} */
 const config = {
-    prompts: ['tests/promptfoo/promptfoo-default-prompt.txt'],
+    prompts: ['promptfoo-default-prompt.txt'],
     providers: [
         {
             id: `openai:realtime:${REALTIME_MODEL}`,
@@ -17,7 +17,7 @@ const config = {
             },
         },
     ],
-    tests: ['tests/promptfoo/cases-voice.yaml'],
+    tests: ['cases-voice.yaml'],
 };
 
 export default config;

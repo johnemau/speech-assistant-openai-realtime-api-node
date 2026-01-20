@@ -1,5 +1,4 @@
 - name: sms-coffee-top-two
-  provider: gpt-5.2-sms
   vars:
       user_prompt: |
           Recent SMS thread (last 12 hours):

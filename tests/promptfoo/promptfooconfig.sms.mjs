@@ -6,7 +6,7 @@ import { SMS_REPLY_INSTRUCTIONS } from '../../src/assistant/prompts.js';
 
 /** @type {any} */
 const config = {
-    prompts: ['tests/promptfoo/promptfoo-default-prompt.txt'],
+    prompts: ['promptfoo-default-prompt.txt'],
     providers: [
         {
             id: `openai:${GPT_5_2_MODEL}`,
@@ -18,7 +18,7 @@ const config = {
             },
         },
     ],
-    tests: ['tests/promptfoo/cases-sms.yaml'],
+    tests: ['cases-sms.yaml'],
 };
 
 export default config;
