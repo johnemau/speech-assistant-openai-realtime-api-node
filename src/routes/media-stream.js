@@ -58,6 +58,7 @@ export function mediaStreamHandler(connection, req) {
     /** @type {number | null} */
     let responseStartTimestampTwilio = null;
     let pendingDisconnect = false;
+    let pendingDisconnectResponseReceived = false;
     /** @type {NodeJS.Timeout | null} */
     let pendingDisconnectTimeout = null;
 
@@ -196,35 +197,38 @@ export function mediaStreamHandler(connection, req) {
         }
     }
 
-    function attemptPendingDisconnectClose() {
+    function attemptPendingDisconnectClose({ force = false } = {}) {
         try {
             if (!pendingDisconnect) return;
+            if (!force && !pendingDisconnectResponseReceived) return;
             // Prefer closing after Twilio marks catch up (no queued marks)
-            if (markQueue.length === 0) {
-                pendingDisconnect = false;
-                if (pendingDisconnectTimeout) {
-                    clearTimeout(pendingDisconnectTimeout);
-                    pendingDisconnectTimeout = null;
-                }
-                stopWaitingMusic();
-                clearWaitingMusicInterval();
-                try {
-                    connection.close(1000, 'Call ended by assistant');
-                } catch {
-                    // noop: connection may already be closed
-                    void 0;
-                }
-                try {
-                    if (
-                        assistantSession.openAiWs?.readyState === WebSocket.OPEN
-                    )
-                        assistantSession.close();
-                } catch {
-                    // noop: websocket may already be closed
-                    void 0;
-                }
-                console.log('Call closed after goodbye playback.');
+            if (!force && markQueue.length !== 0) return;
+
+            if (force && IS_DEV)
+                console.warn('Forcing call disconnect after timeout.');
+
+            pendingDisconnect = false;
+            pendingDisconnectResponseReceived = false;
+            if (pendingDisconnectTimeout) {
+                clearTimeout(pendingDisconnectTimeout);
+                pendingDisconnectTimeout = null;
             }
+            stopWaitingMusic();
+            clearWaitingMusicInterval();
+            try {
+                connection.close(1000, 'Call ended by assistant');
+            } catch {
+                // noop: connection may already be closed
+                void 0;
+            }
+            try {
+                if (assistantSession.openAiWs?.readyState === WebSocket.OPEN)
+                    assistantSession.close();
+            } catch {
+                // noop: websocket may already be closed
+                void 0;
+            }
+            console.log('Call closed after goodbye playback.');
         } catch (e) {
             console.warn(
                 'Attempt to close pending disconnect failed:',
@@ -334,6 +338,9 @@ export function mediaStreamHandler(connection, req) {
         if (response.type === 'response.done') {
             const functionCall = response.response?.output?.[0];
             if (!functionCall || functionCall?.type !== 'function_call') {
+                if (pendingDisconnect) {
+                    pendingDisconnectResponseReceived = true;
+                }
                 // Non-function responses: if we were asked to end the call, close after playback finishes
                 attemptPendingDisconnectClose();
                 // If in silent mode and no tool call is active, send a completion SMS and close OpenAI WS
@@ -480,22 +487,18 @@ export function mediaStreamHandler(connection, req) {
                  * @returns {{ status: string, pending_disconnect: boolean, reason?: string, silent: boolean }} End-call result.
                  */
                 onEndCall: ({ reason }) => {
-                    // Enter silent mode: do not send any audio; allow tools to finish
-                    postHangupSilentMode = true;
                     pendingDisconnect = true;
-                    if (toolCallInProgress) hangupDuringTools = true;
-                    // Close the Twilio stream promptly; keep OpenAI WS alive for tools
-                    try {
-                        connection.close(1000, 'Call ended by assistant');
-                    } catch {
-                        // noop: connection may already be closed
-                        void 0;
+                    pendingDisconnectResponseReceived = false;
+                    if (!pendingDisconnectTimeout) {
+                        pendingDisconnectTimeout = setTimeout(() => {
+                            attemptPendingDisconnectClose({ force: true });
+                        }, 10_000);
                     }
                     return {
                         status: 'ok',
                         pending_disconnect: true,
                         reason,
-                        silent: true,
+                        silent: false,
                     };
                 },
             };
