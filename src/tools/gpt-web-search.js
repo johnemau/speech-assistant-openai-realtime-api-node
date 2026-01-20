@@ -30,7 +30,7 @@ export const definition = {
  * @param {object} root0 - Tool inputs.
  * @param {{ query?: string, user_location?: object }} root0.args - Tool arguments.
  * @param {{ openaiClient: { responses: { create: Function } }, webSearchInstructions?: string, defaultUserLocation?: object }} root0.context - Tool context.
- * @returns {Promise<string>} Search summary text.
+ * @returns {Promise<object>} Full OpenAI response.
  */
 export async function execute({ args, context }) {
     const { openaiClient, webSearchInstructions, defaultUserLocation } = context;
@@ -50,5 +50,5 @@ export async function execute({ args, context }) {
         truncation: 'auto',
     };
     const result = await openaiClient.responses.create(reqPayload);
-    return result.output_text;
+    return result;
 }

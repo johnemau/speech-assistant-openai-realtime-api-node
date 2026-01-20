@@ -28,7 +28,7 @@ test('gpt-web-search.execute calls OpenAI with default location', async () => {
             defaultUserLocation: { type: 'approximate', country: 'US' }
         }
     });
-    assert.equal(out, 'ok');
+    assert.deepEqual(out, { output_text: 'ok' });
     if (!payload) throw new Error('Missing payload');
     const req = /** @type {any} */ (payload);
     assert.equal(req.input, 'test');
@@ -50,7 +50,7 @@ test('gpt-web-search.execute uses explicit user_location', async () => {
         args: { query: 'test', user_location: { type: 'approximate', country: 'FR' } },
         context: { openaiClient }
     });
-    assert.equal(out, 'ok');
+    assert.deepEqual(out, { output_text: 'ok' });
     if (!payload) throw new Error('Missing payload');
     const req = /** @type {any} */ (payload);
     assert.deepEqual(req.tools[0].user_location, { type: 'approximate', country: 'FR' });
