@@ -4,18 +4,12 @@ import {
     REALTIME_TEMPERATURE,
     GPT_5_2_MODEL,
     buildRealtimeModelConfig,
-    buildWebSearchResponseParams,
+    buildSearchModelConfig,
 } from './src/config/openai-models.js';
-
-const {
-    input: _gpt52Input,
-    instructions: _gpt52Instructions,
-    ...gpt52WebSearchConfig
-} = buildWebSearchResponseParams({
-    input: '',
-    instructions: '',
-    userLocation: DEFAULT_WEB_SEARCH_USER_LOCATION,
-});
+import {
+    REALTIME_WEB_SEARCH_INSTRUCTIONS,
+    SMS_REPLY_INSTRUCTIONS,
+} from './src/assistant/prompts.js';
 
 /** @type {import('promptfoo').Config} */
 const config = {
@@ -30,10 +24,23 @@ const config = {
             },
         },
         {
-            id: `openai:${GPT_5_2_MODEL}`,
-            label: GPT_5_2_MODEL,
+            id: `openai:${GPT_5_2_MODEL}-sms`,
+            label: `${GPT_5_2_MODEL}-sms`,
             config: {
-                ...gpt52WebSearchConfig,
+                ...buildSearchModelConfig({
+                    instructions: SMS_REPLY_INSTRUCTIONS,
+                    userLocation: DEFAULT_WEB_SEARCH_USER_LOCATION,
+                }),
+            },
+        },
+        {
+            id: `openai:${GPT_5_2_MODEL}-realtime-web-search`,
+            label: `${GPT_5_2_MODEL}-realtime-web-search`,
+            config: {
+                ...buildSearchModelConfig({
+                    instructions: REALTIME_WEB_SEARCH_INSTRUCTIONS,
+                    userLocation: DEFAULT_WEB_SEARCH_USER_LOCATION,
+                }),
             },
         },
     ],
