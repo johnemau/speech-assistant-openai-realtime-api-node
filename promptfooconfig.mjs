@@ -24,7 +24,7 @@ const config = {
             },
         },
         {
-            id: `openai:${GPT_5_2_MODEL}-sms`,
+            id: `openai:${GPT_5_2_MODEL}`,
             label: `${GPT_5_2_MODEL}-sms`,
             config: {
                 ...buildSearchModelConfig({
@@ -33,7 +33,7 @@ const config = {
             },
         },
         {
-            id: `openai:${GPT_5_2_MODEL}-realtime-web-search`,
+            id: `openai:${GPT_5_2_MODEL}`,
             label: `${GPT_5_2_MODEL}-realtime-web-search`,
             config: {
                 ...buildSearchModelConfig({
