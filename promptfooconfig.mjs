@@ -16,7 +16,7 @@ const config = {
     prompts: ['tests/promptfoo/promptfoo-default-prompt.txt'],
     providers: [
         {
-            id: `openai:${REALTIME_MODEL}`,
+            id: `openai:realtime:${REALTIME_MODEL}`,
             label: REALTIME_MODEL,
             config: {
                 ...buildRealtimeModelConfig(),
@@ -45,7 +45,7 @@ const config = {
     tests: [
         {
             path: 'tests/promptfoo/cases-voice.yaml',
-            providers: [`openai:${REALTIME_MODEL}`],
+            providers: [`openai:realtime:${REALTIME_MODEL}`],
         },
         {
             path: 'tests/promptfoo/cases-sms.yaml',
