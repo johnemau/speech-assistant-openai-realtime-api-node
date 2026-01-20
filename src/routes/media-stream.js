@@ -27,6 +27,18 @@ import {
 } from '../env.js';
 
 /**
+ * @param {import('ws').RawData} data
+ * @returns {string}
+ */
+function toUtf8String(data) {
+    if (typeof data === 'string') return data;
+    if (Buffer.isBuffer(data)) return data.toString('utf8');
+    if (data instanceof ArrayBuffer) return Buffer.from(data).toString('utf8');
+    if (Array.isArray(data)) return Buffer.concat(data).toString('utf8');
+    return String(data);
+}
+
+/**
  * @param {import('ws').WebSocket} connection - WebSocket connection for Twilio media stream.
  * @param {import('fastify').FastifyRequest} req - Incoming upgrade request.
  * @returns {void}
@@ -505,7 +517,7 @@ export function mediaStreamHandler(connection, req) {
             // Handle incoming messages from Twilio
         connection.on('message', (message) => {
                 try {
-                    const data = JSON.parse(message);
+                const data = JSON.parse(toUtf8String(message));
 
                     switch (data.event) {
                         case 'media': {

@@ -2,6 +2,22 @@ import WebSocket from 'ws';
 import JSON5 from 'json5';
 
 /**
+ * @typedef {Pick<WebSocket, 'readyState' | 'close'>} AssistantSessionWebSocket
+ */
+
+/**
+ * @param {import('ws').RawData} data
+ * @returns {string}
+ */
+function toUtf8String(data) {
+    if (typeof data === 'string') return data;
+    if (Buffer.isBuffer(data)) return data.toString('utf8');
+    if (data instanceof ArrayBuffer) return Buffer.from(data).toString('utf8');
+    if (Array.isArray(data)) return Buffer.concat(data).toString('utf8');
+    return String(data);
+}
+
+/**
  * Safely parse tool-call arguments into an object.
  *
  * @param {unknown} args - Raw tool arguments from the model.
@@ -58,7 +74,7 @@ export function safeParseToolArguments(args) {
  * @param {() => void} [root0.onClose] - WebSocket close handler.
  * @param {(error: Error) => void} [root0.onError] - WebSocket error handler.
  * @returns {{
- *   openAiWs: WebSocket,
+ *   openAiWs: AssistantSessionWebSocket,
  *   send: (obj: unknown) => void,
  *   requestResponse: () => void,
  *   updateSession: (partialSession: object) => void,
@@ -146,7 +162,7 @@ function realCreateAssistantSession({
 
     openAiWs.on('message', (data) => {
         try {
-            const response = JSON.parse(data);
+            const response = JSON.parse(toUtf8String(data));
             onEvent?.(response);
 
             if (response.type === 'response.output_audio.delta' && response.delta) {
