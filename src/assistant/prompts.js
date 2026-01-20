@@ -11,8 +11,8 @@ function readPrompt(relativePath) {
 export const REALTIME_INSTRUCTIONS = readPrompt(
     'prompts/realtime-instructions.md'
 );
-export const WEB_SEARCH_INSTRUCTIONS = readPrompt(
-    'prompts/web-search-instructions.md'
+export const REALTIME_WEB_SEARCH_INSTRUCTIONS = readPrompt(
+    'prompts/realtime-web-search-instructions.md'
 );
 export const SMS_REPLY_INSTRUCTIONS = readPrompt(
     'prompts/sms-reply-instructions.md'

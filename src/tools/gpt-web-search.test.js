@@ -5,7 +5,7 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
 const init = await import('../init.js');
 const { execute } = await import('./gpt-web-search.js');
-const { WEB_SEARCH_INSTRUCTIONS } = await import('../assistant/prompts.js');
+const { REALTIME_WEB_SEARCH_INSTRUCTIONS } = await import('../assistant/prompts.js');
 const { DEFAULT_SMS_USER_LOCATION } =
     await import('../config/openai-models.js');
 
@@ -47,7 +47,7 @@ test('gpt-web-search.execute calls OpenAI with default location', async () => {
         if (!payload) throw new Error('Missing payload');
         const req = /** @type {any} */ (payload);
         assert.equal(req.input, 'test');
-        assert.equal(req.instructions, WEB_SEARCH_INSTRUCTIONS);
+        assert.equal(req.instructions, REALTIME_WEB_SEARCH_INSTRUCTIONS);
         assert.deepEqual(req.tools[0].user_location, DEFAULT_SMS_USER_LOCATION);
     } finally {
         init.setInitClients({ openaiClient: prevClient });

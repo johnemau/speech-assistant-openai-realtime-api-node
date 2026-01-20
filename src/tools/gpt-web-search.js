@@ -1,5 +1,5 @@
 import { openaiClient } from '../init.js';
-import { WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
+import { REALTIME_WEB_SEARCH_INSTRUCTIONS } from '../assistant/prompts.js';
 import {
     buildWebSearchResponseParams,
     DEFAULT_SMS_USER_LOCATION,
@@ -55,7 +55,7 @@ export async function execute({ args }) {
     const effectiveLocation = args?.user_location ?? DEFAULT_SMS_USER_LOCATION;
     const reqPayload = buildWebSearchResponseParams({
         input: query,
-        instructions: WEB_SEARCH_INSTRUCTIONS,
+        instructions: REALTIME_WEB_SEARCH_INSTRUCTIONS,
         userLocation: effectiveLocation,
     });
     const result = await openaiClient.responses.create(reqPayload);
