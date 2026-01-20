@@ -51,6 +51,10 @@ const config = {
             path: 'tests/promptfoo/cases-sms.yaml',
             providers: [`openai:${GPT_5_2_MODEL}-sms`],
         },
+        {
+            path: 'tests/promptfoo/cases-realtime-web-search.yaml',
+            providers: [`openai:${GPT_5_2_MODEL}-realtime-web-search`],
+        },
     ],
 };
 

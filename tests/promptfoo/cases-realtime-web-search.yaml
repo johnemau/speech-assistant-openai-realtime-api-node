@@ -1,0 +1,41 @@
+- name: realtime-web-search-local-business
+  vars:
+      user_prompt: |
+          Tool Output (web_search):
+          Source: Yelp, January 2026.
+          - Storyville Coffee Company, 94 Pike St, Seattle, WA 98101. Phone: (206) 123-4567. Hours: 6am-6pm. Rating: 4.5/5.
+          - Victrola Coffee Roasters, 410 E Pike St, Seattle, WA 98122. Phone: (206) 555-1212. Hours: 7am-7pm. Rating: 4.6/5.
+
+          User:
+          Find coffee shops near Pike Place Market with hours and phone numbers.
+  assert:
+      - type: icontains
+        value: 'Source:'
+      - type: icontains
+        value: 'Storyville'
+      - type: icontains
+        value: 'Victrola'
+      - type: regex
+        value: '\\b\d{3}-\\d{3}\\d{4}|\\(\\d{3}\\)'
+      - type: not_regex
+        value: 'https?://'
+
+- name: realtime-web-search-news-summary
+  vars:
+      user_prompt: |
+          Tool Output (web_search):
+          Source: Reuters, January 2026.
+          - The Federal Reserve held rates steady, citing easing inflation but ongoing risks.
+          - Markets reacted modestly; the S&P 500 rose about 0.6% in early trading.
+
+          User:
+          Give me a quick phone-friendly summary of the latest Fed decision and market reaction.
+  assert:
+      - type: icontains
+        value: 'Source:'
+      - type: regex
+        value: 'Fed|Federal Reserve'
+      - type: regex
+        value: 'rates|held|steady'
+      - type: not_regex
+        value: 'https?://'
