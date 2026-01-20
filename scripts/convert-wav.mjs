@@ -87,34 +87,47 @@ export async function convertWithFfmpeg({
     }
     /** @type {any} */
     const video = await ffmpegProcess;
-    if (!video || typeof video.addCommand !== 'function') {
+    if (!video) {
         throw new Error(
             `ffmpeg did not return a valid processor for ${inputPath}. ` +
                 'Ensure ffmpeg is installed and the input file is a valid media file.'
         );
     }
-    return new Promise((resolvePromise, rejectPromise) => {
-        video
-            .setAudioChannels(1)
-            .setAudioFrequency(8000)
-            .addCommand('-c:a', codec)
-            .addCommand(
-                '-af',
-                'aresample=resampler=soxr:precision=28:dither_method=triangular'
-            )
-            .save(
-                outputPath,
-                /** @type {(error: Error | null, file: string) => void} */
-                (
-                    (error, file) => {
-                        if (error) {
-                            rejectPromise(error);
-                            return;
-                        }
-                        resolvePromise(file);
-                    }
-                )
+    const requiredMethods = [
+        'setAudioChannels',
+        'setAudioFrequency',
+        'addCommand',
+        'save',
+    ];
+    for (const method of requiredMethods) {
+        if (typeof video[method] !== 'function') {
+            throw new Error(
+                `ffmpeg processor is missing ${method}(). ` +
+                    'Please ensure the ffmpeg module is installed and compatible.'
             );
+        }
+    }
+    return new Promise((resolvePromise, rejectPromise) => {
+        video.setAudioChannels(1);
+        video.setAudioFrequency(8000);
+        video.addCommand('-c:a', codec);
+        video.addCommand(
+            '-af',
+            'aresample=resampler=soxr:precision=28:dither_method=triangular'
+        );
+        video.save(
+            outputPath,
+            /** @type {(error: Error | null, file: string) => void} */
+            (
+                (error, file) => {
+                    if (error) {
+                        rejectPromise(error);
+                        return;
+                    }
+                    resolvePromise(file);
+                }
+            )
+        );
     });
 }
 
