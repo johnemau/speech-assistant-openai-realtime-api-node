@@ -1,5 +1,17 @@
 import { getToolDefinitions } from './src/tools/index.js';
-import { DEFAULT_WEB_SEARCH_USER_LOCATION, REALTIME_MODEL, REALTIME_TEMPERATURE, GPT_5_2_MODEL } from './src/config/openai-models.js';
+import {
+    DEFAULT_WEB_SEARCH_USER_LOCATION,
+    REALTIME_MODEL,
+    REALTIME_TEMPERATURE,
+    GPT_5_2_MODEL,
+    buildWebSearchResponseParams,
+} from './src/config/openai-models.js';
+
+const { input: _gpt52Input, instructions: _gpt52Instructions, ...gpt52WebSearchConfig } = buildWebSearchResponseParams({
+    input: '',
+    instructions: '',
+    userLocation: DEFAULT_WEB_SEARCH_USER_LOCATION,
+});
 
 /** @type {import('promptfoo').Config} */
 const config = {
@@ -19,9 +31,7 @@ const config = {
             id: `openai:${GPT_5_2_MODEL}`,
             label: GPT_5_2_MODEL,
             config: {
-                reasoning: { effort: 'high' },
-                tools: [{ type: 'web_search', user_location: DEFAULT_WEB_SEARCH_USER_LOCATION }],
-                tool_choice: 'required',
+                ...gpt52WebSearchConfig,
             },
         },
     ],

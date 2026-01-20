@@ -42,11 +42,25 @@ export function buildWebSearchTool({ userLocation } = {}) {
  */
 export function buildWebSearchResponseParams({ input, instructions, userLocation }) {
     return {
+        ...buildSearchModelConfig({ instructions, userLocation }),
+        input,
+    };
+}
+
+/**
+ * Build shared model config for web search requests (excluding input).
+ *
+ * @param {object} options - Request inputs.
+ * @param {string} options.instructions - System/tool instructions.
+ * @param {WebSearchUserLocation} [options.userLocation] - Optional user location.
+ * @returns {Omit<ResponseCreateParamsNonStreaming, 'input'>} Response API config.
+ */
+export function buildSearchModelConfig({ instructions, userLocation }) {
+    return {
         model: GPT_5_2_MODEL,
         reasoning: { effort: 'high' },
         tools: [buildWebSearchTool({ userLocation })],
         instructions,
-        input,
         tool_choice: 'required',
         truncation: 'auto',
     };
