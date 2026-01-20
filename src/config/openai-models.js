@@ -41,9 +41,9 @@ export function buildRealtimeModelConfig() {
                 format: { type: 'audio/pcmu' },
                 turn_detection: {
                     type: 'semantic_vad',
-                    eagerness: 'low',
-                    interrupt_response: true,
-                    create_response: false,
+                    eagerness: 'high',
+                    interrupt_response: false,
+                    create_response: true,
                 },
                 noise_reduction: { type: 'near_field' },
             },

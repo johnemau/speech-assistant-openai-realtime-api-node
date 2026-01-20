@@ -64,6 +64,10 @@ export function mediaStreamHandler(connection, req) {
     // Track response lifecycle to avoid overlapping response.create calls
     let responseActive = false;
 
+    // One-time turn detection adjustment after initial greeting response
+    let initialGreetingRequested = false;
+    let initialTurnDetectionUpdated = false;
+
     // Post-hang-up behavior: suppress audio, continue tools, then SMS
     let postHangupSilentMode = false; // when true, do not send any audio back to Twilio
     let postHangupSmsSent = false; // ensure the completion SMS is sent at most once
@@ -276,6 +280,32 @@ export function mediaStreamHandler(connection, req) {
         }
         if (response.type === 'response.done') {
             responseActive = false;
+
+            if (initialGreetingRequested && !initialTurnDetectionUpdated) {
+                initialTurnDetectionUpdated = true;
+                try {
+                    assistantSession.updateSession({
+                        audio: {
+                            input: {
+                                turn_detection: {
+                                    type: 'semantic_vad',
+                                    eagerness: 'low',
+                                    interrupt_response: true,
+                                    create_response: false,
+                                },
+                            },
+                        },
+                    });
+                    console.log(
+                        'Turn detection updated after initial greeting response.'
+                    );
+                } catch (e) {
+                    console.warn(
+                        'Failed to update turn detection after initial greeting:',
+                        e?.message || e
+                    );
+                }
+            }
         }
 
         // When VAD ends a user turn, we must explicitly create a response (auto-create disabled)
@@ -519,6 +549,7 @@ export function mediaStreamHandler(connection, req) {
 
     // Send initial conversation item using the caller's name once available
     const sendInitialConversationItem = (callerNameValue = 'legend') => {
+        initialGreetingRequested = true;
         const initialConversationItem = {
             type: 'conversation.item.create',
             item: {
