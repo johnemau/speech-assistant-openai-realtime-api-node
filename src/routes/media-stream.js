@@ -669,8 +669,9 @@ export function mediaStreamHandler(connection, req) {
 
     // Handle incoming messages from Twilio
     connection.on('message', (message) => {
+        const rawMessage = toUtf8String(message);
         try {
-            const data = JSON.parse(toUtf8String(message));
+            const data = JSON.parse(rawMessage);
 
             switch (data.event) {
                 case 'media': {
@@ -785,6 +786,12 @@ export function mediaStreamHandler(connection, req) {
                     break;
             }
         } catch (error) {
+            if (IS_DEV) {
+                console.error(
+                    'Twilio message JSON parse failed (raw):',
+                    rawMessage
+                );
+            }
             console.error('Error parsing message:', error, 'Message:', message);
         }
     });

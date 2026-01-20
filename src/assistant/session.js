@@ -5,6 +5,7 @@ import {
     REALTIME_TEMPERATURE,
     buildRealtimeSessionConfig,
 } from '../config/openai-models.js';
+import { IS_DEV } from '../env.js';
 
 /**
  * @typedef {Pick<WebSocket, 'readyState' | 'close'>} AssistantSessionWebSocket
@@ -32,13 +33,17 @@ export function safeParseToolArguments(args) {
     if (args == null) return {};
     if (typeof args === 'object')
         return /** @type {Record<string, unknown>} */ (args);
-    let str = String(args);
+    const original = String(args);
+    let str = original;
     // Normalize and trim possible BOMs/whitespace
     str = str.replace(/^\uFEFF/, '').trim();
     try {
         // First attempt: strict JSON
         return JSON.parse(str);
     } catch {
+        if (IS_DEV) {
+            console.warn('Tool arguments JSON parse failed (raw):', original);
+        }
         // Second attempt: relaxed JSON (JSON5) for single quotes, unquoted keys, etc.
         try {
             return JSON5.parse(str);
@@ -147,8 +152,9 @@ function realCreateAssistantSession({
     });
 
     openAiWs.on('message', (data) => {
+        const rawMessage = toUtf8String(data);
         try {
-            const response = JSON.parse(toUtf8String(data));
+            const response = JSON.parse(rawMessage);
             onEvent?.(response);
 
             if (
@@ -194,6 +200,12 @@ function realCreateAssistantSession({
                 }
             }
         } catch (error) {
+            if (IS_DEV) {
+                console.error(
+                    'OpenAI message JSON parse failed (raw):',
+                    rawMessage
+                );
+            }
             console.error(
                 'Error processing OpenAI message:',
                 error,
