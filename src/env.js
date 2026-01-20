@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { normalizeUSNumberToE164 } from './utils/phone.js';
+import { isTruthy } from './utils/env.js';
 
 dotenv.config();
 
@@ -35,3 +36,6 @@ export const DEFAULT_SMS_USER_LOCATION = { type: 'approximate', country: 'US', r
 
 export const PRIMARY_USER_FIRST_NAME = process.env.PRIMARY_USER_FIRST_NAME;
 export const SECONDARY_USER_FIRST_NAME = process.env.SECONDARY_USER_FIRST_NAME;
+
+export const ALLOW_SEND_SMS = isTruthy(process.env.ALLOW_SEND_SMS);
+export const ALLOW_SEND_EMAIL = isTruthy(process.env.ALLOW_SEND_EMAIL);

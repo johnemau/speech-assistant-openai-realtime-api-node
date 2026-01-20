@@ -9,14 +9,14 @@ const { execute } = await import('./send-sms.js');
 test('send-sms.execute blocks when side effects disabled', async () => {
     await assert.rejects(() => execute({
         args: { body_text: 'Hi' },
-        context: { allowLiveSideEffects: false }
-    }), /Live side effects disabled/);
+        context: { allowSendSms: false }
+    }), /SMS sending disabled/);
 });
 
 test('send-sms.execute validates body', async () => {
     await assert.rejects(() => execute({
         args: { body_text: '   ' },
-        context: { allowLiveSideEffects: true }
+        context: { allowSendSms: true }
     }), /Missing body_text/);
 });
 
@@ -27,7 +27,7 @@ test('send-sms.execute errors without Twilio client', async () => {
         await assert.rejects(() => execute({
             args: { body_text: 'Hi' },
             context: {
-                allowLiveSideEffects: true,
+                allowSendSms: true,
                 currentCallerE164: '+12065550100'
             }
         }), /Twilio client unavailable/);
@@ -45,7 +45,7 @@ test('send-sms.execute errors without to/from numbers', async () => {
         await assert.rejects(() => execute({
             args: { body_text: 'Hi' },
             context: {
-                allowLiveSideEffects: true,
+                allowSendSms: true,
                 currentCallerE164: null,
                 currentTwilioNumberE164: null
             }
@@ -73,7 +73,7 @@ test('send-sms.execute sends trimmed text and returns metadata', async () => {
         const res = await execute({
             args: { body_text: ' Hello   world  ' },
             context: {
-                allowLiveSideEffects: true,
+                allowSendSms: true,
                 currentCallerE164: '+12065550100',
                 currentTwilioNumberE164: '+12065550111'
             }

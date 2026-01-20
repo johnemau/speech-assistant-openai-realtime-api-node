@@ -27,10 +27,10 @@ export const definition = {
  * @returns {Promise<{ messageId: string, accepted: Array<string>, rejected: Array<string> }>} Send result.
  */
 export async function execute({ args, context }) {
-    const { currentCallerE164, allowLiveSideEffects } = context;
+    const { currentCallerE164, allowSendEmail } = context;
 
-    if (!allowLiveSideEffects) {
-        throw new Error('Live side effects disabled. Set ALLOW_LIVE_SIDE_EFFECTS=true to enable send_email.');
+    if (!allowSendEmail) {
+        throw new Error('Email sending disabled. Set ALLOW_SEND_EMAIL=true to enable send_email.');
     }
     const subject = String(args?.subject || '').trim();
     const bodyHtml = String(args?.body_html || '').trim();

@@ -21,6 +21,8 @@ import {
     WAIT_MUSIC_THRESHOLD_MS,
     PRIMARY_USER_FIRST_NAME,
     SECONDARY_USER_FIRST_NAME,
+    ALLOW_SEND_SMS,
+    ALLOW_SEND_EMAIL,
 } from '../env.js';
 
 /**
@@ -322,7 +324,8 @@ export function mediaStreamHandler(connection, req) {
                     const toolContext = {
                         currentCallerE164,
                         currentTwilioNumberE164,
-                        allowLiveSideEffects: true,
+                        allowSendSms: ALLOW_SEND_SMS,
+                        allowSendEmail: ALLOW_SEND_EMAIL,
                         micState,
                         applyNoiseReduction: (mode) => {
                             const sessionUpdate = {

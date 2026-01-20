@@ -29,11 +29,11 @@ export async function execute({ args, context }) {
     const {
         currentCallerE164,
         currentTwilioNumberE164,
-        allowLiveSideEffects,
+        allowSendSms,
     } = context;
 
-    if (!allowLiveSideEffects) {
-        throw new Error('Live side effects disabled. Set ALLOW_LIVE_SIDE_EFFECTS=true to enable send_sms.');
+    if (!allowSendSms) {
+        throw new Error('SMS sending disabled. Set ALLOW_SEND_SMS=true to enable send_sms.');
     }
     let bodyText = String(args?.body_text || '').trim();
     if (!bodyText) throw new Error('Missing body_text.');

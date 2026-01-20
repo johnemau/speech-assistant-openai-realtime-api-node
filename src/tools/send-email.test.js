@@ -10,14 +10,14 @@ const { execute } = await import('./send-email.js');
 test('send-email.execute blocks when side effects disabled', async () => {
     await assert.rejects(() => execute({
         args: { subject: 'Hi', body_html: '<p>Test</p>' },
-        context: { allowLiveSideEffects: false }
-    }), /Live side effects disabled/);
+        context: { allowSendEmail: false }
+    }), /Email sending disabled/);
 });
 
 test('send-email.execute validates subject and body', async () => {
     await assert.rejects(() => execute({
         args: { subject: '', body_html: '<p>Test</p>' },
-        context: { allowLiveSideEffects: true }
+        context: { allowSendEmail: true }
     }), /Missing subject or body_html/);
 });
 
@@ -39,7 +39,7 @@ test('send-email.execute errors when email not configured', async () => {
         await assert.rejects(() => execute({
             args: { subject: 'Hi', body_html: '<p>Test</p>' },
             context: {
-                allowLiveSideEffects: true,
+                allowSendEmail: true,
                 currentCallerE164: '+12065550100'
             }
         }), /Email is not configured/);
@@ -81,7 +81,7 @@ test('send-email.execute sends email for primary caller', async () => {
         const res = await execute({
             args: { subject: 'Hello', body_html: '<p>Body</p>' },
             context: {
-                allowLiveSideEffects: true,
+                allowSendEmail: true,
                 currentCallerE164: '+12065550100'
             }
         });
