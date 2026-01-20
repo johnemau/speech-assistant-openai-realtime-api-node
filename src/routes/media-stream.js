@@ -98,6 +98,8 @@ export function mediaStreamHandler(connection, req) {
     // ffmpeg removed; we only support WAV files; no tone fallback
     /** @type {Buffer | null} */
     let waitingMusicUlawBuffer = null;
+    /** @type {string | null} */
+    let waitingMusicFilePath = null;
     let waitingMusicOffset = 0;
 
     function scheduleWaitingMusic(reason = 'unknown') {
@@ -111,8 +113,6 @@ export function mediaStreamHandler(connection, req) {
     function startWaitingMusic(reason = 'unknown') {
         if (!streamSid || isWaitingMusic) return;
         isWaitingMusic = true;
-        waitingMusicUlawBuffer = null;
-        waitingMusicOffset = 0;
         console.info(
             `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS} folder=${WAIT_MUSIC_FOLDER || ''}`,
             {
@@ -126,25 +126,30 @@ export function mediaStreamHandler(connection, req) {
         // If audio folder is provided and exists
         if (WAIT_MUSIC_FOLDER && fs.existsSync(WAIT_MUSIC_FOLDER)) {
             try {
-                const entries = fs.readdirSync(WAIT_MUSIC_FOLDER, {
-                    withFileTypes: true,
-                });
-                const files = entries
-                    .filter((entry) => entry.isFile())
-                    .map((entry) => path.join(WAIT_MUSIC_FOLDER, entry.name));
-                if (files.length === 0) {
-                    console.warn(
-                        'Waiting music folder has no files; disabling waiting music:',
-                        WAIT_MUSIC_FOLDER
-                    );
-                    return;
+                if (!waitingMusicUlawBuffer) {
+                    const entries = fs.readdirSync(WAIT_MUSIC_FOLDER, {
+                        withFileTypes: true,
+                    });
+                    const files = entries
+                        .filter((entry) => entry.isFile())
+                        .map((entry) =>
+                            path.join(WAIT_MUSIC_FOLDER, entry.name)
+                        );
+                    if (files.length === 0) {
+                        console.warn(
+                            'Waiting music folder has no files; disabling waiting music:',
+                            WAIT_MUSIC_FOLDER
+                        );
+                        return;
+                    }
+                    const selectedFile =
+                        files[Math.floor(Math.random() * files.length)];
+                    waitingMusicFilePath = selectedFile;
+                    console.info('Waiting music file selected:', selectedFile);
+                    // Read raw PCMU and pre-load into µ-law buffer
+                    waitingMusicUlawBuffer = readPcmuFile(selectedFile);
+                    waitingMusicOffset = 0;
                 }
-                const selectedFile =
-                    files[Math.floor(Math.random() * files.length)];
-                console.info('Waiting music file selected:', selectedFile);
-                // Read raw PCMU and pre-load into µ-law buffer
-                waitingMusicUlawBuffer = readPcmuFile(selectedFile);
-                waitingMusicOffset = 0;
                 if (!waitingMusicInterval) {
                     waitingMusicInterval = setInterval(() => {
                         if (
@@ -208,9 +213,19 @@ export function mediaStreamHandler(connection, req) {
                 { event: 'wait_music.stop', reason, streamSid }
             );
         }
-        // Remove unused buffer since ffmpeg is not used
-        waitingMusicUlawBuffer = null;
-        waitingMusicOffset = 0;
+        const shouldResetTrack =
+            reason === 'assistant_audio' ||
+            reason === 'caller_speech' ||
+            reason === 'new_stream' ||
+            reason === 'disconnect' ||
+            reason === 'openai_ws_close' ||
+            reason === 'openai_ws_error';
+        if (shouldResetTrack) {
+            // Reset track selection when caller/AI interrupts or stream ends
+            waitingMusicUlawBuffer = null;
+            waitingMusicFilePath = null;
+            waitingMusicOffset = 0;
+        }
         // Ensure any playback interval is cleared
         clearWaitingMusicInterval();
     }
@@ -238,7 +253,7 @@ export function mediaStreamHandler(connection, req) {
                 clearTimeout(pendingDisconnectTimeout);
                 pendingDisconnectTimeout = null;
             }
-            stopWaitingMusic();
+            stopWaitingMusic('disconnect');
             clearWaitingMusicInterval();
             try {
                 connection.close(1000, 'Call ended by assistant');
@@ -568,12 +583,12 @@ export function mediaStreamHandler(connection, req) {
         onOpen: () => console.log('Connected to the OpenAI Realtime API'),
         onClose: () => {
             console.log('Disconnected from the OpenAI Realtime API');
-            stopWaitingMusic();
+            stopWaitingMusic('openai_ws_close');
             clearWaitingMusicInterval();
         },
         onError: (error) => {
             console.error('Error in the OpenAI WebSocket:', error);
-            stopWaitingMusic();
+            stopWaitingMusic('openai_ws_error');
             clearWaitingMusicInterval();
         },
     });
@@ -812,7 +827,7 @@ export function mediaStreamHandler(connection, req) {
         responseActive = false;
         // Clear any queued messages on close
         assistantSession.clearPendingMessages?.();
-        stopWaitingMusic();
+        stopWaitingMusic('disconnect');
         clearWaitingMusicInterval();
         console.log(
             'Client disconnected; silent mode enabled. Continuing tools and will notify via SMS.'
