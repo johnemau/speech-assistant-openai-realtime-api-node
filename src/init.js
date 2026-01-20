@@ -1,6 +1,7 @@
 import { createOpenAIClient, createTwilioClient, createEmailTransport } from './utils/clients.js';
 import { setupConsoleRedaction } from './utils/redaction.js';
 import { IS_DEV } from './env.js';
+import { REALTIME_TEMPERATURE } from './config/openai-models.js';
 
 // Enable redaction of sensitive env vars from console and stdout
 setupConsoleRedaction(process.env);
@@ -47,7 +48,7 @@ if (!SENDER_FROM_EMAIL) {
 
 export const env = process.env;
 export const VOICE = 'cedar';
-export const TEMPERATURE = 0.8; // Controls the randomness of the AI's responses
+export const TEMPERATURE = REALTIME_TEMPERATURE; // Controls the randomness of the AI's responses
 export const SHOW_TIMING_MATH = IS_DEV;
 export const PORT = Number(process.env.PORT || 10000); // Render default PORT is 10000
 export { NGROK_DOMAIN };

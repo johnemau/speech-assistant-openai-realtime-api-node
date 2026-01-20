@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import JSON5 from 'json5';
+import { REALTIME_MODEL, REALTIME_TEMPERATURE } from '../config/openai-models.js';
 
 /**
  * @typedef {Pick<WebSocket, 'readyState' | 'close'>} AssistantSessionWebSocket
@@ -83,8 +84,8 @@ export function safeParseToolArguments(args) {
  */
 function realCreateAssistantSession({
     apiKey,
-    model = 'gpt-realtime',
-    temperature = 0.8,
+    model = REALTIME_MODEL,
+    temperature = REALTIME_TEMPERATURE,
     instructions,
     tools = [],
     outputModalities = ['audio'],

@@ -9,6 +9,7 @@ import {
     TEMPERATURE as temperature,
     SHOW_TIMING_MATH as showTimingMath,
 } from '../init.js';
+import { REALTIME_MODEL } from '../config/openai-models.js';
 import { readPcmuFile } from '../utils/audio.js';
 import { getToolDefinitions, executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
@@ -388,7 +389,7 @@ export function mediaStreamHandler(connection, req) {
 
         const assistantSession = createAssistantSession({
                 apiKey: env?.OPENAI_API_KEY,
-                model: 'gpt-realtime',
+                model: REALTIME_MODEL,
                 temperature,
                 instructions: SYSTEM_MESSAGE,
                 tools: getToolDefinitions(),

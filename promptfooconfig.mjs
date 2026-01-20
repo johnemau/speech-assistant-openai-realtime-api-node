@@ -1,4 +1,8 @@
 import { getToolDefinitions } from './src/tools/index.js';
+import {
+    createPromptfooGpt52Provider,
+    createPromptfooRealtimeProvider,
+} from './src/config/openai-models.js';
 
 export default {
     prompts: [
@@ -13,34 +17,8 @@ User:
         },
     ],
     providers: [
-        {
-            id: 'openai:gpt-realtime',
-            label: 'gpt-realtime',
-            config: {
-                temperature: 0.8,
-                tools: getToolDefinitions(),
-            },
-        },
-        {
-            id: 'openai:gpt-5.2',
-            label: 'gpt-5.2',
-            config: {
-                reasoning: {
-                    effort: 'high',
-                },
-                tools: [
-                    {
-                        type: 'web_search',
-                        user_location: {
-                            type: 'approximate',
-                            country: 'US',
-                            region: 'Washington',
-                        },
-                    },
-                ],
-                tool_choice: 'required',
-            },
-        },
+        createPromptfooRealtimeProvider({ tools: getToolDefinitions() }),
+        createPromptfooGpt52Provider(),
     ],
     tests: 'tests/promptfoo/cases.yaml',
 };

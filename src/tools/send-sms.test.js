@@ -9,34 +9,34 @@ const { execute } = await import('./send-sms.js');
 
 test('send-sms.execute blocks when side effects disabled', async () => {
     const prevAllow = envModule.ALLOW_SEND_SMS;
-    envModule.ALLOW_SEND_SMS = false;
+    envModule.setAllowSendSms(false);
     try {
         await assert.rejects(() => execute({
             args: { body_text: 'Hi' },
             context: {}
         }), /SMS sending disabled/);
     } finally {
-        envModule.ALLOW_SEND_SMS = prevAllow;
+        envModule.setAllowSendSms(prevAllow);
     }
 });
 
 test('send-sms.execute validates body', async () => {
     const prevAllow = envModule.ALLOW_SEND_SMS;
-    envModule.ALLOW_SEND_SMS = true;
+    envModule.setAllowSendSms(true);
     try {
         await assert.rejects(() => execute({
             args: { body_text: '   ' },
             context: {}
         }), /Missing body_text/);
     } finally {
-        envModule.ALLOW_SEND_SMS = prevAllow;
+        envModule.setAllowSendSms(prevAllow);
     }
 });
 
 test('send-sms.execute errors without Twilio client', async () => {
     const prevClients = { twilioClient: init.twilioClient };
     const prevAllow = envModule.ALLOW_SEND_SMS;
-    envModule.ALLOW_SEND_SMS = true;
+    envModule.setAllowSendSms(true);
     init.setInitClients({ twilioClient: null });
     try {
         await assert.rejects(() => execute({
@@ -47,7 +47,7 @@ test('send-sms.execute errors without Twilio client', async () => {
         }), /Twilio client unavailable/);
     } finally {
         init.setInitClients(prevClients);
-        envModule.ALLOW_SEND_SMS = prevAllow;
+        envModule.setAllowSendSms(prevAllow);
     }
 });
 
@@ -55,7 +55,7 @@ test('send-sms.execute errors without to/from numbers', async () => {
     const prevClients = { twilioClient: init.twilioClient };
     const prevEnv = { TWILIO_SMS_FROM_NUMBER: process.env.TWILIO_SMS_FROM_NUMBER };
     const prevAllow = envModule.ALLOW_SEND_SMS;
-    envModule.ALLOW_SEND_SMS = true;
+    envModule.setAllowSendSms(true);
     if (process.env.TWILIO_SMS_FROM_NUMBER != null) delete process.env.TWILIO_SMS_FROM_NUMBER;
     init.setInitClients({ twilioClient: { messages: { create: async () => ({}) } } });
     try {
@@ -70,7 +70,7 @@ test('send-sms.execute errors without to/from numbers', async () => {
         if (prevEnv.TWILIO_SMS_FROM_NUMBER == null) delete process.env.TWILIO_SMS_FROM_NUMBER;
         else process.env.TWILIO_SMS_FROM_NUMBER = prevEnv.TWILIO_SMS_FROM_NUMBER;
         init.setInitClients(prevClients);
-        envModule.ALLOW_SEND_SMS = prevAllow;
+        envModule.setAllowSendSms(prevAllow);
     }
 });
 
@@ -86,7 +86,7 @@ test('send-sms.execute sends trimmed text and returns metadata', async () => {
     };
     const prevClients = { twilioClient: init.twilioClient };
     const prevAllow = envModule.ALLOW_SEND_SMS;
-    envModule.ALLOW_SEND_SMS = true;
+    envModule.setAllowSendSms(true);
     init.setInitClients({ twilioClient });
     try {
         const res = await execute({
@@ -105,6 +105,6 @@ test('send-sms.execute sends trimmed text and returns metadata', async () => {
         assert.equal(res.length, 'Hello world'.length);
     } finally {
         init.setInitClients(prevClients);
-        envModule.ALLOW_SEND_SMS = prevAllow;
+        envModule.setAllowSendSms(prevAllow);
     }
 });

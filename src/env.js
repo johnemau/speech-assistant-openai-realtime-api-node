@@ -31,11 +31,24 @@ export const WAIT_MUSIC_THRESHOLD_MS = Number(process.env.WAIT_MUSIC_THRESHOLD_M
 export const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
 export const WAIT_MUSIC_FILE = process.env.WAIT_MUSIC_FILE || null; // e.g., assets/wait-music.pcmu
 
-/** @type {import('openai/resources/responses/responses').WebSearchTool.UserLocation} */
-export const DEFAULT_SMS_USER_LOCATION = { type: 'approximate', country: 'US', region: 'Washington' };
-
 export const PRIMARY_USER_FIRST_NAME = process.env.PRIMARY_USER_FIRST_NAME;
 export const SECONDARY_USER_FIRST_NAME = process.env.SECONDARY_USER_FIRST_NAME;
 
 export let ALLOW_SEND_SMS = isTruthy(process.env.ALLOW_SEND_SMS);
 export let ALLOW_SEND_EMAIL = isTruthy(process.env.ALLOW_SEND_EMAIL);
+
+/**
+ * Test/helper override for SMS sending flag.
+ * @param {boolean} value - Whether to allow SMS sending.
+ */
+export function setAllowSendSms(value) {
+    ALLOW_SEND_SMS = Boolean(value);
+}
+
+/**
+ * Test/helper override for email sending flag.
+ * @param {boolean} value - Whether to allow email sending.
+ */
+export function setAllowSendEmail(value) {
+    ALLOW_SEND_EMAIL = Boolean(value);
+}

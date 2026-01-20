@@ -8,11 +8,11 @@ import {
     mergeAndSortMessages,
 } from '../utils/sms.js';
 import {
-    DEFAULT_SMS_USER_LOCATION,
     IS_DEV,
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
 } from '../env.js';
+import { buildWebSearchResponseParams, GPT_5_2_MODEL } from '../config/openai-models.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
@@ -138,26 +138,17 @@ export async function smsHandler(request, reply) {
             }
 
             // Prepare OpenAI request with web_search tool
-            /** @type {import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming} */
-            const reqPayload = {
-                model: 'gpt-5.2',
-                reasoning: { effort: 'high' },
-                tools: [{
-                    type: 'web_search',
-                    user_location: DEFAULT_SMS_USER_LOCATION,
-                }],
-                instructions: SMS_REPLY_INSTRUCTIONS,
+            const reqPayload = buildWebSearchResponseParams({
                 input: smsPrompt,
-                tool_choice: 'required',
-                truncation: 'auto',
-            };
+                instructions: SMS_REPLY_INSTRUCTIONS,
+            });
 
             // Concise log of AI request (dev-friendly, but short)
             console.info(
-                `sms ai request: model=gpt-5.2 tools=web_search promptLen=${String(smsPrompt || '').length}`,
+                `sms ai request: model=${GPT_5_2_MODEL} tools=web_search promptLen=${String(smsPrompt || '').length}`,
                 {
                     event: 'sms.ai.request',
-                    model: 'gpt-5.2',
+                    model: GPT_5_2_MODEL,
                     tools: ['web_search'],
                     prompt_len: String(smsPrompt || '').length
                 }
