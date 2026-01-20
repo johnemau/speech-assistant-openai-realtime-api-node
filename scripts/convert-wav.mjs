@@ -17,6 +17,10 @@ export function printUsage(logger = console) {
     logger.log('Options: --format=mulaw|pcm (default: mulaw)');
 }
 
+/**
+ * @param {string[]} rawArgs
+ * @returns {{ format: string, args: string[] }}
+ */
 export function parseArgs(rawArgs) {
     const parsed = minimist(rawArgs, {
         string: ['format'],
@@ -28,14 +32,31 @@ export function parseArgs(rawArgs) {
     return { format, args };
 }
 
+/**
+ * @param {string} format
+ * @returns {boolean}
+ */
 export function isSupportedFormat(format) {
     return format === 'mulaw' || format === 'pcm';
 }
 
+/**
+ * @param {string} format
+ * @returns {string}
+ */
 export function getCodecForFormat(format) {
     return format === 'mulaw' ? 'pcm_mulaw' : 'pcm_s16le';
 }
 
+/**
+ * @param {{
+ *  ffmpegModule: new (input: string) => Promise<any> | any,
+ *  inputPath: string,
+ *  outputPath: string,
+ *  codec: string,
+ * }} params
+ * @returns {Promise<unknown>}
+ */
 export async function convertWithFfmpeg({
     ffmpegModule,
     inputPath,
@@ -54,13 +75,17 @@ export async function convertWithFfmpeg({
                 '-af',
                 'aresample=resampler=soxr:precision=28:dither_method=triangular'
             )
-            .save(outputPath, (error, file) => {
+            .save(
+                outputPath,
+                /** @type {(error: Error | null, file: string) => void} */
+                ((error, file) => {
                 if (error) {
                     rejectPromise(error);
                     return;
                 }
                 resolvePromise(file);
-            });
+                })
+            );
     });
 }
 
