@@ -6,6 +6,7 @@ import {
     PRIMARY_USER_FIRST_NAME,
     SECONDARY_CALLERS_SET,
     SECONDARY_USER_FIRST_NAME,
+    IS_DEV,
 } from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
@@ -32,6 +33,9 @@ export async function incomingCallHandler(request, reply) {
                 'Sorry, this line is restricted. Goodbye.'
             );
             denyTwiml.hangup();
+            if (IS_DEV) {
+                console.log('denyTwiml:', denyTwiml.toString());
+            }
             return reply.type('text/xml').send(denyTwiml.toString());
         }
 
@@ -59,5 +63,8 @@ export async function incomingCallHandler(request, reply) {
         stream.parameter({ name: 'caller_number', value: fromE164 });
         stream.parameter({ name: 'twilio_number', value: toE164 || '' });
 
+    if (IS_DEV) {
+        console.log('twimlResponse:', twimlResponse.toString());
+    }
     reply.type('text/xml').send(twimlResponse.toString());
 }
