@@ -11,8 +11,8 @@
     "test:unit": "node --test src/**/*.test.js scripts/**/*.test.js",
     "test:voice": "node --test tests/voice-tests.js",
     "convert:wav": "node scripts/convert-wav.mjs",
-    "pf:eval": "promptfoo eval -c promptfooconfig.yaml",
-    "pf:view": "promptfoo view -c promptfooconfig.yaml"
+    "pf:eval": "promptfoo eval",
+    "pf:view": "promptfoo view"
   },
   "keywords": [],
   "author": "",

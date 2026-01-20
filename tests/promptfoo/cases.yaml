@@ -1,6 +1,6 @@
 - name: voice-coffee-near-pike-place
   vars:
-    system_prompt: file://tests/promptfoo/prompts/voice.txt
+    system_prompt: file://src/assistant/prompts/system.md
     user_prompt: |
       Tool Output (web_search):
       Source: Yelp, January 2026.
@@ -17,7 +17,7 @@
 
 - name: sms-coffee-top-two
   vars:
-    system_prompt: file://tests/promptfoo/prompts/sms.txt
+    system_prompt: file://src/assistant/prompts/sms-reply-instructions.md
     user_prompt: |
       Recent SMS thread (last 12 hours):
       User [2026-01-19T20:00:00Z]: Find coffee shops near Pike Place Market.

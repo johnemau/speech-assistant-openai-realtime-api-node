@@ -1,14 +1,17 @@
 prompts:
-  - - role: system
-      content: "{{system_prompt}}"
-    - role: user
-      content: "{{user_prompt}}"
+  - label: default
+    raw: |
+      System:
+      {{system_prompt}}
+
+      User:
+      {{user_prompt}}
 
 providers:
   - id: openai:gpt-realtime
     label: gpt-realtime
     config:
-      temperature: 0.4
+      temperature: 0.6
   - id: openai:gpt-5.2
     label: gpt-5.2
     config:
