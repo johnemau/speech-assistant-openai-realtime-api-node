@@ -229,11 +229,16 @@ test('run logs when no wav files are present', async () => {
         exit,
         existsSyncFn: () => true,
         statSyncFn: /** @type {any} */ (() => ({ isDirectory: () => true })),
-        readdirSyncFn: /** @type {any} */ (() => [
-            /** @type {import('node:fs').Dirent} */ (
-                /** @type {any} */ ({ isFile: () => true, name: 'tone.mulaw.wav' })
-            ),
-        ]),
+        readdirSyncFn: /** @type {any} */ (
+            () => [
+                /** @type {import('node:fs').Dirent} */ (
+                    /** @type {any} */ ({
+                        isFile: () => true,
+                        name: 'tone.mulaw.wav',
+                    })
+                ),
+            ]
+        ),
         resolvePath: (value) =>
             value.startsWith('/') ? value : `/abs/${value}`,
     });
