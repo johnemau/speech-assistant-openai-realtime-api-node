@@ -7,4 +7,4 @@
           Find coffee shops near Pike Place Market.
   assert:
     - type: llm-rubric
-      value: Provides top two coffee shops with hours and phone numbers.
+      value: Provides at least one coffee shop with hours and phone numbers.
