@@ -6,8 +6,8 @@ import JSON5 from 'json5';
  */
 
 /**
- * @param {import('ws').RawData} data
- * @returns {string}
+ * @param {import('ws').RawData} data - Raw WebSocket payload.
+ * @returns {string} UTF-8 decoded message string.
  */
 function toUtf8String(data) {
     if (typeof data === 'string') return data;
