@@ -69,6 +69,17 @@ export async function smsHandler(request, reply) {
             return reply.type('text/xml').send(twiml.toString());
         }
 
+        if (!fromE164) {
+            twiml.message('Sorry, this SMS line is restricted.');
+            return reply.type('text/xml').send(twiml.toString());
+        }
+
+        const toNumber = toE164 || toRaw || '';
+        if (!toNumber) {
+            twiml.message('SMS auto-reply is not configured.');
+            return reply.type('text/xml').send(twiml.toString());
+        }
+
         if (!twilioClient) {
             // Concise log for missing Twilio client
             console.warn(
@@ -100,7 +111,7 @@ export async function smsHandler(request, reply) {
                     params: {
                         dateSentAfter: startWindow.toISOString(),
                         from: fromE164,
-                        to: toE164,
+                        to: toNumber,
                         limit: 20,
                     },
                 }
@@ -108,7 +119,7 @@ export async function smsHandler(request, reply) {
             inbound = await twilioClient.messages.list({
                 dateSentAfter: startWindow,
                 from: fromE164,
-                to: toE164,
+                to: toNumber,
                 limit: 20,
             });
         } catch (e) {
@@ -124,7 +135,7 @@ export async function smsHandler(request, reply) {
                     direction: 'outbound',
                     params: {
                         dateSentAfter: startWindow.toISOString(),
-                        from: toE164,
+                        from: toNumber,
                         to: fromE164,
                         limit: 20,
                     },
@@ -132,7 +143,7 @@ export async function smsHandler(request, reply) {
             );
             outbound = await twilioClient.messages.list({
                 dateSentAfter: startWindow,
-                from: toE164,
+                from: toNumber,
                 to: fromE164,
                 limit: 20,
             });
@@ -212,7 +223,7 @@ export async function smsHandler(request, reply) {
                 {
                     event: 'twilio.messages.create.request',
                     params: {
-                        from: toE164,
+                        from: toNumber,
                         to: fromE164,
                         length: String(aiText || '').length,
                         preview: String(aiText || '').slice(0, 160),
@@ -220,7 +231,7 @@ export async function smsHandler(request, reply) {
                 }
             );
             const sendRes = await twilioClient.messages.create({
-                from: toE164,
+                from: toNumber,
                 to: fromE164,
                 body: aiText,
             });
@@ -231,7 +242,7 @@ export async function smsHandler(request, reply) {
                 {
                     event: 'sms.reply.sent',
                     sid: sendRes?.sid,
-                    from: toE164,
+                    from: toNumber,
                     to: fromE164,
                     length: String(aiText || '').length,
                     preview,

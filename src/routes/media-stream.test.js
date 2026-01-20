@@ -26,11 +26,12 @@ async function loadMediaStreamHandler({
     secondaryCallers = new Set(),
     waitMusicThreshold = 10000,
 } = {}) {
+    /** @type {{ sendCalls: any[], requestResponseCalls: number, onEvent?: (event: any) => void, onAssistantOutput?: (event: any) => void }} */
     const sessionState = {
         sendCalls: [],
         requestResponseCalls: 0,
-        onEvent: null,
-        onAssistantOutput: null,
+        onEvent: undefined,
+        onAssistantOutput: undefined,
     };
 
     const env = await import('../env.js');
@@ -155,7 +156,7 @@ test('media-stream forwards assistant audio deltas to Twilio', async () => {
             })
         );
 
-        sessionState.onAssistantOutput({
+        sessionState.onAssistantOutput?.({
             type: 'audio',
             delta: 'AUDIODELTA',
             itemId: 'item1',

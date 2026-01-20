@@ -66,8 +66,8 @@ export function createTwilioClient({
  * Create an SMTP transport for sending email.
  *
  * @param {object} root0 - Transport options.
- * @param {string} root0.user - SMTP username.
- * @param {string} root0.pass - SMTP password.
+ * @param {string} [root0.user] - SMTP username.
+ * @param {string} [root0.pass] - SMTP password.
  * @param {string} [root0.serviceId] - Nodemailer service id.
  * @returns {import('nodemailer').Transporter | null} Email transport or null.
  */

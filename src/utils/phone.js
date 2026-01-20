@@ -2,7 +2,7 @@
 /**
  * Normalize a phone number to E.164 with US default country code.
  *
- * @param {string} input - Raw phone number input.
+ * @param {string | null | undefined} input - Raw phone number input.
  * @returns {string | null} Normalized E.164 number or null.
  */
 export function normalizeUSNumberToE164(input) {

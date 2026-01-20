@@ -23,11 +23,19 @@ function createReply() {
     };
 }
 
+/**
+ * @param {object} [options]
+ * @param {Set<string>} [options.allowlist]
+ * @param {Set<string>} [options.secondaryAllowlist]
+ * @param {any} [options.twilioClient]
+ * @param {any} [options.openaiClient]
+ * @param {boolean} [options.isDev]
+ */
 async function loadSmsHandler({
     allowlist = new Set(['+12065550100']),
     secondaryAllowlist = new Set(['+14255550101']),
-    twilioClient = null,
-    openaiClient = null,
+    twilioClient = undefined,
+    openaiClient = undefined,
     isDev = false,
 } = {}) {
     const env = await import('../env.js');
@@ -119,6 +127,7 @@ test('sms replies with unconfigured message when Twilio client missing', async (
 });
 
 test('sms sends AI reply via Twilio', async () => {
+    /** @type {{ list: any[], create: any[], ai?: any }} */
     const calls = { list: [], create: [] };
     const twilioClient = {
         messages: {
@@ -174,6 +183,7 @@ test('sms sends AI reply via Twilio', async () => {
 });
 
 test('sms uses AI error fallback text when OpenAI fails', async () => {
+    /** @type {{ create: any[] }} */
     const calls = { create: [] };
     const twilioClient = {
         messages: {

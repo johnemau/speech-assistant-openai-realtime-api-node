@@ -21,31 +21,32 @@ function getMockCallArgs(call) {
 
 function createFfmpegMock(onSave) {
     return function FfmpegMock(inputPath) {
+        /** @type {any} */
         const video = {
             inputPath,
             codec: null,
             channels: null,
             frequency: null,
             command: null,
-            setAudioCodec: mock.fn(function setAudioCodec(codec) {
-                this.codec = codec;
-                return this;
+            setAudioCodec: mock.fn((codec) => {
+                video.codec = codec;
+                return video;
             }),
-            setAudioChannels: mock.fn(function setAudioChannels(channels) {
-                this.channels = channels;
-                return this;
+            setAudioChannels: mock.fn((channels) => {
+                video.channels = channels;
+                return video;
             }),
-            setAudioFrequency: mock.fn(function setAudioFrequency(freq) {
-                this.frequency = freq;
-                return this;
+            setAudioFrequency: mock.fn((freq) => {
+                video.frequency = freq;
+                return video;
             }),
-            addCommand: mock.fn(function addCommand(command, value) {
-                this.command = { command, value };
-                return this;
+            addCommand: mock.fn((command, value) => {
+                video.command = { command, value };
+                return video;
             }),
-            save: mock.fn(function save(outputPath, callback) {
+            save: mock.fn((outputPath, callback) => {
                 if (onSave) {
-                    onSave({ outputPath, video: this });
+                    onSave({ outputPath, video });
                 }
                 callback(null, outputPath);
             }),
@@ -107,7 +108,7 @@ test('run exits when input file missing', async () => {
 });
 
 test('convertWithFfmpeg configures audio conversion', async () => {
-    /** @type {null | { outputPath: string, video: any }} */
+    /** @type {any} */
     let saved = null;
     const ffmpegMock = createFfmpegMock((payload) => {
         saved = payload;
@@ -120,7 +121,9 @@ test('convertWithFfmpeg configures audio conversion', async () => {
         codec: 'pcm_mulaw',
     });
 
-    assert.ok(saved);
+    if (!saved) {
+        throw new Error('Expected ffmpeg save callback to run.');
+    }
     assert.equal(saved.outputPath, '/abs/output.pcmu');
     assert.equal(saved.video.codec, 'pcm_mulaw');
     assert.equal(saved.video.channels, 1);

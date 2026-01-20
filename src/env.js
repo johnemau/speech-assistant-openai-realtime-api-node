@@ -7,19 +7,25 @@ dotenv.config();
 export const IS_DEV =
     String(process.env.NODE_ENV || '').toLowerCase() === 'development';
 
-export const PRIMARY_CALLERS_SET = new Set(
+const primaryCallerNumbers = /** @type {string[]} */ (
     (process.env.PRIMARY_USER_PHONE_NUMBERS || '')
         .split(',')
         .map((s) => normalizeUSNumberToE164(s))
         .filter(Boolean)
+        .map((value) => String(value))
 );
 
-export const SECONDARY_CALLERS_SET = new Set(
+export const PRIMARY_CALLERS_SET = new Set(primaryCallerNumbers);
+
+const secondaryCallerNumbers = /** @type {string[]} */ (
     (process.env.SECONDARY_USER_PHONE_NUMBERS || '')
         .split(',')
         .map((s) => normalizeUSNumberToE164(s))
         .filter(Boolean)
+        .map((value) => String(value))
 );
+
+export const SECONDARY_CALLERS_SET = new Set(secondaryCallerNumbers);
 
 // If both lists are empty, no callers are allowed.
 export const ALL_ALLOWED_CALLERS_SET = new Set([
