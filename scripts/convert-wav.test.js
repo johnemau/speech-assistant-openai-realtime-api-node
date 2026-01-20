@@ -24,6 +24,17 @@ function getMockCallArgs(call) {
 }
 
 /**
+ * @param {any} call - Mock call object or arguments array.
+ * @param {string} label - Label for assertion messaging.
+ * @returns {any[]} Call arguments array.
+ */
+function getMockCallArgsOrThrow(call, label) {
+    const args = getMockCallArgs(call);
+    assert.ok(args, `${label} missing mock call arguments`);
+    return args;
+}
+
+/**
  * @param {(payload: { outputPath: string, video: any }) => void} [onSave] - Callback when save is invoked.
  * @returns {any} Ffmpeg mock class.
  */
@@ -94,7 +105,7 @@ test('run exits with usage when missing args', async () => {
     await run({ argv: ['node', 'convert-wav.mjs'], logger, exit });
 
     assert.equal(exit.mock.calls.length, 1);
-    assert.equal(getMockCallArgs(exit.mock.calls[0])[0], 1);
+    assert.equal(getMockCallArgsOrThrow(exit.mock.calls[0], 'exit')[0], 1);
     assert.equal(logger.log.mock.calls.length, 2);
 });
 
@@ -111,9 +122,9 @@ test('run exits when input file missing', async () => {
     });
 
     assert.equal(exit.mock.calls.length, 1);
-    assert.equal(getMockCallArgs(exit.mock.calls[0])[0], 1);
+    assert.equal(getMockCallArgsOrThrow(exit.mock.calls[0], 'exit')[0], 1);
     assert.equal(
-        getMockCallArgs(logger.error.mock.calls[0])[0],
+        getMockCallArgsOrThrow(logger.error.mock.calls[0], 'logger.error')[0],
         'Input file not found: /abs/missing.wav'
     );
 });
@@ -172,7 +183,7 @@ test('run logs success on conversion', async () => {
 
     assert.equal(exit.mock.calls.length, 0);
     assert.equal(
-        getMockCallArgs(logger.log.mock.calls[0])[0],
+        getMockCallArgsOrThrow(logger.log.mock.calls[0], 'logger.log')[0],
         'Converted /abs/input.wav -> /abs/out.pcmu (mulaw)'
     );
 });
