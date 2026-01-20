@@ -18,9 +18,7 @@
         "pf:eval:realtime-web-search": "promptfoo eval -c tests/promptfoo/promptfooconfig.realtime-web-search.mjs",
         "pf:eval:sms": "promptfoo eval -c tests/promptfoo/promptfooconfig.sms.mjs",
         "pf:eval": "npm run pf:eval:realtime && npm run pf:eval:realtime-web-search && npm run pf:eval:sms",
-        "pf:view:realtime": "promptfoo view -c tests/promptfoo/promptfooconfig.realtime.mjs",
-        "pf:view:realtime-web-search": "promptfoo view -c tests/promptfoo/promptfooconfig.realtime-web-search.mjs",
-        "pf:view:sms": "promptfoo view -c tests/promptfoo/promptfooconfig.sms.mjs"
+        "pf:view": "promptfoo view"
     },
     "keywords": [],
     "author": "",
