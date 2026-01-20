@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import JSON5 from 'json5';
 import { REALTIME_MODEL, REALTIME_TEMPERATURE } from '../config/openai-models.js';
 import { REALTIME_INSTRUCTIONS } from './prompts.js';
+import { getToolDefinitions } from '../tools/index.js';
 
 /**
  * @typedef {Pick<WebSocket, 'readyState' | 'close'>} AssistantSessionWebSocket
@@ -60,13 +61,6 @@ export function safeParseToolArguments(args) {
  * Create a realtime assistant session and wire event handlers.
  *
  * @param {object} root0 - Session options.
- * @param {string} root0.apiKey - OpenAI API key.
- * @param {string} [root0.model] - Realtime model name.
- * @param {number} [root0.temperature] - Sampling temperature.
- * @param {Array<object>} [root0.tools] - Tool definitions.
- * @param {string[]} [root0.outputModalities] - Output modalities.
- * @param {object} [root0.audioConfig] - Audio session config.
- * @param {string} [root0.toolChoice] - Tool choice policy.
  * @param {(event: object) => void} [root0.onEvent] - Raw event handler.
  * @param {(event: object) => void} [root0.onAssistantOutput] - Assistant output handler.
  * @param {(call: object, response: object) => void} [root0.onToolCall] - Tool call handler.
@@ -83,13 +77,6 @@ export function safeParseToolArguments(args) {
  * }} Session helpers.
  */
 function realCreateAssistantSession({
-    apiKey,
-    model = REALTIME_MODEL,
-    temperature = REALTIME_TEMPERATURE,
-    tools = [],
-    outputModalities = ['audio'],
-    audioConfig,
-    toolChoice = 'auto',
     onEvent,
     onAssistantOutput,
     onToolCall,
@@ -97,7 +84,22 @@ function realCreateAssistantSession({
     onClose,
     onError,
 }) {
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('Missing OpenAI API key.');
+
+    const model = REALTIME_MODEL;
+    const temperature = REALTIME_TEMPERATURE;
+    const tools = getToolDefinitions();
+    const outputModalities = ['audio'];
+    const toolChoice = 'auto';
+    const audioConfig = {
+        input: {
+            format: { type: 'audio/pcmu' },
+            turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
+            noise_reduction: { type: 'near_field' }
+        },
+        output: { format: { type: 'audio/pcmu' }, voice: 'cedar' },
+    };
 
     const openAiWs = new WebSocket(`wss://api.openai.com/v1/realtime?model=${model}&temperature=${temperature}`, {
         headers: {

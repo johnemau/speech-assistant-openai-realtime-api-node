@@ -4,13 +4,10 @@ import { createAssistantSession, safeParseToolArguments } from '../assistant/ses
 import {
     twilioClient,
     env,
-    VOICE as voice,
-    TEMPERATURE as temperature,
     SHOW_TIMING_MATH as showTimingMath,
 } from '../init.js';
-import { REALTIME_MODEL } from '../config/openai-models.js';
 import { readPcmuFile } from '../utils/audio.js';
-import { getToolDefinitions, executeToolCall } from '../tools/index.js';
+import { executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import {
@@ -387,19 +384,6 @@ export function mediaStreamHandler(connection, req) {
             };
 
         const assistantSession = createAssistantSession({
-            apiKey: env?.OPENAI_API_KEY,
-            model: REALTIME_MODEL,
-            temperature,
-            tools: getToolDefinitions(),
-            outputModalities: ['audio'],
-            audioConfig: {
-                input: {
-                    format: { type: 'audio/pcmu' },
-                    turn_detection: { type: 'semantic_vad', eagerness: 'low', interrupt_response: true, create_response: false },
-                    noise_reduction: { type: micState.currentNoiseReductionType }
-                },
-                output: { format: { type: 'audio/pcmu' }, voice },
-            },
             onEvent: handleOpenAiEvent,
             onAssistantOutput: handleAssistantOutput,
             onToolCall: handleToolCall,
