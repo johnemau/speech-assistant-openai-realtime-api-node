@@ -9,7 +9,7 @@ const config = {
     prompts: ['promptfoo-default-prompt.txt'],
     providers: [
         {
-            id: `openai:${GPT_5_2_MODEL}`,
+            id: `openai:responses:${GPT_5_2_MODEL}`,
             label: `${GPT_5_2_MODEL}-realtime-web-search`,
             config: {
                 ...buildSearchModelConfig({

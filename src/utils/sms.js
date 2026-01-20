@@ -83,5 +83,5 @@ export function buildSmsThreadText({ messages = [], fromE164, limit = 10 }) {
  */
 export function buildSmsPrompt({ threadText, latestMessage }) {
     const latest = String(latestMessage || '').trim();
-    return `Recent SMS thread (last 12 hours):\n${threadText || ''}\n\nLatest user message:\n${latest}\n\nNote: The thread messages above may be unrelated to the latest user message; focus on the latest user message.\n\nTask: Compose a concise, friendly SMS reply. Keep it under 320 characters. Use live web facts via the web_search tool if topical. Output only the reply text.`;
+    return `Recent SMS thread (last 12 hours):\n${threadText || ''}\n\nLatest user message:\n${latest}`;
 }
