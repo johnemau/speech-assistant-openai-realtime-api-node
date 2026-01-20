@@ -2,6 +2,7 @@ import {
     REALTIME_MODEL,
     REALTIME_TEMPERATURE,
     GPT_5_2_MODEL,
+    DEFAULT_WEB_SEARCH_USER_LOCATION,
     buildRealtimeModelConfig,
     buildSearchModelConfig,
 } from './src/config/openai-models.js';

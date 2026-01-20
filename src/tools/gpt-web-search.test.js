@@ -5,7 +5,8 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
 const init = await import('../init.js');
 const { execute } = await import('./gpt-web-search.js');
-const { REALTIME_WEB_SEARCH_INSTRUCTIONS } = await import('../assistant/prompts.js');
+const { REALTIME_WEB_SEARCH_INSTRUCTIONS } =
+    await import('../assistant/prompts.js');
 const { DEFAULT_SMS_USER_LOCATION } =
     await import('../config/openai-models.js');
 
