@@ -470,7 +470,7 @@ export function mediaStreamHandler(connection, req) {
                 }
             };
 
-            // Send mark messages to Media Streams so we know if and when AI response playback is finished
+        // Send mark messages to Media Streams so we know if and when AI response playback is finished
         const sendMark = (connection, streamSid) => {
                 if (streamSid) {
                     const markEvent = {
@@ -483,7 +483,7 @@ export function mediaStreamHandler(connection, req) {
                 }
             };
 
-            // Handle incoming messages from Twilio
+        // Handle incoming messages from Twilio
         connection.on('message', (message) => {
                 try {
                 const data = JSON.parse(toUtf8String(message));
