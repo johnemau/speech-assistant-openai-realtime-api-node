@@ -27,7 +27,10 @@ function createConnection() {
         close() {
             handlers.close?.();
         },
-        /** @param {string} event @param {Function} handler */
+        /**
+         * @param {string} event @param {Function} handler
+         * @param handler
+         */
         on(event, handler) {
             handlers[event] = handler;
         },
