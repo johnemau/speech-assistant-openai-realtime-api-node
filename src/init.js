@@ -37,7 +37,6 @@ export let twilioClient = createTwilioClient({
     authToken: TWILIO_AUTH_TOKEN,
     apiKey: TWILIO_API_KEY,
     apiSecret: TWILIO_API_SECRET,
-    logger: console,
 });
 
 // Initialize Nodemailer transporter (single sender) using service ID
@@ -45,7 +44,6 @@ export let senderTransport = createEmailTransport({
     user: SMTP_USER,
     pass: SMTP_PASS,
     serviceId: SMTP_NODEMAILER_SERVICE_ID,
-    logger: console,
 });
 if (!SENDER_FROM_EMAIL) {
     console.warn(

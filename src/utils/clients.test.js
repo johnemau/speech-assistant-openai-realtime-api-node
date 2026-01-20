@@ -26,7 +26,6 @@ test('clients.createTwilioClient returns null when missing credentials', () => {
         authToken: '',
         apiKey: '',
         apiSecret: '',
-        logger: console,
     });
     assert.equal(client, null);
 });
@@ -35,7 +34,6 @@ test('clients.createTwilioClient returns a client with auth token', () => {
     const client = createTwilioClient({
         accountSid: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
         authToken: 'token',
-        logger: console,
     });
     assert.ok(client);
 });
@@ -45,7 +43,6 @@ test('clients.createEmailTransport returns null without credentials', () => {
         user: '',
         pass: '',
         serviceId: '',
-        logger: console,
     });
     assert.equal(transport, null);
 });

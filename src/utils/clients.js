@@ -24,7 +24,6 @@ export function createOpenAIClient({ apiKey }) {
  * @param {string} [root0.authToken] - Twilio Auth Token.
  * @param {string} [root0.apiKey] - Twilio API Key SID.
  * @param {string} [root0.apiSecret] - Twilio API Key Secret.
- * @param {{ log: Function, warn: Function }} [root0.logger] - Logger.
  * @returns {import('twilio').Twilio | null} Twilio client or null when unavailable.
  */
 export function createTwilioClient({
@@ -32,29 +31,30 @@ export function createTwilioClient({
     authToken,
     apiKey,
     apiSecret,
-    logger = console,
 }) {
     try {
         // Prefer API Key + Secret with Account SID (recommended by Twilio for production)
         if (apiKey && apiSecret && accountSid) {
             const client = twilio(apiKey, apiSecret, { accountSid });
-            logger.log('Twilio REST client initialized with API Key + Secret.');
+            console.log(
+                'Twilio REST client initialized with API Key + Secret.'
+            );
             return client;
         }
         if (accountSid && authToken) {
             // Fallback: Account SID + Auth Token (best for local testing)
             const client = twilio(accountSid, authToken);
-            logger.log(
+            console.log(
                 'Twilio REST client initialized with Account SID + Auth Token.'
             );
             return client;
         }
-        logger.warn(
+        console.warn(
             'Twilio credentials missing; provide API Key + Secret + Account SID or Account SID + Auth Token. SMS auto-reply will be unavailable.'
         );
         return null;
     } catch (e) {
-        logger.warn(
+        console.warn(
             'Failed to initialize Twilio REST client:',
             e?.message || e
         );
@@ -69,17 +69,11 @@ export function createTwilioClient({
  * @param {string} root0.user - SMTP username.
  * @param {string} root0.pass - SMTP password.
  * @param {string} [root0.serviceId] - Nodemailer service id.
- * @param {{ log: Function, warn: Function }} [root0.logger] - Logger.
  * @returns {import('nodemailer').Transporter | null} Email transport or null.
  */
-export function createEmailTransport({
-    user,
-    pass,
-    serviceId,
-    logger = console,
-}) {
+export function createEmailTransport({ user, pass, serviceId }) {
     if (!user || !pass) {
-        logger.warn(
+        console.warn(
             'SMTP credentials missing; send_email will be unavailable.'
         );
         return null;
@@ -91,10 +85,10 @@ export function createEmailTransport({
     transport
         .verify()
         .then(() => {
-            logger.log('Email transporter verified.');
+            console.log('Email transporter verified.');
         })
         .catch((err) => {
-            logger.warn(
+            console.warn(
                 'Email transporter verification failed:',
                 err?.message || err
             );
