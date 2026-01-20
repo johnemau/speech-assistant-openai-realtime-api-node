@@ -1,5 +1,4 @@
 import {
-    DEFAULT_WEB_SEARCH_USER_LOCATION,
     REALTIME_MODEL,
     REALTIME_TEMPERATURE,
     GPT_5_2_MODEL,
@@ -29,7 +28,6 @@ const config = {
             config: {
                 ...buildSearchModelConfig({
                     instructions: SMS_REPLY_INSTRUCTIONS,
-                    userLocation: DEFAULT_WEB_SEARCH_USER_LOCATION,
                 }),
             },
         },
@@ -39,7 +37,6 @@ const config = {
             config: {
                 ...buildSearchModelConfig({
                     instructions: REALTIME_WEB_SEARCH_INSTRUCTIONS,
-                    userLocation: DEFAULT_WEB_SEARCH_USER_LOCATION,
                 }),
             },
         },

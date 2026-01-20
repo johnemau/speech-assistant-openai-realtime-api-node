@@ -39,7 +39,10 @@ export function buildWebSearchTool({ userLocation } = {}) {
  * @param {WebSearchUserLocation} [options.userLocation] - Optional user location.
  * @returns {Omit<ResponseCreateParamsNonStreaming, 'input'>} Response API config.
  */
-export function buildSearchModelConfig({ instructions, userLocation }) {
+export function buildSearchModelConfig({
+    instructions,
+    userLocation = DEFAULT_WEB_SEARCH_USER_LOCATION,
+}) {
     return {
         model: GPT_5_2_MODEL,
         reasoning: { effort: 'high' },
