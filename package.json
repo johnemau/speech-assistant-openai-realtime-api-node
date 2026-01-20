@@ -14,8 +14,13 @@
         "test": "npm run lint && npm run typecheck && npm run test:unit",
         "test:unit": "node --test src/**/*.test.js scripts/**/*.test.js",
         "convert:wav": "node scripts/convert-wav.mjs",
-        "pf:eval": "promptfoo eval -c promptfooconfig.mjs",
-        "pf:view": "promptfoo view -c promptfooconfig.mjs"
+        "pf:realtime:eval": "promptfoo eval -c tests/promptfoo/promptfooconfig.realtime.mjs",
+        "pf:realtime-web-search:eval": "promptfoo eval -c tests/promptfoo/promptfooconfig.realtime-web-search.mjs",
+        "pf:sms:eval": "promptfoo eval -c tests/promptfoo/promptfooconfig.sms.mjs",
+        "pf:eval": "npm run pf:realtime:eval && npm run pf:realtime-web-search:eval && npm run pf:sms:eval",
+        "pf:realtime:view": "promptfoo view -c tests/promptfoo/promptfooconfig.realtime.mjs",
+        "pf:realtime-web-search:view": "promptfoo view -c tests/promptfoo/promptfooconfig.realtime-web-search.mjs",
+        "pf:sms:view": "promptfoo view -c tests/promptfoo/promptfooconfig.sms.mjs"
     },
     "keywords": [],
     "author": "",
