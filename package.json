@@ -10,7 +10,10 @@
     "test": "npm run lint && npm run typecheck && npm run test:unit",
     "test:unit": "node --test src/**/*.test.js scripts/**/*.test.js",
     "test:voice": "node --test tests/voice-tests.js",
-    "convert:wav": "node scripts/convert-wav.mjs"
+    "convert:wav": "node scripts/convert-wav.mjs",
+    "pf:eval": "promptfoo eval -c promptfooconfig.yaml",
+    "pf:view": "promptfoo view -c promptfooconfig.yaml",
+    "pf:validate": "promptfoo validate promptfooconfig.yaml"
   },
   "keywords": [],
   "author": "",
@@ -42,6 +45,7 @@
     "eslint-plugin-jsdoc": "^50.8.0",
     "ffmpeg": "^0.0.4",
     "globals": "^15.9.0",
+    "promptfoo": "^0.90.1",
     "typescript": "^5.7.3"
   }
 }

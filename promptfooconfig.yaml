@@ -1,0 +1,14 @@
+prompts:
+  - "{{prompt}}"
+
+providers:
+  - id: openai:gpt-realtime
+    label: gpt-realtime
+    config:
+      temperature: 0.4
+  - id: openai:gpt-5.2
+    label: gpt-5.2
+    config:
+      temperature: 0.2
+
+tests: tests/promptfoo/cases.yaml

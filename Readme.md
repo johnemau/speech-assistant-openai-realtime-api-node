@@ -107,6 +107,29 @@ Notes:
 - When `ALLOW_LIVE_SIDE_EFFECTS` is false or missing, `send_sms` and `send_email` tool calls fail the test with a clear error.
 - The judge uses OpenAI responses to score each turn; costs apply.
 
+### Promptfoo evals (prompt-only)
+
+Run prompt evaluations without touching runtime code. The root config lives in [promptfooconfig.yaml](promptfooconfig.yaml) and the suite assets live in [tests/promptfoo](tests/promptfoo).
+
+Commands:
+
+```
+npm run pf:validate
+npm run pf:eval
+npm run pf:view
+```
+
+Required environment variables:
+
+```
+OPENAI_API_KEY=sk-...
+```
+
+Notes:
+- Uses the same .env conventions as the rest of the repo. Add any extra secrets to `REDACT_ENV_KEYS` to keep logs scrubbed.
+- The prompt suite mirrors the voice and SMS policies used in [src/assistant/prompts.js](src/assistant/prompts.js).
+- If you do not have access to `gpt-realtime`, remove that provider from [promptfooconfig.yaml](promptfooconfig.yaml).
+
 ### Redact sensitive env values in logs
 
 Prevent accidental printing of secret environment variables to `console.log` and `process.stdout`.
