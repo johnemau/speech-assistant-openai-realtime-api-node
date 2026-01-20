@@ -346,7 +346,7 @@ export function mediaStreamHandler(connection, req) {
                             input: {
                                 turn_detection: {
                                     type: 'semantic_vad',
-                                    eagerness: 'medium',
+                                    eagerness: 'low',
                                     interrupt_response: true,
                                     create_response: false,
                                 },
