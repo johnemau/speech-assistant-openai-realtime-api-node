@@ -13,11 +13,11 @@ import { pathToFileURL } from 'node:url';
  * @param {Logger} logger
  */
 export function printUsage(logger = console) {
-    logger.log('Usage: npm run convert:wav -- [--dir=music]');
+    logger.log('Usage: npm run convert:wav -- [--dir=/music]');
     logger.log(
         'Converts all .wav files (excluding .mulaw.wav) in the directory to .mulaw.wav.'
     );
-    logger.log('Default directory: music');
+    logger.log('Default directory: /music');
     logger.log('Options: --format=mulaw (default: mulaw)');
 }
 
@@ -28,7 +28,7 @@ export function printUsage(logger = console) {
 export function parseArgs(rawArgs) {
     const parsed = minimist(rawArgs, {
         string: ['format', 'dir'],
-        default: { format: 'mulaw', dir: 'music' },
+        default: { format: 'mulaw', dir: '/music' },
         alias: { format: 'f', dir: 'd' },
     });
     const { format, dir } = parsed;
