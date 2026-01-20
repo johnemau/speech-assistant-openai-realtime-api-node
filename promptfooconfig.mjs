@@ -1,5 +1,7 @@
 import { getToolDefinitions } from './src/tools/index.js';
 import { DEFAULT_WEB_SEARCH_USER_LOCATION, REALTIME_MODEL, REALTIME_TEMPERATURE, GPT_5_2_MODEL } from './src/config/openai-models.js';
+
+/** @type {import('promptfoo').Config} */
 const config = {
     prompts: [
         'promptfoo-default.txt',
