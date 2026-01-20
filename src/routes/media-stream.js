@@ -206,6 +206,23 @@ export function mediaStreamHandler(connection, req) {
             clearTimeout(waitingMusicStartTimeout);
             waitingMusicStartTimeout = null;
         }
+        if (IS_DEV) {
+            try {
+                const folderEntries = WAIT_MUSIC_FOLDER
+                    ? fs.readdirSync(WAIT_MUSIC_FOLDER, { withFileTypes: true })
+                    : [];
+                const entryNames = folderEntries.map((entry) => entry.name);
+                console.log('wait music folder check:', {
+                    folder: WAIT_MUSIC_FOLDER || null,
+                    entries: entryNames,
+                });
+            } catch (e) {
+                console.warn('wait music folder check failed:', {
+                    folder: WAIT_MUSIC_FOLDER || null,
+                    error: e?.message || e,
+                });
+            }
+        }
         if (isWaitingMusic) {
             isWaitingMusic = false;
             console.info(
