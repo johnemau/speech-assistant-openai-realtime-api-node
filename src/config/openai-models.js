@@ -22,13 +22,12 @@ export const DEFAULT_WEB_SEARCH_USER_LOCATION = {
 export const DEFAULT_SMS_USER_LOCATION = DEFAULT_WEB_SEARCH_USER_LOCATION;
 
 /**
- * Build shared Realtime session config (excluding instructions/tools).
+ * Build shared Realtime model config (excluding instructions/tools).
  *
- * @returns {import('openai/resources/realtime/realtime').SessionUpdateEvent['session']} Realtime session config.
+ * @returns {Omit<import('openai/resources/realtime/realtime').RealtimeSessionCreateRequest, 'type'>} Realtime model config.
  */
-export function buildRealtimeSessionConfig() {
+export function buildRealtimeModelConfig() {
     return {
-        type: 'realtime',
         model: REALTIME_MODEL,
         output_modalities: ['audio'],
         tool_choice: 'auto',
@@ -45,6 +44,30 @@ export function buildRealtimeSessionConfig() {
             },
             output: { format: { type: 'audio/pcmu' }, voice: 'cedar' },
         },
+    };
+}
+
+/**
+ * Build shared Realtime model config (excluding instructions/tools).
+ *
+ * @returns {import('openai/resources/realtime/realtime').RealtimeSessionCreateRequest} Realtime model sesssion.
+ */
+export function buildRealtimeSession() {
+    return {
+        type: 'realtime',
+        ...buildRealtimeModelConfig(),
+    };
+}
+
+/**
+ * Build shared Realtime session config (excluding instructions/tools).
+ *
+ * @returns {import('openai/resources/realtime/realtime').SessionUpdateEvent['session']} Realtime session config.
+ */
+export function buildRealtimeSessionConfig() {
+    return {
+        type: 'realtime',
+        ...buildRealtimeModelConfig(),
     };
 }
 

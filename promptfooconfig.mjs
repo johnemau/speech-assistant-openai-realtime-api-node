@@ -4,6 +4,7 @@ import {
     REALTIME_MODEL,
     REALTIME_TEMPERATURE,
     GPT_5_2_MODEL,
+    buildRealtimeModelConfig,
     buildWebSearchResponseParams,
 } from './src/config/openai-models.js';
 
@@ -25,6 +26,7 @@ const config = {
             id: `openai:${REALTIME_MODEL}`,
             label: REALTIME_MODEL,
             config: {
+                ...buildRealtimeModelConfig(),
                 temperature: REALTIME_TEMPERATURE,
                 tools: getToolDefinitions(),
             },
