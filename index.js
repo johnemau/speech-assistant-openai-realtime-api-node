@@ -41,7 +41,7 @@ fastify.post('/sms', smsHandler);
 
 fastify.all('/incoming-call', incomingCallHandler);
 
-// WebSocket route for media-stream
+// For some reason registering is required for websocket route.
 fastify.register(async (fastify) => {
     fastify.get('/media-stream', { websocket: true }, mediaStreamHandler);
 });
