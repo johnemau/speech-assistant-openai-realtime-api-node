@@ -222,7 +222,7 @@ export function mediaStreamHandler(connection, req) {
                 responseActive = false;
             }
 
-                // When VAD ends a user turn, we must explicitly create a response (auto-create disabled)
+            // When VAD ends a user turn, we must explicitly create a response (auto-create disabled)
             if (response.type === 'input_audio_buffer.speech_stopped') {
                 stopWaitingMusic('speech_stopped');
                 if (!responseActive) {
