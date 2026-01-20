@@ -1,14 +1,6 @@
-export const definition = {
-    type: 'function',
-    name: 'end_call',
-    parameters: {
-        type: 'object',
-        properties: {
-            reason: { type: 'string', description: 'Optional short phrase indicating why the caller wants to end.' }
-        }
-    },
-    description: 'Politely end the call. The server will close the Twilio media-stream and OpenAI WebSocket after the assistant says a brief goodbye.'
-};
+import { endCallDefinition } from './definitions.js';
+
+export const definition = endCallDefinition;
 
 /**
  * Execute end_call tool.

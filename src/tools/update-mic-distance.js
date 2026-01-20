@@ -1,23 +1,6 @@
-export const definition = {
-    type: 'function',
-    name: 'update_mic_distance',
-    parameters: {
-        type: 'object',
-        properties: {
-            mode: {
-                type: 'string',
-                enum: ['near_field', 'far_field'],
-                description: 'Set input noise_reduction.type to near_field or far_field.'
-            },
-            reason: {
-                type: 'string',
-                description: 'Optional short note about why (e.g., caller phrase).'
-            }
-        },
-        required: ['mode']
-    },
-    description: 'Toggle mic processing based on caller phrases: speakerphone-on → far_field; off-speakerphone → near_field. Debounce and avoid redundant toggles; one tool call per turn.'
-};
+import { updateMicDistanceDefinition } from './definitions.js';
+
+export const definition = updateMicDistanceDefinition;
 
 /**
  * Execute update_mic_distance tool.

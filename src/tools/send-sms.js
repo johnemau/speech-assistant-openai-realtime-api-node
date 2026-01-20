@@ -1,22 +1,9 @@
 import { twilioClient, env } from '../init.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { ALLOW_SEND_SMS } from '../env.js';
+import { sendSmsDefinition } from './definitions.js';
 
-export const definition = {
-    type: 'function',
-    name: 'send_sms',
-    parameters: {
-        type: 'object',
-        properties: {
-            body_text: {
-                type: 'string',
-                description: 'Concise, actionable SMS body with no filler or preamble. Include only the information requested and any sources as short labels with URLs (e.g., official page, business website, article). Keep wording tight and direct. You may add a single, short follow-up question (e.g., "Would you like me to get the hours of operation?") when helpful.'
-            }
-        },
-        required: ['body_text']
-    },
-    description: 'Send an SMS that contains only the requested information and brief source labels with URLs. Keep it actionable and free of preamble or unnecessary words. A single short follow-up question is allowed when helpful (e.g., asking if you should get hours or more details).'
-};
+export const definition = sendSmsDefinition;
 
 /**
  * Execute send_sms tool.

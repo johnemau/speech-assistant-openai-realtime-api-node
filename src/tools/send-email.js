@@ -1,22 +1,8 @@
 import { senderTransport, env } from '../init.js';
 import { PRIMARY_CALLERS_SET, SECONDARY_CALLERS_SET, ALLOW_SEND_EMAIL } from '../env.js';
+import { sendEmailDefinition } from './definitions.js';
 
-export const definition = {
-    type: 'function',
-    name: 'send_email',
-    parameters: {
-        type: 'object',
-        properties: {
-            subject: { type: 'string', description: 'Short subject summarizing the latest context.' },
-            body_html: {
-                type: 'string',
-                description: 'HTML-only email body composed from the latest conversation context. Non-conversational (no follow-up questions); formatted for readability and concise. Include specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be provided as clickable URLs. Always conclude with a small, cute ASCII art at the end of the message.',
-            }
-        },
-        required: ['subject', 'body_html']
-    },
-    description: 'Send an HTML email with the latest context. The assistant must supply a subject and a non-conversational, concise HTML body that includes specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be clickable URLs. Always conclude the email with a small, cute ASCII art at the end.'
-};
+export const definition = sendEmailDefinition;
 
 /**
  * Execute send_email tool.

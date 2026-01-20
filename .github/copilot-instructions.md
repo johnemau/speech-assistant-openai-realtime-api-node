@@ -18,7 +18,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
   - `npm run test:unit` for unit tests only.
   - `npm run lint` and `npm run typecheck` for targeted checks.
 - Prompt evaluations:
-  - `npm run pf:eval` and `npm run pf:view` (config in [promptfooconfig.yaml](../promptfooconfig.yaml)).
+  - `npm run pf:eval` and `npm run pf:view` (config in [promptfooconfig.mjs](../promptfooconfig.mjs)).
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
 - Public ingress: bind ngrok domain via `NGROK_DOMAIN` and optional `NGROK_AUTHTOKEN`. The server also runs locally without ngrok.
 - Minimal health checks: GET `/` and `/healthz`.

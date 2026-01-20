@@ -1,0 +1,46 @@
+import { getToolDefinitions } from './src/tools/definitions.js';
+
+export default {
+    prompts: [
+        {
+            label: 'default',
+            raw: `System:
+{{system_prompt}}
+
+User:
+{{user_prompt}}
+`,
+        },
+    ],
+    providers: [
+        {
+            id: 'openai:gpt-realtime',
+            label: 'gpt-realtime',
+            config: {
+                temperature: 0.8,
+                tools: getToolDefinitions(),
+            },
+        },
+        {
+            id: 'openai:gpt-5.2',
+            label: 'gpt-5.2',
+            config: {
+                reasoning: {
+                    effort: 'high',
+                },
+                tools: [
+                    {
+                        type: 'web_search',
+                        user_location: {
+                            type: 'approximate',
+                            country: 'US',
+                            region: 'Washington',
+                        },
+                    },
+                ],
+                tool_choice: 'required',
+            },
+        },
+    ],
+    tests: 'tests/promptfoo/cases.yaml',
+};

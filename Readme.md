@@ -66,7 +66,7 @@ Notes:
 
 ### Promptfoo evals (prompt-only)
 
-Run prompt evaluations without touching runtime code. The root config lives in [promptfooconfig.yaml](promptfooconfig.yaml) and the suite assets live in [tests/promptfoo](tests/promptfoo).
+Run prompt evaluations without touching runtime code. The root config lives in [promptfooconfig.mjs](promptfooconfig.mjs) and the suite assets live in [tests/promptfoo](tests/promptfoo).
 
 Commands:
 
