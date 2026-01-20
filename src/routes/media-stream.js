@@ -94,12 +94,18 @@ export function mediaStreamHandler(connection, req) {
     /** @type {NodeJS.Timeout | null} */
     let waitingMusicStartTimeout = null;
     let toolCallInProgress = false;
-    // Track the very first assistant audio to stop initial wait music
-    let firstAssistantAudioReceived = false;
     // ffmpeg removed; we only support WAV files; no tone fallback
     /** @type {Buffer | null} */
     let waitingMusicUlawBuffer = null;
     let waitingMusicOffset = 0;
+
+    function scheduleWaitingMusic(reason = 'unknown') {
+        if (isWaitingMusic || waitingMusicStartTimeout) return;
+        waitingMusicStartTimeout = setTimeout(() => {
+            waitingMusicStartTimeout = null;
+            if (!isWaitingMusic) startWaitingMusic(reason);
+        }, WAIT_MUSIC_THRESHOLD_MS);
+    }
 
     function startWaitingMusic(reason = 'unknown') {
         if (!streamSid || isWaitingMusic) return;
@@ -243,8 +249,6 @@ export function mediaStreamHandler(connection, req) {
     const handleAssistantOutput = (payload) => {
         if (payload?.type !== 'audio' || !payload?.delta) return;
         // Suppress audio entirely after hang-up; otherwise, stream to Twilio
-        // Mark that the assistant has started speaking (first-time check)
-        if (!firstAssistantAudioReceived) firstAssistantAudioReceived = true;
         // Assistant audio is streaming; stop any waiting music immediately
         stopWaitingMusic('assistant_audio');
         if (!postHangupSilentMode) {
@@ -320,6 +324,7 @@ export function mediaStreamHandler(connection, req) {
             if (!responseActive) {
                 try {
                     assistantSession.requestResponse();
+                    scheduleWaitingMusic('speech_stopped');
                 } catch (e) {
                     console.warn(
                         'Failed to request response.create after speech_stopped:',
@@ -434,15 +439,8 @@ export function mediaStreamHandler(connection, req) {
         }
 
         const toolName = functionCall.name;
-        const shouldUseWaitingMusic = toolName !== 'end_call';
-        if (shouldUseWaitingMusic) {
-            toolCallInProgress = true;
-            waitingMusicStartTimeout = setTimeout(() => {
-                if (toolCallInProgress) startWaitingMusic();
-            }, WAIT_MUSIC_THRESHOLD_MS);
-        } else {
-            toolCallInProgress = true;
-        }
+        toolCallInProgress = true;
+        scheduleWaitingMusic(`tool_call:${toolName}`);
 
         try {
             const toolInput = safeParseToolArguments(functionCall.arguments);
@@ -529,7 +527,10 @@ export function mediaStreamHandler(connection, req) {
             stopWaitingMusic('tool_call_complete');
             clearWaitingMusicInterval();
             assistantSession.send(toolResultEvent);
-            if (!responseActive) assistantSession.requestResponse();
+            if (!responseActive) {
+                assistantSession.requestResponse();
+                scheduleWaitingMusic('tool_call_response');
+            }
             if (IS_DEV)
                 console.log('LLM tool output sent to OpenAI', toolResultEvent);
         } catch (error) {
@@ -582,6 +583,7 @@ export function mediaStreamHandler(connection, req) {
             );
         assistantSession.send(initialConversationItem);
         assistantSession.requestResponse();
+        scheduleWaitingMusic('initial_greeting');
     };
 
     // Helper to log and send tool errors to OpenAI WS
@@ -605,7 +607,10 @@ export function mediaStreamHandler(connection, req) {
                 },
             };
             assistantSession.send(toolErrorEvent);
-            if (!responseActive) assistantSession.requestResponse();
+            if (!responseActive) {
+                assistantSession.requestResponse();
+                scheduleWaitingMusic('tool_call_error');
+            }
         } catch (e) {
             console.error('Failed to send tool error to OpenAI WS:', e);
         }
@@ -744,16 +749,6 @@ export function mediaStreamHandler(connection, req) {
                         }
                         // Send the personalized greeting to OpenAI to speak first
                         sendInitialConversationItem(callerName);
-                        // Start initial wait music until first assistant audio, after a small threshold
-                        if (!firstAssistantAudioReceived) {
-                            waitingMusicStartTimeout = setTimeout(() => {
-                                if (
-                                    !firstAssistantAudioReceived &&
-                                    !isWaitingMusic
-                                )
-                                    startWaitingMusic('initial');
-                            }, WAIT_MUSIC_THRESHOLD_MS);
-                        }
                     } catch {
                         // noop: missing custom parameters should not break stream handling
                         void 0;
@@ -762,16 +757,6 @@ export function mediaStreamHandler(connection, req) {
                         );
                         // Fallback greeting without a personalized name
                         sendInitialConversationItem('legend');
-                        // Start initial wait music even without a personalized name
-                        if (!firstAssistantAudioReceived) {
-                            waitingMusicStartTimeout = setTimeout(() => {
-                                if (
-                                    !firstAssistantAudioReceived &&
-                                    !isWaitingMusic
-                                )
-                                    startWaitingMusic('initial');
-                            }, WAIT_MUSIC_THRESHOLD_MS);
-                        }
                     }
                     break;
                 case 'mark':
