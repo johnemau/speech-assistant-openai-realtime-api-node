@@ -1,13 +1,14 @@
 - name: voice-coffee-near-pike-place
   vars:
-    prompt: file://tests/promptfoo/prompts/voice.txt
-    user_turn: "Find coffee shops near Pike Place Market."
-    web_search_results: |
+    system_prompt: file://tests/promptfoo/prompts/voice.txt
+    user_prompt: |
+      Tool Output (web_search):
       Source: Yelp, January 2026.
       - Storyville Coffee Company, 94 Pike St, Seattle, WA 98101. Phone: (206) 123-4567. Hours: 6am-6pm.
       - Victrola Coffee Roasters, 410 E Pike St, Seattle, WA 98122. Phone: (206) 555-1212. Hours: 7am-7pm.
-    thread_text: ""
-    latest_message: ""
+
+      User:
+      Find coffee shops near Pike Place Market.
   assert:
     - type: icontains
       value: "Source:"
@@ -16,16 +17,21 @@
 
 - name: sms-coffee-top-two
   vars:
-    prompt: file://tests/promptfoo/prompts/sms.txt
-    thread_text: |
+    system_prompt: file://tests/promptfoo/prompts/sms.txt
+    user_prompt: |
+      Recent SMS thread (last 12 hours):
       User [2026-01-19T20:00:00Z]: Find coffee shops near Pike Place Market.
       Assistant [2026-01-19T20:00:05Z]: I can text you the top two if you want.
-    latest_message: "Text me the top two."
-    web_search_results: |
+
+      Latest user message:
+      Text me the top two.
+
+      Web search results:
       Source: Yelp https://www.yelp.com/search?find_desc=Coffee&find_loc=Pike+Place+Market
       - Storyville Coffee Company, 94 Pike St, Seattle, WA 98101.
       - Victrola Coffee Roasters, 410 E Pike St, Seattle, WA 98122.
-    user_turn: ""
+
+      Task: Compose a concise, friendly SMS reply. Keep it under 320 characters. Output only the reply text.
   assert:
     - type: icontains
       value: "Storyville"
