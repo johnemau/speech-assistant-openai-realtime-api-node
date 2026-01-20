@@ -59,53 +59,10 @@ Quickly verify code changes:
 npm test
 ```
 Notes:
-- `npm test` runs the unit test suite.
+- `npm test` runs lint, typecheck, and the unit test suite.
 - Run `npm run lint` for ESLint checks.
 - Run `npm run typecheck` for TypeScript type checking (JS + JSDoc).
-- Run `npm run ci` to execute lint, typecheck, and unit tests sequentially.
-
-### Voice test runner (text-mode)
-
-Run the text-mode voice tests (Realtime session + real tools, no Twilio audio):
-
-```
-npm run test:voice
-```
-
-Required environment variables:
-
-```
-OPENAI_API_KEY=sk-...
-```
-
-Optional (only needed if tests trigger live side effects):
-
-```
-ALLOW_LIVE_SIDE_EFFECTS=true
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_API_KEY=SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_API_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_SMS_FROM_NUMBER=+12065551234
-SMTP_NODEMAILER_SERVICE_ID=gmail
-SMTP_USER=sender@example.com
-SMTP_PASS=app_password
-SENDER_FROM_EMAIL=sender@example.com
-PRIMARY_TO_EMAIL=primary.recipient@example.com
-SECONDARY_TO_EMAIL=secondary.recipient@example.com
-```
-
-Test runner configuration:
-
-```
-TEST_CALLER_NUMBER=+12065551234   # optional override for caller identity
-JUDGE_MODEL=gpt-5.2               # optional judge model override
-JUDGE_PASS_SCORE=0.7              # minimum score to pass a turn
-```
-
-Notes:
-- When `ALLOW_LIVE_SIDE_EFFECTS` is false or missing, `send_sms` and `send_email` tool calls fail the test with a clear error.
-- The judge uses OpenAI responses to score each turn; costs apply.
+- Run `npm run test:unit` to execute unit tests only.
 
 ### Promptfoo evals (prompt-only)
 
@@ -114,7 +71,6 @@ Run prompt evaluations without touching runtime code. The root config lives in [
 Commands:
 
 ```
-npm run pf:validate
 npm run pf:eval
 npm run pf:view
 ```
@@ -219,7 +175,7 @@ ngrok forwarding active on domain your-subdomain.ngrok.app
 Quick local checks:
 - Visit http://localhost:10000/ to confirm the root endpoint.
 - Visit http://localhost:10000/healthz for a simple health check.
-- Run `npm run ci` to lint, typecheck, and verify tests.
+- Run `npm test` to lint, typecheck, and verify tests.
 
 ### SMS Auto‑Reply
 
@@ -292,7 +248,7 @@ With the development server running, call the phone number you purchased in the 
 ## Special features
 
 ### Assistant speaks first (default)
-The assistant sends a short greeting on stream start and then speaks first. To customize the greeting, edit the `sendInitialConversationItem` helper in [index.js](index.js). The TwiML webhook also greets the caller by name before connecting the media stream.
+The assistant sends a short greeting on stream start and then speaks first. To customize the greeting, edit the `sendInitialConversationItem` helper in [src/routes/media-stream.js](src/routes/media-stream.js). The TwiML webhook also greets the caller by name before connecting the media stream.
 
 ### Interrupt handling/AI preemption
 When the user speaks and OpenAI sends `input_audio_buffer.speech_started`, the code will clear the Twilio Media Streams buffer and send OpenAI `conversation.item.truncate`.
