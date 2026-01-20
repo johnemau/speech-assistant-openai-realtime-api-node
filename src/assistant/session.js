@@ -211,13 +211,17 @@ function realCreateAssistantSession({
         openAiWs,
         send: openAiSend,
         requestResponse: () => openAiSend({ type: 'response.create' }),
-        updateSession: (partialSession) => openAiSend({
-            type: 'session.update',
-            session: {
-                type: 'realtime',
-                ...partialSession,
-            }
-        }),
+        updateSession: (partialSession) => {
+            /** @type {import('openai/resources/realtime/realtime').SessionUpdateEvent} */
+            const sessionUpdateEvent = {
+                type: 'session.update',
+                session: {
+                    type: 'realtime',
+                    ...partialSession,
+                }
+            };
+            openAiSend(sessionUpdateEvent);
+        },
         close: () => {
             try { openAiWs.close(); } catch {
                 // noop: ignore close errors
