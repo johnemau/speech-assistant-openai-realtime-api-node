@@ -1,4 +1,5 @@
 - name: realtime-web-search-local-business
+  provider: gpt-5.2-realtime-web-search
   vars:
       user_prompt: |
           Tool Output (web_search):
@@ -21,6 +22,7 @@
         value: 'https?://'
 
 - name: realtime-web-search-news-summary
+  provider: gpt-5.2-realtime-web-search
   vars:
       user_prompt: |
           Tool Output (web_search):
