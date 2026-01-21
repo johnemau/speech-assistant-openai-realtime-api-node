@@ -702,8 +702,8 @@ export function mediaStreamHandler(connection, req) {
         }
     };
 
-    // Send mark messages to Media Streams so we know if and when AI response playback is finished
     /**
+     * Send mark messages to Media Streams so we know if and when AI response playback is finished
      * @param {import('ws').WebSocket} connection - Twilio WebSocket connection.
      * @param {string | null} streamSid - Active stream SID.
      */
