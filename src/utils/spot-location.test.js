@@ -186,7 +186,7 @@ test('getLatestTrackLocation returns null when no track', async () => {
     resetSpotCacheForTests();
 });
 
-test('getLatestTrackLocation throws when apiKey missing', async () => {
+test('getLatestTrackLocation returns null when apiKey missing', async () => {
     process.env.SPOT_FEED_ID = 'feed-id';
     process.env.SPOT_FEED_PASSWORD = 'feed-pass';
     delete process.env.GOOGLE_MAPS_API_KEY;
@@ -210,7 +210,7 @@ test('getLatestTrackLocation throws when apiKey missing', async () => {
             })
     );
 
-    await assert.rejects(() => getLatestTrackLocation(), {
-        message: 'apiKey is required.',
-    });
+    const result = await getLatestTrackLocation();
+
+    assert.equal(result, null);
 });
