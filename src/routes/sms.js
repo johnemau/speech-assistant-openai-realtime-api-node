@@ -42,7 +42,8 @@ const SMS_TOOL_DEFINITIONS = [
 const MAX_SMS_TOOL_ROUNDS = 6;
 
 /**
- * @returns {{ tools: Array<import('openai/resources/responses/responses').Tool>, tool_choice: 'auto' }}
+ * Build tool config for SMS responses.
+ * @returns {{ tools: Array<import('openai/resources/responses/responses').Tool>, tool_choice: 'auto' }} Tool config.
  */
 function buildSmsToolConfig() {
     return {
@@ -61,11 +62,11 @@ function buildSmsToolConfig() {
 /**
  * Execute a tool call safely for SMS.
  *
- * @param {object} root0
- * @param {string} root0.name
- * @param {unknown} root0.arguments
- * @param {{ currentCallerE164?: string | null }} root0.context
- * @returns {Promise<object>}
+ * @param {object} root0 - Named parameters.
+ * @param {string} root0.name - Tool name to execute.
+ * @param {unknown} root0.arguments - Raw tool arguments.
+ * @param {{ currentCallerE164?: string | null }} root0.context - Caller context.
+ * @returns {Promise<object>} Tool result payload.
  */
 async function executeSmsToolCallSafe({ name, arguments: rawArgs, context }) {
     const parsedArgs = safeParseToolArguments(rawArgs);
@@ -96,11 +97,11 @@ async function executeSmsToolCallSafe({ name, arguments: rawArgs, context }) {
 /**
  * Run SMS response with multi-step tool calls.
  *
- * @param {object} root0
- * @param {string} root0.input
- * @param {string} root0.instructions
- * @param {{ currentCallerE164?: string | null }} root0.context
- * @returns {Promise<import('openai/resources/responses/responses').Response>}
+ * @param {object} root0 - Named parameters.
+ * @param {string} root0.input - Prompt input sent to the model.
+ * @param {string} root0.instructions - System instructions for SMS.
+ * @param {{ currentCallerE164?: string | null }} root0.context - Caller context.
+ * @returns {Promise<import('openai/resources/responses/responses').Response>} Final response.
  */
 async function runSmsResponseWithTools({ input, instructions, context }) {
     /** @type {import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming} */
