@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const originalFetch = globalThis.fetch;
+const originalGoogleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
 let importCounter = 0;
 
 /**
@@ -30,10 +31,16 @@ function makeJsonResponse(body, overrides = {}) {
 
 test.afterEach(() => {
     globalThis.fetch = originalFetch;
+    if (originalGoogleMapsKey == null) {
+        delete process.env.GOOGLE_MAPS_API_KEY;
+    } else {
+        process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
+    }
 });
 
-test('createGooglePlacesTextSearchTool returns mapped places', async () => {
-    const { createGooglePlacesTextSearchTool } = await loadTextSearchModule();
+test('googlePlacesTextSearch returns mapped places', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { googlePlacesTextSearch } = await loadTextSearchModule();
 
     let seenHeaders;
     globalThis.fetch = /** @type {typeof fetch} */ (
@@ -58,8 +65,7 @@ test('createGooglePlacesTextSearchTool returns mapped places', async () => {
         }
     );
 
-    const tool = createGooglePlacesTextSearchTool({ apiKey: 'test-key' });
-    const result = await tool({
+    const result = await googlePlacesTextSearch({
         textQuery: 'cafe in Seattle',
         maxResultCount: 5,
     });
@@ -91,8 +97,9 @@ test('createGooglePlacesTextSearchTool returns mapped places', async () => {
     );
 });
 
-test('createGooglePlacesTextSearchTool returns null when apiKey missing', async () => {
-    const { createGooglePlacesTextSearchTool } = await loadTextSearchModule();
+test('googlePlacesTextSearch returns null when apiKey missing', async () => {
+    delete process.env.GOOGLE_MAPS_API_KEY;
+    const { googlePlacesTextSearch } = await loadTextSearchModule();
 
     let calls = 0;
     globalThis.fetch = /** @type {typeof fetch} */ (
@@ -102,15 +109,15 @@ test('createGooglePlacesTextSearchTool returns null when apiKey missing', async 
         }
     );
 
-    const tool = createGooglePlacesTextSearchTool({ apiKey: '' });
-    const result = await tool({ textQuery: 'pizza' });
+    const result = await googlePlacesTextSearch({ textQuery: 'pizza' });
 
     assert.equal(result, null);
     assert.equal(calls, 0);
 });
 
-test('createGooglePlacesTextSearchTool caches responses', async () => {
-    const { createGooglePlacesTextSearchTool } = await loadTextSearchModule();
+test('googlePlacesTextSearch caches responses', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { googlePlacesTextSearch } = await loadTextSearchModule();
 
     let calls = 0;
     globalThis.fetch = /** @type {typeof fetch} */ (
@@ -131,18 +138,18 @@ test('createGooglePlacesTextSearchTool caches responses', async () => {
         }
     );
 
-    const tool = createGooglePlacesTextSearchTool({ apiKey: 'test-key' });
     const args = { textQuery: 'coffee', maxResultCount: 3 };
 
-    const first = await tool(args);
-    const second = await tool(args);
+    const first = await googlePlacesTextSearch(args);
+    const second = await googlePlacesTextSearch(args);
 
     assert.deepEqual(second, first);
     assert.equal(calls, 1);
 });
 
-test('createGooglePlacesTextSearchTool prefers restriction over bias', async () => {
-    const { createGooglePlacesTextSearchTool } = await loadTextSearchModule();
+test('googlePlacesTextSearch prefers restriction over bias', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { googlePlacesTextSearch } = await loadTextSearchModule();
 
     /** @type {any} */
     let seenBody;
@@ -153,8 +160,7 @@ test('createGooglePlacesTextSearchTool prefers restriction over bias', async () 
         }
     );
 
-    const tool = createGooglePlacesTextSearchTool({ apiKey: 'test-key' });
-    await tool({
+    await googlePlacesTextSearch({
         textQuery: 'pizza',
         locationBias: { lat: 10.1, lng: 20.2 },
         locationRestriction: {
