@@ -26,6 +26,10 @@ import {
     definition as findCurrentlyNearbyPlaceDefinition,
     execute as executeFindCurrentlyNearbyPlace,
 } from './find-currently-nearby-place.js';
+import {
+    definition as placesTextSearchDefinition,
+    execute as executePlacesTextSearch,
+} from './places-text-search.js';
 
 const toolExecutors = new Map(
     /** @type {Array<[string, (input: { args: object, context: object }) => Promise<unknown>]>} */ ([
@@ -36,6 +40,7 @@ const toolExecutors = new Map(
         ['end_call', executeEndCall],
         ['get_current_location', executeGetCurrentLocation],
         ['find_currently_nearby_place', executeFindCurrentlyNearbyPlace],
+        ['places_text_search', executePlacesTextSearch],
     ])
 );
 
@@ -53,6 +58,7 @@ export function getToolDefinitions() {
         endCallDefinition,
         getCurrentLocationDefinition,
         findCurrentlyNearbyPlaceDefinition,
+        placesTextSearchDefinition,
     ];
 }
 
