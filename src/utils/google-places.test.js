@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 const originalFetch = globalThis.fetch;
 const originalGoogleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
+const originalSpotFeedId = process.env.SPOT_FEED_ID;
+const originalSpotFeedPassword = process.env.SPOT_FEED_PASSWORD;
 let importCounter = 0;
 
 /**
@@ -11,6 +13,14 @@ let importCounter = 0;
 async function loadGooglePlacesModule() {
     importCounter += 1;
     return import(`./google-places.js?test=${importCounter}`);
+}
+
+/**
+ * @returns {Promise<typeof import('./google-places-current.js')>} Module import.
+ */
+async function loadGooglePlacesCurrentModule() {
+    importCounter += 1;
+    return import(`./google-places-current.js?test=${importCounter}`);
 }
 
 /**
@@ -29,13 +39,25 @@ function makeJsonResponse(body, overrides = {}) {
     });
 }
 
-test.afterEach(() => {
+test.afterEach(async () => {
     globalThis.fetch = originalFetch;
     if (originalGoogleMapsKey == null) {
         delete process.env.GOOGLE_MAPS_API_KEY;
     } else {
         process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
     }
+    if (originalSpotFeedId == null) {
+        delete process.env.SPOT_FEED_ID;
+    } else {
+        process.env.SPOT_FEED_ID = originalSpotFeedId;
+    }
+    if (originalSpotFeedPassword == null) {
+        delete process.env.SPOT_FEED_PASSWORD;
+    } else {
+        process.env.SPOT_FEED_PASSWORD = originalSpotFeedPassword;
+    }
+    const { resetSpotCacheForTests } = await import('./spot.js');
+    resetSpotCacheForTests();
 });
 
 test('searchPlacesNearby returns mapped places', async () => {
@@ -170,4 +192,112 @@ test('searchPlacesNearby returns null on non-ok response', async () => {
     });
 
     assert.equal(result, null);
+});
+
+test('findCurrentlyNearbyPlaces returns null when no track', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    const { findCurrentlyNearbyPlaces } =
+        await loadGooglePlacesCurrentModule();
+
+    let calls = 0;
+    globalThis.fetch = /** @type {typeof fetch} */ (async (url) => {
+        calls += 1;
+        const urlString = String(url);
+        if (urlString.includes('findmespot.com')) {
+            return makeJsonResponse({
+                response: {
+                    feedMessageResponse: {
+                        messages: {
+                            message: {
+                                messageType: 'OK',
+                                latitude: 47.61,
+                                longitude: -122.33,
+                                unixTime: 1700000000,
+                                id: 'abc',
+                            },
+                        },
+                    },
+                },
+            });
+        }
+        throw new Error('unexpected fetch');
+    });
+
+    const result = await findCurrentlyNearbyPlaces(1000);
+
+    assert.equal(result, null);
+    assert.equal(calls, 1);
+});
+
+test('findCurrentlyNearbyPlaces uses tracked location', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { findCurrentlyNearbyPlaces } =
+        await loadGooglePlacesCurrentModule();
+
+    let placesBody;
+    globalThis.fetch = /** @type {typeof fetch} */ (async (url, init) => {
+        const urlString = String(url);
+        if (urlString.includes('findmespot.com')) {
+            return makeJsonResponse({
+                response: {
+                    feedMessageResponse: {
+                        messages: {
+                            message: {
+                                messageType: 'TRACK',
+                                latitude: 44.9778,
+                                longitude: -93.265,
+                                unixTime: 1700000000,
+                                id: 'abc',
+                            },
+                        },
+                    },
+                },
+            });
+        }
+        if (urlString.includes('places.googleapis.com')) {
+            placesBody = init?.body ? JSON.parse(String(init.body)) : null;
+            return makeJsonResponse({
+                places: [
+                    {
+                        id: 'nearby',
+                        displayName: { text: 'Nearby Place' },
+                        formattedAddress: '1 Local St',
+                        location: { latitude: 44.9778, longitude: -93.265 },
+                        primaryType: 'cafe',
+                        googleMapsUri: 'https://maps.google.com/?q=Nearby',
+                    },
+                ],
+            });
+        }
+        return makeJsonResponse(null, {
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+        });
+    });
+
+    const result = await findCurrentlyNearbyPlaces(1500, {
+        included_primary_types: ['cafe'],
+    });
+
+    assert.deepEqual(result, {
+        places: [
+            {
+                id: 'nearby',
+                name: 'Nearby Place',
+                address: '1 Local St',
+                location: { lat: 44.9778, lng: -93.265 },
+                primaryType: 'cafe',
+                mapsUrl: 'https://maps.google.com/?q=Nearby',
+            },
+        ],
+    });
+    assert.equal(placesBody.locationRestriction.circle.radius, 1500);
+    assert.deepEqual(placesBody.locationRestriction.circle.center, {
+        latitude: 44.9778,
+        longitude: -93.265,
+    });
 });
