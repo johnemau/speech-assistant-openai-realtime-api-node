@@ -6,6 +6,7 @@
     "scripts": {
         "start": "node index.js",
         "lint": "npm run lint:eslint && npm run format",
+        "lint:fix": "npm run lint:eslint:fix && npm run format:fix",
         "lint:eslint": "eslint .",
         "lint:eslint:fix": "npm run lint:eslint -- --fix",
         "format": "prettier . --check",
