@@ -745,6 +745,7 @@ export async function searchPlacesNearby(args, options = {}) {
         if (hit && hit.expiresAt > now) return hit.value;
 
         const body = {
+            fields: ['displayName', 'location', 'businessStatus', 'rating', 'priceLevel', 'websiteURI'],
             locationRestriction: {
                 circle: {
                     center: {

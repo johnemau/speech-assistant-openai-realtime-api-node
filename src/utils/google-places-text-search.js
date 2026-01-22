@@ -61,6 +61,7 @@ export async function googlePlacesTextSearch(args) {
 
         /** @type {any} */
         const body = {
+            fields: ['displayName', 'location', 'businessStatus', 'rating', 'priceLevel', 'websiteURI'],
             textQuery: args.textQuery,
             includedType: args.includedType || undefined,
             useStrictTypeFiltering: !!args.useStrictTypeFiltering,
