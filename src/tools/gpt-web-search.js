@@ -4,6 +4,7 @@ import {
     buildWebSearchResponseParams,
     DEFAULT_SMS_USER_LOCATION,
 } from '../config/web-search-models.js';
+import { getLatestTrackLocation } from '../utils/spot-location.js';
 
 export const definition = {
     type: 'function',
@@ -19,7 +20,7 @@ export const definition = {
             user_location: {
                 type: 'object',
                 description:
-                    'Optional approximate user location to improve local relevance. Defaults to US Washington if not provided. When the user mentions a location, infer and include it here. Set type="approximate". If country is stated, use its two-letter code (e.g., US, FR); if not and the location is in the United States, default to US. Examples: "I am in Tucson Arizona" → region=Arizona, city=Tucson; "I will be in Paris, France" → region=Île-de-France, city=Paris.',
+                    'Optional approximate user location to improve local relevance. When the user explicitly states a location in the conversation, infer and include it here (set type="approximate"). If the user gives a city, also determine and include the region/state and country code when they can be reliably inferred (e.g., "I am in Tucson" → city=Tucson, region=Arizona, country=US). If the country is stated, use its two-letter code (e.g., US, FR). If any detail cannot be confidently determined from the conversation, omit it entirely; do not guess or default. If no location is mentioned, omit user_location so the tool can derive location from tracking.',
                 properties: {
                     type: {
                         type: 'string',
@@ -52,7 +53,21 @@ export const definition = {
 export async function execute({ args }) {
     const query = String(args?.query || '').trim();
     if (!query) throw new Error('Missing query.');
-    const effectiveLocation = args?.user_location ?? DEFAULT_SMS_USER_LOCATION;
+    let effectiveLocation = args?.user_location;
+    if (!effectiveLocation) {
+        try {
+            const latestTrack = await getLatestTrackLocation();
+            effectiveLocation = latestTrack?.location?.userLocation;
+        } catch (error) {
+            console.warn(
+                'Failed to load tracked location; using default.',
+                error
+            );
+        }
+    }
+    if (!effectiveLocation) {
+        effectiveLocation = DEFAULT_SMS_USER_LOCATION;
+    }
     const reqPayload = buildWebSearchResponseParams({
         input: query,
         instructions: REALTIME_WEB_SEARCH_INSTRUCTIONS,
