@@ -6,7 +6,7 @@ import { searchPlacesNearby } from './google-places.js';
  *
  * @param {number} radius_m - Search radius in meters (1..50000).
  * @param {object} [options] - Optional search settings.
- * @param {string[]=} options.included_primary_types - Places (New) primary types.
+ * @param {import('./google-places.js').IncludedPrimaryType[]=} options.included_primary_types - Places (New) primary types.
  * @param {number=} options.max_result_count - Max results (1..20).
  * @param {"POPULARITY"|"DISTANCE"=} options.rank_preference - Result ranking.
  * @param {string=} options.language_code - BCP-47 language code.
