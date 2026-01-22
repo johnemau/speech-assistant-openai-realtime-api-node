@@ -89,6 +89,10 @@ export async function execute({ args }) {
     const textQuery = String(args?.text_query || '').trim();
     if (!textQuery) throw new Error('Missing text_query.');
 
+    const locationBias = args?.location_bias;
+    const locationRestriction = args?.location_restriction;
+    const locationRestrictionCenter = locationRestriction?.center;
+
     const result = await googlePlacesTextSearchImpl({
         textQuery,
         includedType:
@@ -112,23 +116,26 @@ export async function execute({ args }) {
         language: args?.language || undefined,
         region: args?.region || undefined,
         locationBias:
-            Number.isFinite(args?.location_bias?.lat) &&
-            Number.isFinite(args?.location_bias?.lng)
+            locationBias &&
+            Number.isFinite(locationBias.lat) &&
+            Number.isFinite(locationBias.lng)
                 ? {
-                      lat: Number(args.location_bias.lat),
-                      lng: Number(args.location_bias.lng),
+                      lat: Number(locationBias.lat),
+                      lng: Number(locationBias.lng),
                   }
                 : undefined,
         locationRestriction:
-            Number.isFinite(args?.location_restriction?.center?.lat) &&
-            Number.isFinite(args?.location_restriction?.center?.lng) &&
-            Number.isFinite(args?.location_restriction?.radius_m)
+            locationRestriction &&
+            locationRestrictionCenter &&
+            Number.isFinite(locationRestrictionCenter.lat) &&
+            Number.isFinite(locationRestrictionCenter.lng) &&
+            Number.isFinite(locationRestriction.radius_m)
                 ? {
                       center: {
-                          lat: Number(args.location_restriction.center.lat),
-                          lng: Number(args.location_restriction.center.lng),
+                          lat: Number(locationRestrictionCenter.lat),
+                          lng: Number(locationRestrictionCenter.lng),
                       },
-                      radius_m: Number(args.location_restriction.radius_m),
+                      radius_m: Number(locationRestriction.radius_m),
                   }
                 : undefined,
     });
