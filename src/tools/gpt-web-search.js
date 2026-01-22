@@ -20,7 +20,7 @@ export const definition = {
             user_location: {
                 type: 'object',
                 description:
-                    'Optional approximate user location to improve local relevance. When the user explicitly states a location in the conversation, infer and include it here (set type="approximate"). If the user gives a city, also determine and include the region/state and country code when they can be reliably inferred (e.g., "I am in Tucson" → city=Tucson, region=Arizona, country=US). If the country is stated, use its two-letter code (e.g., US, FR). If any detail cannot be confidently determined from the conversation, omit it entirely; do not guess or default. If no location is mentioned, omit user_location so the tool can derive location from tracking.',
+                    'Optional approximate user location to improve local relevance. When the user explicitly states a location in the conversation, infer and include it here (set type="approximate"). If the user gives a city, also determine and include the region/state and country code when they can be reliably inferred (e.g., "I am in Tucson" → city=Tucson, region=Arizona, country=US). If the country is stated, use its two-letter code (e.g., US, FR). If any detail cannot be confidently determined from the conversation, omit it entirely; do not guess or default. For location-based questions without an explicit location, first attempt get_current_location; if it returns a specific, useful location, use it to populate user_location. If the location result is unhelpful and there is no caller-provided hint, omit user_location so the tool can derive location from tracking.',
                 properties: {
                     type: {
                         type: 'string',
