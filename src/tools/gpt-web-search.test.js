@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
+process.env.PRIMARY_USER_PHONE_NUMBERS =
+    process.env.PRIMARY_USER_PHONE_NUMBERS || '+12065551234';
 
 const originalFetch = globalThis.fetch;
 const originalSpotFeedId = process.env.SPOT_FEED_ID;
@@ -60,6 +62,7 @@ test('gpt-web-search.execute throws on missing query', async () => {
             () =>
                 execute({
                     args: { query: '' },
+                    context: {},
                 }),
             /Missing query/
         );
@@ -87,6 +90,7 @@ test('gpt-web-search.execute calls OpenAI with default location', async () => {
     try {
         const out = await execute({
             args: { query: 'test' },
+            context: {},
         });
         assert.deepEqual(out, { output_text: 'ok' });
         if (!payload) throw new Error('Missing payload');
@@ -186,6 +190,7 @@ test('gpt-web-search.execute uses tracked location when user_location missing', 
     try {
         const out = await execute({
             args: { query: 'test' },
+            context: { currentCallerE164: '+12065551234' },
         });
         assert.deepEqual(out, { output_text: 'ok' });
         if (!payload) throw new Error('Missing payload');
@@ -223,6 +228,7 @@ test('gpt-web-search.execute uses explicit user_location', async () => {
                 query: 'test',
                 user_location: { type: 'approximate', country: 'FR' },
             },
+            context: {},
         });
         assert.deepEqual(out, { output_text: 'ok' });
         if (!payload) throw new Error('Missing payload');

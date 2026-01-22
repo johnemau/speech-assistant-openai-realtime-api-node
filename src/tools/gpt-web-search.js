@@ -5,6 +5,7 @@ import {
     DEFAULT_SMS_USER_LOCATION,
 } from '../config/web-search-models.js';
 import { getLatestTrackLocation } from '../utils/spot-location.js';
+import { PRIMARY_CALLERS_SET } from '../env.js';
 
 export const definition = {
     type: 'function',
@@ -48,13 +49,17 @@ export const definition = {
  *
  * @param {object} root0 - Tool inputs.
  * @param {{ query?: string, user_location?: object }} root0.args - Tool arguments.
+ * @param {{ currentCallerE164?: string | null }} root0.context - Tool context.
  * @returns {Promise<object>} Full OpenAI response.
  */
-export async function execute({ args }) {
+export async function execute({ args, context }) {
     const query = String(args?.query || '').trim();
     if (!query) throw new Error('Missing query.');
     let effectiveLocation = args?.user_location;
-    if (!effectiveLocation) {
+    const currentCallerE164 = context?.currentCallerE164 || null;
+    const allowTrackedLocation =
+        !!currentCallerE164 && PRIMARY_CALLERS_SET.has(currentCallerE164);
+    if (!effectiveLocation && allowTrackedLocation) {
         try {
             const latestTrack = await getLatestTrackLocation();
             effectiveLocation = latestTrack?.location?.userLocation;

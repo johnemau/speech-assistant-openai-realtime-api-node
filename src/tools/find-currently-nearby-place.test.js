@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+process.env.PRIMARY_USER_PHONE_NUMBERS =
+    process.env.PRIMARY_USER_PHONE_NUMBERS || '+12065551234';
+
 const {
     execute,
     resetFindCurrentlyNearbyPlacesForTests,
@@ -33,6 +36,7 @@ test('find-currently-nearby-place.execute defaults to 5 miles', async () => {
 
     const res = await execute({
         args: { included_primary_types: ['restaurant'] },
+        context: { currentCallerE164: '+12065551234' },
     });
 
     assert.equal(res.status, 'ok');
@@ -52,6 +56,7 @@ test('find-currently-nearby-place.execute honors radius_miles', async () => {
 
     const res = await execute({
         args: { radius_miles: 2 },
+        context: { currentCallerE164: '+12065551234' },
     });
 
     assert.equal(res.status, 'ok');
@@ -64,6 +69,7 @@ test('find-currently-nearby-place.execute returns unavailable when no location',
 
     const res = await execute({
         args: {},
+        context: { currentCallerE164: '+12065551234' },
     });
 
     assert.deepEqual(res, {

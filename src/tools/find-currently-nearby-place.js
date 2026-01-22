@@ -1,4 +1,5 @@
 import { findCurrentlyNearbyPlaces as realFindCurrentlyNearbyPlaces } from '../utils/google-places-current.js';
+import { PRIMARY_CALLERS_SET } from '../env.js';
 
 const METERS_PER_MILE = 1609.344;
 const DEFAULT_RADIUS_MILES = 5;
@@ -58,9 +59,17 @@ export const definition = {
  *
  * @param {object} root0 - Tool inputs.
  * @param {{ radius_miles?: number, radius_m?: number, included_primary_types?: string[], max_result_count?: number, rank_preference?: "POPULARITY"|"DISTANCE", language_code?: string, region_code?: string }} root0.args - Tool arguments.
+ * @param {{ currentCallerE164?: string | null }} root0.context - Tool context.
  * @returns {Promise<{ status: 'ok', radius_m: number, places: import('../utils/google-places.js').NearbyPlace[] } | { status: 'unavailable', message: string }>} Tool result payload.
  */
-export async function execute({ args }) {
+export async function execute({ args, context }) {
+    const currentCallerE164 = context?.currentCallerE164 || null;
+    if (!currentCallerE164 || !PRIMARY_CALLERS_SET.has(currentCallerE164)) {
+        return {
+            status: 'unavailable',
+            message: LOCATION_UNAVAILABLE_MESSAGE,
+        };
+    }
     const radiusMetersRaw = Number.isFinite(args?.radius_m)
         ? Number(args?.radius_m)
         : null;
