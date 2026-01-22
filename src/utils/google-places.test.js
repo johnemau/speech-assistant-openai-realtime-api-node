@@ -197,32 +197,33 @@ test('searchPlacesNearby returns null on non-ok response', async () => {
 test('findCurrentlyNearbyPlaces returns null when no track', async () => {
     process.env.SPOT_FEED_ID = 'feed-id';
     process.env.SPOT_FEED_PASSWORD = 'feed-pass';
-    const { findCurrentlyNearbyPlaces } =
-        await loadGooglePlacesCurrentModule();
+    const { findCurrentlyNearbyPlaces } = await loadGooglePlacesCurrentModule();
 
     let calls = 0;
-    globalThis.fetch = /** @type {typeof fetch} */ (async (url) => {
-        calls += 1;
-        const urlString = String(url);
-        if (urlString.includes('findmespot.com')) {
-            return makeJsonResponse({
-                response: {
-                    feedMessageResponse: {
-                        messages: {
-                            message: {
-                                messageType: 'OK',
-                                latitude: 47.61,
-                                longitude: -122.33,
-                                unixTime: 1700000000,
-                                id: 'abc',
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async (url) => {
+            calls += 1;
+            const urlString = String(url);
+            if (urlString.includes('findmespot.com')) {
+                return makeJsonResponse({
+                    response: {
+                        feedMessageResponse: {
+                            messages: {
+                                message: {
+                                    messageType: 'OK',
+                                    latitude: 47.61,
+                                    longitude: -122.33,
+                                    unixTime: 1700000000,
+                                    id: 'abc',
+                                },
                             },
                         },
                     },
-                },
-            });
+                });
+            }
+            throw new Error('unexpected fetch');
         }
-        throw new Error('unexpected fetch');
-    });
+    );
 
     const result = await findCurrentlyNearbyPlaces(1000);
 
@@ -234,50 +235,52 @@ test('findCurrentlyNearbyPlaces uses tracked location', async () => {
     process.env.SPOT_FEED_ID = 'feed-id';
     process.env.SPOT_FEED_PASSWORD = 'feed-pass';
     process.env.GOOGLE_MAPS_API_KEY = 'test-key';
-    const { findCurrentlyNearbyPlaces } =
-        await loadGooglePlacesCurrentModule();
+    const { findCurrentlyNearbyPlaces } = await loadGooglePlacesCurrentModule();
 
+    /** @type {any} */
     let placesBody;
-    globalThis.fetch = /** @type {typeof fetch} */ (async (url, init) => {
-        const urlString = String(url);
-        if (urlString.includes('findmespot.com')) {
-            return makeJsonResponse({
-                response: {
-                    feedMessageResponse: {
-                        messages: {
-                            message: {
-                                messageType: 'TRACK',
-                                latitude: 44.9778,
-                                longitude: -93.265,
-                                unixTime: 1700000000,
-                                id: 'abc',
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async (url, init) => {
+            const urlString = String(url);
+            if (urlString.includes('findmespot.com')) {
+                return makeJsonResponse({
+                    response: {
+                        feedMessageResponse: {
+                            messages: {
+                                message: {
+                                    messageType: 'TRACK',
+                                    latitude: 44.9778,
+                                    longitude: -93.265,
+                                    unixTime: 1700000000,
+                                    id: 'abc',
+                                },
                             },
                         },
                     },
-                },
+                });
+            }
+            if (urlString.includes('places.googleapis.com')) {
+                placesBody = init?.body ? JSON.parse(String(init.body)) : null;
+                return makeJsonResponse({
+                    places: [
+                        {
+                            id: 'nearby',
+                            displayName: { text: 'Nearby Place' },
+                            formattedAddress: '1 Local St',
+                            location: { latitude: 44.9778, longitude: -93.265 },
+                            primaryType: 'cafe',
+                            googleMapsUri: 'https://maps.google.com/?q=Nearby',
+                        },
+                    ],
+                });
+            }
+            return makeJsonResponse(null, {
+                ok: false,
+                status: 404,
+                statusText: 'Not Found',
             });
         }
-        if (urlString.includes('places.googleapis.com')) {
-            placesBody = init?.body ? JSON.parse(String(init.body)) : null;
-            return makeJsonResponse({
-                places: [
-                    {
-                        id: 'nearby',
-                        displayName: { text: 'Nearby Place' },
-                        formattedAddress: '1 Local St',
-                        location: { latitude: 44.9778, longitude: -93.265 },
-                        primaryType: 'cafe',
-                        googleMapsUri: 'https://maps.google.com/?q=Nearby',
-                    },
-                ],
-            });
-        }
-        return makeJsonResponse(null, {
-            ok: false,
-            status: 404,
-            statusText: 'Not Found',
-        });
-    });
+    );
 
     const result = await findCurrentlyNearbyPlaces(1500, {
         included_primary_types: ['cafe'],
@@ -295,6 +298,7 @@ test('findCurrentlyNearbyPlaces uses tracked location', async () => {
             },
         ],
     });
+    assert.ok(placesBody);
     assert.equal(placesBody.locationRestriction.circle.radius, 1500);
     assert.deepEqual(placesBody.locationRestriction.circle.center, {
         latitude: 44.9778,
