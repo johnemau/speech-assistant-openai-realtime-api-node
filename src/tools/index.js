@@ -18,6 +18,10 @@ import {
     definition as endCallDefinition,
     execute as executeEndCall,
 } from './end-call.js';
+import {
+    definition as getCurrentLocationDefinition,
+    execute as executeGetCurrentLocation,
+} from './get-current-location.js';
 
 const toolExecutors = new Map(
     /** @type {Array<[string, (input: { args: object, context: object }) => Promise<unknown>]>} */ ([
@@ -26,6 +30,7 @@ const toolExecutors = new Map(
         ['send_sms', executeSendSms],
         ['update_mic_distance', executeUpdateMicDistance],
         ['end_call', executeEndCall],
+        ['get_current_location', executeGetCurrentLocation],
     ])
 );
 
@@ -41,6 +46,7 @@ export function getToolDefinitions() {
         sendSmsDefinition,
         updateMicDistanceDefinition,
         endCallDefinition,
+        getCurrentLocationDefinition,
     ];
 }
 
