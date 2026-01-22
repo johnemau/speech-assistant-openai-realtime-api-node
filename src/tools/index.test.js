@@ -12,6 +12,7 @@ test('tools.getToolDefinitions returns known tools', () => {
     assert.ok(names.includes('update_mic_distance'));
     assert.ok(names.includes('end_call'));
     assert.ok(names.includes('get_current_location'));
+    assert.ok(names.includes('find_currently_nearby_place'));
 });
 
 test('tools.executeToolCall executes end_call', async () => {

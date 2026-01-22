@@ -22,6 +22,10 @@ import {
     definition as getCurrentLocationDefinition,
     execute as executeGetCurrentLocation,
 } from './get-current-location.js';
+import {
+    definition as findCurrentlyNearbyPlaceDefinition,
+    execute as executeFindCurrentlyNearbyPlace,
+} from './find-currently-nearby-place.js';
 
 const toolExecutors = new Map(
     /** @type {Array<[string, (input: { args: object, context: object }) => Promise<unknown>]>} */ ([
@@ -31,6 +35,7 @@ const toolExecutors = new Map(
         ['update_mic_distance', executeUpdateMicDistance],
         ['end_call', executeEndCall],
         ['get_current_location', executeGetCurrentLocation],
+        ['find_currently_nearby_place', executeFindCurrentlyNearbyPlace],
     ])
 );
 
@@ -47,6 +52,7 @@ export function getToolDefinitions() {
         updateMicDistanceDefinition,
         endCallDefinition,
         getCurrentLocationDefinition,
+        findCurrentlyNearbyPlaceDefinition,
     ];
 }
 
