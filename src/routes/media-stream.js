@@ -97,17 +97,33 @@ export function mediaStreamHandler(connection, req) {
     /** @type {NodeJS.Timeout | null} */
     let waitingMusicStartTimeout = null;
     let toolCallInProgress = false;
+    const QUICK_RESPONSE_SUPPRESSION_MS = 2000;
     // ffmpeg removed; we only support WAV files; no tone fallback
     /** @type {Buffer | null} */
     let waitingMusicUlawBuffer = null;
     let waitingMusicOffset = 0;
+    /** @type {string | null} */
+    let lastAssistantResponseItemId = null;
+    let lastAssistantResponseStartedAt = 0;
+
+    function getWaitingMusicDelayMs() {
+        const baseDelay = WAIT_MUSIC_THRESHOLD_MS;
+        if (!lastAssistantResponseStartedAt) return baseDelay;
+        const sinceLastResponse = Date.now() - lastAssistantResponseStartedAt;
+        const suppressRemaining = Math.max(
+            0,
+            QUICK_RESPONSE_SUPPRESSION_MS - sinceLastResponse
+        );
+        return Math.max(baseDelay, suppressRemaining);
+    }
 
     function scheduleWaitingMusic(reason = 'unknown') {
         if (isWaitingMusic || waitingMusicStartTimeout) return;
+        const delayMs = getWaitingMusicDelayMs();
         waitingMusicStartTimeout = setTimeout(() => {
             waitingMusicStartTimeout = null;
             if (!isWaitingMusic) startWaitingMusic(reason);
-        }, WAIT_MUSIC_THRESHOLD_MS);
+        }, delayMs);
     }
 
     function startWaitingMusic(reason = 'unknown') {
@@ -297,6 +313,10 @@ export function mediaStreamHandler(connection, req) {
      */
     const handleAssistantOutput = (payload) => {
         if (payload?.type !== 'audio' || !payload?.delta) return;
+        if (payload.itemId && payload.itemId !== lastAssistantResponseItemId) {
+            lastAssistantResponseItemId = payload.itemId;
+            lastAssistantResponseStartedAt = Date.now();
+        }
         // Suppress audio entirely after hang-up; otherwise, stream to Twilio
         // Assistant audio is streaming; stop any waiting music immediately
         stopWaitingMusic('assistant_audio');
