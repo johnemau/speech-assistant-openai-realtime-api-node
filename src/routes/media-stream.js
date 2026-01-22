@@ -571,8 +571,8 @@ export function mediaStreamHandler(connection, req) {
                 },
             };
             toolCallInProgress = false;
-            stopWaitingMusic('tool_call_complete');
-            clearWaitingMusicInterval();
+            // Do not stop waiting music here; keep it playing until
+            // assistant audio resumes or the caller speaks.
             assistantSession.send(toolResultEvent);
             if (!responseActive) {
                 assistantSession.requestResponse();
@@ -583,8 +583,8 @@ export function mediaStreamHandler(connection, req) {
         } catch (error) {
             console.error('Error handling tool call:', error);
             toolCallInProgress = false;
-            stopWaitingMusic('tool_error');
-            clearWaitingMusicInterval();
+            // Keep waiting music active during error handling until
+            // the assistant produces audio or another interrupt occurs.
             sendOpenAiToolError(functionCall.call_id, error);
         }
     };
