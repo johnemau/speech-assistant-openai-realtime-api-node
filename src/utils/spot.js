@@ -22,9 +22,12 @@ function isValidLatLng(lat, lon) {
 }
 
 /**
+ * @typedef {RequestInit & { timeoutMs?: number }} SpotFetchInit
+ */
+
+/**
  * @param {string} url - Request URL.
- * @param {object} [init] - Fetch init options.
- * @param {number} [init.timeoutMs=15000] - Request timeout in ms.
+ * @param {SpotFetchInit} [init] - Fetch init options.
  * @returns {Promise<Response | null>} Response or null on failure.
  */
 async function fetchWithTimeout(url, { timeoutMs = 15000, ...init } = {}) {
@@ -94,7 +97,7 @@ export async function getLatestTrackLatLng(feedId, feedPassword, opts = {}) {
 
     let data;
     try {
-        data = await res.json();
+        data = /** @type {any} */ (await res.json());
     } catch {
         spotLatestTrackCache.set(cacheKey, {
             fetchedAt: now,

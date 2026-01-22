@@ -1,6 +1,30 @@
 const DEFAULT_TIMEOUT_MS = 15000;
 
 /**
+ * @typedef {object} GeocodeComponent
+ * @property {string[]} [types]
+ * @property {string} [long_name]
+ * @property {string} [short_name]
+ */
+
+/**
+ * @typedef {object} GeocodeResultItem
+ * @property {GeocodeComponent[]} [address_components]
+ * @property {string} [formatted_address]
+ */
+
+/**
+ * @typedef {object} GeocodeResponse
+ * @property {GeocodeResultItem[]} [results]
+ */
+
+/**
+ * @typedef {object} TimezoneResponse
+ * @property {string} [status]
+ * @property {string} [timeZoneId]
+ */
+
+/**
  * @param {number} lat - Latitude in degrees.
  * @param {number} lng - Longitude in degrees.
  * @returns {boolean} True when the coordinates are valid.
@@ -87,7 +111,7 @@ function extractStreet(components) {
 }
 
 /**
- * @param {object} geocodeJson - Geocode API response payload.
+ * @param {GeocodeResponse} geocodeJson - Geocode API response payload.
  * @returns {{ type: 'approximate', country?: string, region?: string, city?: string }} Approximate user location.
  */
 function mapGeocodeToUserLocation(geocodeJson) {
@@ -105,7 +129,7 @@ function mapGeocodeToUserLocation(geocodeJson) {
 }
 
 /**
- * @param {object} geocodeJson - Geocode API response payload.
+ * @param {GeocodeResponse} geocodeJson - Geocode API response payload.
  * @returns {{ formattedAddress?: string, street?: string, city?: string, region?: string, postalCode?: string, country?: string, countryCode?: string }} Address details.
  */
 function mapGeocodeToAddress(geocodeJson) {
@@ -143,7 +167,7 @@ function mapGeocodeToAddress(geocodeJson) {
  * @param {string} [root0.language] - Optional locale string.
  * @param {number} [root0.timestampSeconds] - Optional UNIX timestamp in seconds.
  * @param {number} [root0.timeoutMs] - Optional timeout override in ms.
- * @returns {Promise<object>} Raw geocode JSON payload.
+ * @returns {Promise<GeocodeResponse>} Raw geocode JSON payload.
  */
 async function reverseGeocode({
     lat,
@@ -160,7 +184,9 @@ async function reverseGeocode({
     if (timestampSeconds != null) {
         url.searchParams.set('timestamp', String(timestampSeconds));
     }
-    return fetchJson(url.toString(), { timeoutMs });
+    return /** @type {Promise<GeocodeResponse>} */ (
+        fetchJson(url.toString(), { timeoutMs })
+    );
 }
 
 /**
@@ -170,7 +196,7 @@ async function reverseGeocode({
  * @param {string} root0.apiKey - Google Maps API key.
  * @param {number} [root0.timestampSeconds] - Optional UNIX timestamp in seconds.
  * @param {number} [root0.timeoutMs] - Optional timeout override in ms.
- * @returns {Promise<object>} Raw timezone JSON payload.
+ * @returns {Promise<TimezoneResponse>} Raw timezone JSON payload.
  */
 async function lookupTimezone({
     lat,
@@ -186,16 +212,18 @@ async function lookupTimezone({
         String(timestampSeconds ?? Math.floor(Date.now() / 1000))
     );
     url.searchParams.set('key', apiKey);
-    return fetchJson(url.toString(), { timeoutMs });
+    return /** @type {Promise<TimezoneResponse>} */ (
+        fetchJson(url.toString(), { timeoutMs })
+    );
 }
 
 /**
  * Resolve an approximate user location and address from latitude/longitude.
  *
- * @param {object} root0 - Location lookup options.
- * @param {number} root0.lat - Latitude in degrees.
- * @param {number} root0.lng - Longitude in degrees.
- * @param {string} root0.apiKey - Google Maps API key.
+ * @param {object} [root0] - Location lookup options.
+ * @param {number} [root0.lat] - Latitude in degrees.
+ * @param {number} [root0.lng] - Longitude in degrees.
+ * @param {string} [root0.apiKey] - Google Maps API key.
  * @param {string} [root0.language] - Optional locale string.
  * @param {boolean} [root0.includeTimezone=true] - Whether to include timezone lookup.
  * @param {number} [root0.timestampSeconds] - Optional UNIX timestamp in seconds.
@@ -219,7 +247,10 @@ export async function locationFromLatLng({
     timestampSeconds,
     timeoutMs = DEFAULT_TIMEOUT_MS,
 } = {}) {
-    if (!isValidLatLng(lat, lng)) {
+    const resolvedLat = Number(lat);
+    const resolvedLng = Number(lng);
+
+    if (!isValidLatLng(resolvedLat, resolvedLng)) {
         throw new Error('lat and lng must be valid numbers.');
     }
     if (!apiKey) {
@@ -227,8 +258,8 @@ export async function locationFromLatLng({
     }
 
     const geocode = await reverseGeocode({
-        lat,
-        lng,
+        lat: resolvedLat,
+        lng: resolvedLng,
         apiKey,
         language,
         timeoutMs,
@@ -241,8 +272,8 @@ export async function locationFromLatLng({
     let timezoneId;
     if (includeTimezone) {
         timezone = await lookupTimezone({
-            lat,
-            lng,
+            lat: resolvedLat,
+            lng: resolvedLng,
             apiKey,
             timestampSeconds,
             timeoutMs,
@@ -253,8 +284,8 @@ export async function locationFromLatLng({
     }
 
     return {
-        lat,
-        lng,
+        lat: resolvedLat,
+        lng: resolvedLng,
         userLocation,
         address,
         geocode,

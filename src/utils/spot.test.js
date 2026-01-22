@@ -5,6 +5,22 @@ import { getLatestTrackLatLng, resetSpotCacheForTests } from './spot.js';
 
 const originalFetch = globalThis.fetch;
 
+/**
+ * @param {object} body - JSON body to return.
+ * @param {Partial<Response>} [overrides] - Response field overrides.
+ * @returns {Response} Mocked response object.
+ */
+function makeJsonResponse(body, overrides = {}) {
+    return /** @type {Response} */ ({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => body,
+        text: async () => '',
+        ...overrides,
+    });
+}
+
 test.afterEach(() => {
     globalThis.fetch = originalFetch;
     resetSpotCacheForTests();
@@ -12,11 +28,10 @@ test.afterEach(() => {
 
 test('spot.getLatestTrackLatLng returns latest TRACK message', async () => {
     let calls = 0;
-    globalThis.fetch = async () => {
-        calls += 1;
-        return {
-            ok: true,
-            json: async () => ({
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () => {
+            calls += 1;
+            return makeJsonResponse({
                 response: {
                     feedMessageResponse: {
                         messages: {
@@ -32,9 +47,9 @@ test('spot.getLatestTrackLatLng returns latest TRACK message', async () => {
                         },
                     },
                 },
-            }),
-        };
-    };
+            });
+        }
+    );
 
     const result = await getLatestTrackLatLng('feed-id', 'feed-pass');
 
@@ -51,24 +66,24 @@ test('spot.getLatestTrackLatLng returns latest TRACK message', async () => {
 });
 
 test('spot.getLatestTrackLatLng returns null for non-TRACK', async () => {
-    globalThis.fetch = async () => ({
-        ok: true,
-        json: async () => ({
-            response: {
-                feedMessageResponse: {
-                    messages: {
-                        message: {
-                            messageType: 'OK',
-                            latitude: 47.61,
-                            longitude: -122.33,
-                            unixTime: 1700000000,
-                            id: 'abc',
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () =>
+            makeJsonResponse({
+                response: {
+                    feedMessageResponse: {
+                        messages: {
+                            message: {
+                                messageType: 'OK',
+                                latitude: 47.61,
+                                longitude: -122.33,
+                                unixTime: 1700000000,
+                                id: 'abc',
+                            },
                         },
                     },
                 },
-            },
-        }),
-    });
+            })
+    );
 
     const result = await getLatestTrackLatLng('feed-id', 'feed-pass');
 
@@ -76,24 +91,24 @@ test('spot.getLatestTrackLatLng returns null for non-TRACK', async () => {
 });
 
 test('spot.getLatestTrackLatLng returns null for invalid lat/lng', async () => {
-    globalThis.fetch = async () => ({
-        ok: true,
-        json: async () => ({
-            response: {
-                feedMessageResponse: {
-                    messages: {
-                        message: {
-                            messageType: 'TRACK',
-                            latitude: 200,
-                            longitude: -122.33,
-                            unixTime: 1700000000,
-                            id: 'abc',
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () =>
+            makeJsonResponse({
+                response: {
+                    feedMessageResponse: {
+                        messages: {
+                            message: {
+                                messageType: 'TRACK',
+                                latitude: 200,
+                                longitude: -122.33,
+                                unixTime: 1700000000,
+                                id: 'abc',
+                            },
                         },
                     },
                 },
-            },
-        }),
-    });
+            })
+    );
 
     const result = await getLatestTrackLatLng('feed-id', 'feed-pass');
 
@@ -101,30 +116,32 @@ test('spot.getLatestTrackLatLng returns null for invalid lat/lng', async () => {
 });
 
 test('spot.getLatestTrackLatLng returns cached value on fetch failure', async () => {
-    globalThis.fetch = async () => ({
-        ok: true,
-        json: async () => ({
-            response: {
-                feedMessageResponse: {
-                    messages: {
-                        message: {
-                            messageType: 'TRACK',
-                            latitude: 40,
-                            longitude: -70,
-                            unixTime: 1700000000,
-                            id: 'abc',
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () =>
+            makeJsonResponse({
+                response: {
+                    feedMessageResponse: {
+                        messages: {
+                            message: {
+                                messageType: 'TRACK',
+                                latitude: 40,
+                                longitude: -70,
+                                unixTime: 1700000000,
+                                id: 'abc',
+                            },
                         },
                     },
                 },
-            },
-        }),
-    });
+            })
+    );
 
     const first = await getLatestTrackLatLng('feed-id', 'feed-pass');
 
-    globalThis.fetch = async () => {
-        throw new Error('network');
-    };
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () => {
+            throw new Error('network');
+        }
+    );
 
     const second = await getLatestTrackLatLng('feed-id', 'feed-pass', {
         force: true,
@@ -135,11 +152,10 @@ test('spot.getLatestTrackLatLng returns cached value on fetch failure', async ()
 
 test('spot.getLatestTrackLatLng throttles repeated calls', async () => {
     let calls = 0;
-    globalThis.fetch = async () => {
-        calls += 1;
-        return {
-            ok: true,
-            json: async () => ({
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () => {
+            calls += 1;
+            return makeJsonResponse({
                 response: {
                     feedMessageResponse: {
                         messages: {
@@ -153,9 +169,9 @@ test('spot.getLatestTrackLatLng throttles repeated calls', async () => {
                         },
                     },
                 },
-            }),
-        };
-    };
+            });
+        }
+    );
 
     const first = await getLatestTrackLatLng('feed-id', 'feed-pass');
     const second = await getLatestTrackLatLng('feed-id', 'feed-pass');

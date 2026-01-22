@@ -5,6 +5,22 @@ import { locationFromLatLng } from './location.js';
 
 const originalFetch = globalThis.fetch;
 
+/**
+ * @param {object | null} body - JSON body to return.
+ * @param {Partial<Response>} [overrides] - Response field overrides.
+ * @returns {Response} Mocked response object.
+ */
+function makeJsonResponse(body, overrides = {}) {
+    return /** @type {Response} */ ({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => body,
+        text: async () => '',
+        ...overrides,
+    });
+}
+
 test.afterEach(() => {
     globalThis.fetch = originalFetch;
 });
@@ -44,20 +60,21 @@ test('locationFromLatLng returns userLocation and address', async () => {
         timeZoneName: 'Central Standard Time',
     };
 
-    globalThis.fetch = async (url) => {
-        if (String(url).includes('/geocode/')) {
-            return { ok: true, json: async () => geocodeJson };
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async (url) => {
+            if (String(url).includes('/geocode/')) {
+                return makeJsonResponse(geocodeJson);
+            }
+            if (String(url).includes('/timezone/')) {
+                return makeJsonResponse(timezoneJson);
+            }
+            return makeJsonResponse(null, {
+                ok: false,
+                status: 404,
+                statusText: 'Not Found',
+            });
         }
-        if (String(url).includes('/timezone/')) {
-            return { ok: true, json: async () => timezoneJson };
-        }
-        return {
-            ok: false,
-            status: 404,
-            statusText: 'Not Found',
-            text: async () => '',
-        };
-    };
+    );
 
     const result = await locationFromLatLng({
         lat: 44.9778,
@@ -89,11 +106,10 @@ test('locationFromLatLng returns userLocation and address', async () => {
 
 test('locationFromLatLng supports skipping timezone lookup', async () => {
     let calls = 0;
-    globalThis.fetch = async () => {
-        calls += 1;
-        return {
-            ok: true,
-            json: async () => ({
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () => {
+            calls += 1;
+            return makeJsonResponse({
                 results: [
                     {
                         formatted_address: 'London, UK',
@@ -111,9 +127,9 @@ test('locationFromLatLng supports skipping timezone lookup', async () => {
                         ],
                     },
                 ],
-            }),
-        };
-    };
+            });
+        }
+    );
 
     const result = await locationFromLatLng({
         lat: 51.5074,
@@ -137,12 +153,15 @@ test('locationFromLatLng throws on invalid lat/lng', async () => {
 });
 
 test('locationFromLatLng throws on non-ok response', async () => {
-    globalThis.fetch = async () => ({
-        ok: false,
-        status: 500,
-        statusText: 'Server Error',
-        text: async () => 'fail',
-    });
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () =>
+            makeJsonResponse(null, {
+                ok: false,
+                status: 500,
+                statusText: 'Server Error',
+                text: async () => 'fail',
+            })
+    );
 
     await assert.rejects(
         () => locationFromLatLng({ lat: 44, lng: -93, apiKey: 'key' }),
