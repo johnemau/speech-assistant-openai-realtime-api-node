@@ -1,9 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { locationFromLatLng } from './location.js';
-
 const originalFetch = globalThis.fetch;
+const originalGoogleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
+let importCounter = 0;
+
+/**
+ * @returns {Promise<typeof import('./location.js')>} Location module import.
+ */
+async function loadLocationModule() {
+    importCounter += 1;
+    return import(`./location.js?test=${importCounter}`);
+}
 
 /**
  * @param {object | null} body - JSON body to return.
@@ -23,9 +31,16 @@ function makeJsonResponse(body, overrides = {}) {
 
 test.afterEach(() => {
     globalThis.fetch = originalFetch;
+    if (originalGoogleMapsKey == null) {
+        delete process.env.GOOGLE_MAPS_API_KEY;
+    } else {
+        process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
+    }
 });
 
 test('locationFromLatLng returns userLocation and address', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { locationFromLatLng } = await loadLocationModule();
     const geocodeJson = {
         results: [
             {
@@ -79,7 +94,6 @@ test('locationFromLatLng returns userLocation and address', async () => {
     const result = await locationFromLatLng({
         lat: 44.9778,
         lng: -93.265,
-        apiKey: 'test-key',
     });
 
     assert.deepEqual(result.userLocation, {
@@ -105,6 +119,8 @@ test('locationFromLatLng returns userLocation and address', async () => {
 });
 
 test('locationFromLatLng supports skipping timezone lookup', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { locationFromLatLng } = await loadLocationModule();
     let calls = 0;
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () => {
@@ -134,7 +150,6 @@ test('locationFromLatLng supports skipping timezone lookup', async () => {
     const result = await locationFromLatLng({
         lat: 51.5074,
         lng: -0.1278,
-        apiKey: 'test-key',
         includeTimezone: false,
     });
 
@@ -146,13 +161,16 @@ test('locationFromLatLng supports skipping timezone lookup', async () => {
 });
 
 test('locationFromLatLng throws on invalid lat/lng', async () => {
-    await assert.rejects(
-        () => locationFromLatLng({ lat: 200, lng: 0, apiKey: 'key' }),
-        { message: 'lat and lng must be valid numbers.' }
-    );
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { locationFromLatLng } = await loadLocationModule();
+    await assert.rejects(() => locationFromLatLng({ lat: 200, lng: 0 }), {
+        message: 'lat and lng must be valid numbers.',
+    });
 });
 
 test('locationFromLatLng throws on non-ok response', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { locationFromLatLng } = await loadLocationModule();
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () =>
             makeJsonResponse(null, {
@@ -163,8 +181,7 @@ test('locationFromLatLng throws on non-ok response', async () => {
             })
     );
 
-    await assert.rejects(
-        () => locationFromLatLng({ lat: 44, lng: -93, apiKey: 'key' }),
-        { message: 'HTTP 500 Server Error - fail' }
-    );
+    await assert.rejects(() => locationFromLatLng({ lat: 44, lng: -93 }), {
+        message: 'HTTP 500 Server Error - fail',
+    });
 });

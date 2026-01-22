@@ -1,3 +1,5 @@
+import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
+
 const DEFAULT_TIMEOUT_MS = 15000;
 
 /**
@@ -223,7 +225,6 @@ async function lookupTimezone({
  * @param {object} [root0] - Location lookup options.
  * @param {number} [root0.lat] - Latitude in degrees.
  * @param {number} [root0.lng] - Longitude in degrees.
- * @param {string} [root0.apiKey] - Google Maps API key.
  * @param {string} [root0.language] - Optional locale string.
  * @param {boolean} [root0.includeTimezone=true] - Whether to include timezone lookup.
  * @param {number} [root0.timestampSeconds] - Optional UNIX timestamp in seconds.
@@ -241,7 +242,6 @@ async function lookupTimezone({
 export async function locationFromLatLng({
     lat,
     lng,
-    apiKey,
     language,
     includeTimezone = true,
     timestampSeconds,
@@ -249,11 +249,31 @@ export async function locationFromLatLng({
 } = {}) {
     const resolvedLat = Number(lat);
     const resolvedLng = Number(lng);
+    const apiKey = getGoogleMapsApiKey();
+
+    if (IS_DEV) {
+        console.log('locationFromLatLng:start', {
+            lat: resolvedLat,
+            lng: resolvedLng,
+            includeTimezone,
+            language,
+            hasApiKey: Boolean(apiKey),
+        });
+    }
 
     if (!isValidLatLng(resolvedLat, resolvedLng)) {
+        if (IS_DEV) {
+            console.log('locationFromLatLng:invalid-latlng', {
+                lat: resolvedLat,
+                lng: resolvedLng,
+            });
+        }
         throw new Error('lat and lng must be valid numbers.');
     }
     if (!apiKey) {
+        if (IS_DEV) {
+            console.log('locationFromLatLng:missing-api-key');
+        }
         throw new Error('apiKey is required.');
     }
 
@@ -264,9 +284,21 @@ export async function locationFromLatLng({
         language,
         timeoutMs,
     });
+    if (IS_DEV) {
+        console.log('locationFromLatLng:geocode-received', {
+            hasResults: Array.isArray(geocode?.results),
+            resultsCount: geocode?.results?.length ?? 0,
+        });
+    }
 
     const userLocation = mapGeocodeToUserLocation(geocode);
     const address = mapGeocodeToAddress(geocode);
+    if (IS_DEV) {
+        console.log('locationFromLatLng:derived-location', {
+            userLocation,
+            address,
+        });
+    }
 
     let timezone;
     let timezoneId;
@@ -281,9 +313,17 @@ export async function locationFromLatLng({
         if (timezone?.status === 'OK' && timezone?.timeZoneId) {
             timezoneId = timezone.timeZoneId;
         }
+        if (IS_DEV) {
+            console.log('locationFromLatLng:timezone-resolved', {
+                status: timezone?.status,
+                timezoneId,
+            });
+        }
+    } else if (IS_DEV) {
+        console.log('locationFromLatLng:timezone-skipped');
     }
 
-    return {
+    const result = {
         lat: resolvedLat,
         lng: resolvedLng,
         userLocation,
@@ -292,4 +332,14 @@ export async function locationFromLatLng({
         timezone,
         timezoneId,
     };
+
+    if (IS_DEV) {
+        console.log('locationFromLatLng:return', {
+            lat: result.lat,
+            lng: result.lng,
+            timezoneId: result.timezoneId,
+        });
+    }
+
+    return result;
 }

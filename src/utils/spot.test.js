@@ -1,9 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getLatestTrackLatLng, resetSpotCacheForTests } from './spot.js';
-
 const originalFetch = globalThis.fetch;
+const originalSpotFeedId = process.env.SPOT_FEED_ID;
+const originalSpotFeedPassword = process.env.SPOT_FEED_PASSWORD;
+let importCounter = 0;
+
+/**
+ * @returns {Promise<typeof import('./spot.js')>} Spot module import.
+ */
+async function loadSpotModule() {
+    importCounter += 1;
+    return import(`./spot.js?test=${importCounter}`);
+}
 
 /**
  * @param {object} body - JSON body to return.
@@ -23,10 +32,23 @@ function makeJsonResponse(body, overrides = {}) {
 
 test.afterEach(() => {
     globalThis.fetch = originalFetch;
-    resetSpotCacheForTests();
+    if (originalSpotFeedId == null) {
+        delete process.env.SPOT_FEED_ID;
+    } else {
+        process.env.SPOT_FEED_ID = originalSpotFeedId;
+    }
+    if (originalSpotFeedPassword == null) {
+        delete process.env.SPOT_FEED_PASSWORD;
+    } else {
+        process.env.SPOT_FEED_PASSWORD = originalSpotFeedPassword;
+    }
 });
 
 test('spot.getLatestTrackLatLng returns latest TRACK message', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    const { getLatestTrackLatLng, resetSpotCacheForTests } =
+        await loadSpotModule();
     let calls = 0;
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () => {
@@ -51,7 +73,7 @@ test('spot.getLatestTrackLatLng returns latest TRACK message', async () => {
         }
     );
 
-    const result = await getLatestTrackLatLng('feed-id', 'feed-pass');
+    const result = await getLatestTrackLatLng();
 
     assert.deepEqual(result, {
         latitude: 47.61,
@@ -63,9 +85,14 @@ test('spot.getLatestTrackLatLng returns latest TRACK message', async () => {
         messageType: 'TRACK',
     });
     assert.equal(calls, 1);
+    resetSpotCacheForTests();
 });
 
 test('spot.getLatestTrackLatLng returns null for non-TRACK', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    const { getLatestTrackLatLng, resetSpotCacheForTests } =
+        await loadSpotModule();
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () =>
             makeJsonResponse({
@@ -85,12 +112,17 @@ test('spot.getLatestTrackLatLng returns null for non-TRACK', async () => {
             })
     );
 
-    const result = await getLatestTrackLatLng('feed-id', 'feed-pass');
+    const result = await getLatestTrackLatLng();
 
     assert.equal(result, null);
+    resetSpotCacheForTests();
 });
 
 test('spot.getLatestTrackLatLng returns null for invalid lat/lng', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    const { getLatestTrackLatLng, resetSpotCacheForTests } =
+        await loadSpotModule();
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () =>
             makeJsonResponse({
@@ -110,12 +142,17 @@ test('spot.getLatestTrackLatLng returns null for invalid lat/lng', async () => {
             })
     );
 
-    const result = await getLatestTrackLatLng('feed-id', 'feed-pass');
+    const result = await getLatestTrackLatLng();
 
     assert.equal(result, null);
+    resetSpotCacheForTests();
 });
 
 test('spot.getLatestTrackLatLng returns cached value on fetch failure', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    const { getLatestTrackLatLng, resetSpotCacheForTests } =
+        await loadSpotModule();
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () =>
             makeJsonResponse({
@@ -135,7 +172,7 @@ test('spot.getLatestTrackLatLng returns cached value on fetch failure', async ()
             })
     );
 
-    const first = await getLatestTrackLatLng('feed-id', 'feed-pass');
+    const first = await getLatestTrackLatLng();
 
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () => {
@@ -143,14 +180,17 @@ test('spot.getLatestTrackLatLng returns cached value on fetch failure', async ()
         }
     );
 
-    const second = await getLatestTrackLatLng('feed-id', 'feed-pass', {
-        force: true,
-    });
+    const second = await getLatestTrackLatLng({ force: true });
 
     assert.deepEqual(second, first);
+    resetSpotCacheForTests();
 });
 
 test('spot.getLatestTrackLatLng throttles repeated calls', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    const { getLatestTrackLatLng, resetSpotCacheForTests } =
+        await loadSpotModule();
     let calls = 0;
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () => {
@@ -173,9 +213,10 @@ test('spot.getLatestTrackLatLng throttles repeated calls', async () => {
         }
     );
 
-    const first = await getLatestTrackLatLng('feed-id', 'feed-pass');
-    const second = await getLatestTrackLatLng('feed-id', 'feed-pass');
+    const first = await getLatestTrackLatLng();
+    const second = await getLatestTrackLatLng();
 
     assert.deepEqual(second, first);
     assert.equal(calls, 1);
+    resetSpotCacheForTests();
 });

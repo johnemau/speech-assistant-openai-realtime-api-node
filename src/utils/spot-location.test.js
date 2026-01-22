@@ -1,10 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getLatestTrackLocation } from './spot-location.js';
-import { resetSpotCacheForTests } from './spot.js';
-
 const originalFetch = globalThis.fetch;
+const originalSpotFeedId = process.env.SPOT_FEED_ID;
+const originalSpotFeedPassword = process.env.SPOT_FEED_PASSWORD;
+const originalGoogleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
+let importCounter = 0;
+
+/**
+ * @returns {Promise<typeof import('./spot-location.js')>} Spot-location module import.
+ */
+async function loadSpotLocationModule() {
+    importCounter += 1;
+    return import(`./spot-location.js?test=${importCounter}`);
+}
+
+/**
+ * @returns {Promise<typeof import('./spot.js')>} Spot module import.
+ */
+async function loadSpotModule() {
+    return import('./spot.js');
+}
 
 /**
  * @param {object | null} body - JSON body to return.
@@ -24,10 +40,29 @@ function makeJsonResponse(body, overrides = {}) {
 
 test.afterEach(() => {
     globalThis.fetch = originalFetch;
-    resetSpotCacheForTests();
+    if (originalSpotFeedId == null) {
+        delete process.env.SPOT_FEED_ID;
+    } else {
+        process.env.SPOT_FEED_ID = originalSpotFeedId;
+    }
+    if (originalSpotFeedPassword == null) {
+        delete process.env.SPOT_FEED_PASSWORD;
+    } else {
+        process.env.SPOT_FEED_PASSWORD = originalSpotFeedPassword;
+    }
+    if (originalGoogleMapsKey == null) {
+        delete process.env.GOOGLE_MAPS_API_KEY;
+    } else {
+        process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
+    }
 });
 
 test('getLatestTrackLocation returns combined track + location', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { getLatestTrackLocation } = await loadSpotLocationModule();
+    const { resetSpotCacheForTests } = await loadSpotModule();
     const geocodeJson = {
         results: [
             {
@@ -94,11 +129,7 @@ test('getLatestTrackLocation returns combined track + location', async () => {
         }
     );
 
-    const result = await getLatestTrackLocation({
-        feedId: 'feed-id',
-        feedPassword: 'feed-pass',
-        apiKey: 'test-key',
-    });
+    const result = await getLatestTrackLocation();
 
     assert.ok(result);
     assert.deepEqual(result.track, {
@@ -117,9 +148,15 @@ test('getLatestTrackLocation returns combined track + location', async () => {
         city: 'Minneapolis',
     });
     assert.equal(result.location.timezoneId, 'America/Chicago');
+    resetSpotCacheForTests();
 });
 
 test('getLatestTrackLocation returns null when no track', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    const { getLatestTrackLocation } = await loadSpotLocationModule();
+    const { resetSpotCacheForTests } = await loadSpotModule();
     let calls = 0;
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () => {
@@ -142,17 +179,18 @@ test('getLatestTrackLocation returns null when no track', async () => {
         }
     );
 
-    const result = await getLatestTrackLocation({
-        feedId: 'feed-id',
-        feedPassword: 'feed-pass',
-        apiKey: 'test-key',
-    });
+    const result = await getLatestTrackLocation();
 
     assert.equal(result, null);
     assert.equal(calls, 1);
+    resetSpotCacheForTests();
 });
 
 test('getLatestTrackLocation throws when apiKey missing', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    delete process.env.GOOGLE_MAPS_API_KEY;
+    const { getLatestTrackLocation } = await loadSpotLocationModule();
     globalThis.fetch = /** @type {typeof fetch} */ (
         async () =>
             makeJsonResponse({
@@ -172,12 +210,7 @@ test('getLatestTrackLocation throws when apiKey missing', async () => {
             })
     );
 
-    await assert.rejects(
-        () =>
-            getLatestTrackLocation({
-                feedId: 'feed-id',
-                feedPassword: 'feed-pass',
-            }),
-        { message: 'apiKey is required.' }
-    );
+    await assert.rejects(() => getLatestTrackLocation(), {
+        message: 'apiKey is required.',
+    });
 });

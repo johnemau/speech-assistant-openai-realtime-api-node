@@ -1,3 +1,5 @@
+import { getSpotFeedId, getSpotFeedPassword, IS_DEV } from '../env.js';
+
 const SPOT_THROTTLE_MS = 2.5 * 60 * 1000;
 
 const spotLatestTrackCache = new Map();
@@ -58,23 +60,42 @@ async function fetchWithTimeout(url, { timeoutMs = 15000, ...init } = {}) {
 /**
  * Fetch the most recent TRACK message for a SPOT Public Feed.
  *
- * @param {string} feedId - SPOT public feed ID.
- * @param {string} feedPassword - SPOT public feed password.
  * @param {object} [opts] - Optional request settings.
  * @param {boolean} [opts.force=false] - Bypass throttle (still updates cache).
  * @param {number} [opts.timeoutMs=15000] - Request timeout in ms.
  * @returns {Promise<SpotLatestTrack | null>} Latest track data or null.
  */
-export async function getLatestTrackLatLng(feedId, feedPassword, opts = {}) {
+export async function getLatestTrackLatLng(opts = {}) {
     const { force = false, timeoutMs = 15000 } = opts;
+    const feedId = getSpotFeedId();
+    const feedPassword = getSpotFeedPassword();
 
-    if (!feedId || !feedPassword) return null;
+    if (IS_DEV) {
+        console.log('getLatestTrackLatLng:start', {
+            force,
+            timeoutMs,
+            hasFeedId: Boolean(feedId),
+            hasFeedPassword: Boolean(feedPassword),
+        });
+    }
+
+    if (!feedId || !feedPassword) {
+        if (IS_DEV) {
+            console.log('getLatestTrackLatLng:missing-credentials');
+        }
+        return null;
+    }
 
     const cacheKey = `${feedId}:${feedPassword}`;
     const now = Date.now();
     const cached = spotLatestTrackCache.get(cacheKey);
 
     if (!force && cached && now - cached.fetchedAt < SPOT_THROTTLE_MS) {
+        if (IS_DEV) {
+            console.log('getLatestTrackLatLng:cache-hit', {
+                ageMs: now - cached.fetchedAt,
+            });
+        }
         return cached.value;
     }
 
@@ -92,6 +113,12 @@ export async function getLatestTrackLatLng(feedId, feedPassword, opts = {}) {
             fetchedAt: now,
             value: cached?.value ?? null,
         });
+        if (IS_DEV) {
+            console.log('getLatestTrackLatLng:fetch-failed', {
+                ok: res?.ok,
+                status: res?.status,
+            });
+        }
         return cached?.value ?? null;
     }
 
@@ -103,6 +130,9 @@ export async function getLatestTrackLatLng(feedId, feedPassword, opts = {}) {
             fetchedAt: now,
             value: cached?.value ?? null,
         });
+        if (IS_DEV) {
+            console.log('getLatestTrackLatLng:json-parse-failed');
+        }
         return cached?.value ?? null;
     }
 
@@ -117,6 +147,9 @@ export async function getLatestTrackLatLng(feedId, feedPassword, opts = {}) {
             fetchedAt: now,
             value: cached?.value ?? null,
         });
+        if (IS_DEV) {
+            console.log('getLatestTrackLatLng:missing-message');
+        }
         return cached?.value ?? null;
     }
 
@@ -125,6 +158,11 @@ export async function getLatestTrackLatLng(feedId, feedPassword, opts = {}) {
             fetchedAt: now,
             value: cached?.value ?? null,
         });
+        if (IS_DEV) {
+            console.log('getLatestTrackLatLng:non-track', {
+                messageType: msg.messageType || msg.message_type,
+            });
+        }
         return cached?.value ?? null;
     }
 
@@ -136,6 +174,12 @@ export async function getLatestTrackLatLng(feedId, feedPassword, opts = {}) {
             fetchedAt: now,
             value: cached?.value ?? null,
         });
+        if (IS_DEV) {
+            console.log('getLatestTrackLatLng:invalid-latlng', {
+                latitude,
+                longitude,
+            });
+        }
         return cached?.value ?? null;
     }
 
@@ -153,6 +197,14 @@ export async function getLatestTrackLatLng(feedId, feedPassword, opts = {}) {
     };
 
     spotLatestTrackCache.set(cacheKey, { fetchedAt: now, value: result });
+    if (IS_DEV) {
+        console.log('getLatestTrackLatLng:return', {
+            latitude: result.latitude,
+            longitude: result.longitude,
+            unixTime: result.unixTime,
+            messageId: result.messageId,
+        });
+    }
     return result;
 }
 

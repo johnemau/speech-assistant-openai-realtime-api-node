@@ -43,6 +43,31 @@ export const WAIT_MUSIC_FOLDER = process.env.WAIT_MUSIC_FOLDER || 'music';
 export const PRIMARY_USER_FIRST_NAME = process.env.PRIMARY_USER_FIRST_NAME;
 export const SECONDARY_USER_FIRST_NAME = process.env.SECONDARY_USER_FIRST_NAME;
 
+export const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+export const SPOT_FEED_ID = process.env.SPOT_FEED_ID;
+export const SPOT_FEED_PASSWORD = process.env.SPOT_FEED_PASSWORD;
+
+/**
+ * @returns {string | undefined} Google Maps API key from env.
+ */
+export function getGoogleMapsApiKey() {
+    return process.env.GOOGLE_MAPS_API_KEY;
+}
+
+/**
+ * @returns {string | undefined} SPOT public feed ID from env.
+ */
+export function getSpotFeedId() {
+    return process.env.SPOT_FEED_ID;
+}
+
+/**
+ * @returns {string | undefined} SPOT public feed password from env.
+ */
+export function getSpotFeedPassword() {
+    return process.env.SPOT_FEED_PASSWORD;
+}
+
 export let ALLOW_SEND_SMS = isTruthy(process.env.ALLOW_SEND_SMS);
 export let ALLOW_SEND_EMAIL = isTruthy(process.env.ALLOW_SEND_EMAIL);
 
