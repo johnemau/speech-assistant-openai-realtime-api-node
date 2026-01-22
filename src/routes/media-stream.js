@@ -62,6 +62,8 @@ export function mediaStreamHandler(connection, req) {
     let pendingDisconnectResponseReceived = false;
     /** @type {NodeJS.Timeout | null} */
     let pendingDisconnectTimeout = null;
+    // Track whether goodbye playback actually started before closing
+    let disconnectAudioStarted = false;
 
     // Track response lifecycle to avoid overlapping response.create calls
     let responseActive = false;
@@ -112,13 +114,12 @@ export function mediaStreamHandler(connection, req) {
         if (!streamSid || isWaitingMusic) return;
         isWaitingMusic = true;
         console.info(
-            `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS} folder=${WAIT_MUSIC_FOLDER || ''}`,
+            `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS}`,
             {
                 event: 'wait_music.start',
                 reason,
                 streamSid,
                 threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
-                folder: WAIT_MUSIC_FOLDER || null,
             }
         );
         // If audio folder is provided and exists
@@ -135,8 +136,7 @@ export function mediaStreamHandler(connection, req) {
                         );
                     if (files.length === 0) {
                         console.warn(
-                            'Waiting music folder has no files; disabling waiting music:',
-                            WAIT_MUSIC_FOLDER
+                            'Waiting music folder has no files; disabling waiting music.'
                         );
                         return;
                     }
@@ -254,6 +254,8 @@ export function mediaStreamHandler(connection, req) {
         try {
             if (!pendingDisconnect) return;
             if (!force && !pendingDisconnectResponseReceived) return;
+            // Ensure we have started playing the goodbye audio at least once
+            if (!force && !disconnectAudioStarted) return;
             // Prefer closing after Twilio marks catch up (no queued marks)
             if (!force && markQueue.length !== 0) return;
 
@@ -298,6 +300,8 @@ export function mediaStreamHandler(connection, req) {
         // Suppress audio entirely after hang-up; otherwise, stream to Twilio
         // Assistant audio is streaming; stop any waiting music immediately
         stopWaitingMusic('assistant_audio');
+        // Mark that goodbye audio has started when pending disconnect
+        if (pendingDisconnect) disconnectAudioStarted = true;
         if (!postHangupSilentMode) {
             const audioDelta = {
                 event: 'media',
@@ -367,6 +371,8 @@ export function mediaStreamHandler(connection, req) {
 
         // When VAD ends a user turn, we must explicitly create a response (auto-create disabled)
         if (response.type === 'input_audio_buffer.speech_stopped') {
+            // During an assistant-initiated hangup, do not request another response
+            if (pendingDisconnect) return;
             stopWaitingMusic('speech_stopped');
             if (!responseActive) {
                 try {
@@ -548,6 +554,36 @@ export function mediaStreamHandler(connection, req) {
                 },
             };
 
+            if (toolName === 'end_call') {
+                const reason =
+                    typeof toolInput?.reason === 'string'
+                        ? toolInput.reason.trim()
+                        : undefined;
+                const output = toolContext.onEndCall
+                    ? toolContext.onEndCall({ reason })
+                    : { status: 'ok', reason };
+                const toolResultEvent = {
+                    type: 'conversation.item.create',
+                    item: {
+                        type: 'function_call_output',
+                        call_id: functionCall.call_id,
+                        output: JSON.stringify(output),
+                    },
+                };
+                toolCallInProgress = false;
+                assistantSession.send(toolResultEvent);
+                if (!responseActive) {
+                    assistantSession.requestResponse();
+                    scheduleWaitingMusic('tool_call_response');
+                }
+                if (IS_DEV)
+                    console.log(
+                        'LLM tool output sent to OpenAI',
+                        toolResultEvent
+                    );
+                return;
+            }
+
             const output = await executeToolCall({
                 name: toolName,
                 args: toolInput,
@@ -575,8 +611,13 @@ export function mediaStreamHandler(connection, req) {
             // assistant audio resumes or the caller speaks.
             assistantSession.send(toolResultEvent);
             if (!responseActive) {
-                assistantSession.requestResponse();
-                scheduleWaitingMusic('tool_call_response');
+                // After end_call, only request a single goodbye response
+                const shouldRequest =
+                    !pendingDisconnect || toolName === 'end_call';
+                if (shouldRequest) {
+                    assistantSession.requestResponse();
+                    scheduleWaitingMusic('tool_call_response');
+                }
             }
             if (IS_DEV)
                 console.log('LLM tool output sent to OpenAI', toolResultEvent);
@@ -654,7 +695,7 @@ export function mediaStreamHandler(connection, req) {
                 },
             };
             assistantSession.send(toolErrorEvent);
-            if (!responseActive) {
+            if (!responseActive && !pendingDisconnect) {
                 assistantSession.requestResponse();
                 scheduleWaitingMusic('tool_call_error');
             }
