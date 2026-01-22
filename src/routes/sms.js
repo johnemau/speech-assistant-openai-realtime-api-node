@@ -9,12 +9,155 @@ import {
 } from '../utils/sms.js';
 import { IS_DEV, PRIMARY_CALLERS_SET, SECONDARY_CALLERS_SET } from '../env.js';
 import {
-    buildWebSearchResponseParams,
+    buildWebSearchTool,
+    DEFAULT_SMS_USER_LOCATION,
     GPT_5_2_MODEL,
 } from '../config/openai-models.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
+import { safeParseToolArguments } from '../assistant/session.js';
+import { executeToolCall } from '../tools/index.js';
+import { definition as sendEmailDefinition } from '../tools/send-email.js';
+import { definition as getCurrentLocationDefinition } from '../tools/get-current-location.js';
+import { definition as findCurrentlyNearbyPlaceDefinition } from '../tools/find-currently-nearby-place.js';
+import { definition as placesTextSearchDefinition } from '../tools/places-text-search.js';
+
+/** @type {Array<import('openai/resources/responses/responses').Tool>} */
+const SMS_TOOL_DEFINITIONS = [
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        sendEmailDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        getCurrentLocationDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        findCurrentlyNearbyPlaceDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        placesTextSearchDefinition
+    ),
+];
+
+const MAX_SMS_TOOL_ROUNDS = 6;
+
+/**
+ * @returns {{ tools: Array<import('openai/resources/responses/responses').Tool>, tool_choice: 'auto' }}
+ */
+function buildSmsToolConfig() {
+    return {
+        tools: [
+            /** @type {import('openai/resources/responses/responses').Tool} */ (
+                buildWebSearchTool({
+                    userLocation: DEFAULT_SMS_USER_LOCATION,
+                })
+            ),
+            ...SMS_TOOL_DEFINITIONS,
+        ],
+        tool_choice: 'auto',
+    };
+}
+
+/**
+ * Execute a tool call safely for SMS.
+ *
+ * @param {object} root0
+ * @param {string} root0.name
+ * @param {unknown} root0.arguments
+ * @param {{ currentCallerE164?: string | null }} root0.context
+ * @returns {Promise<object>}
+ */
+async function executeSmsToolCallSafe({ name, arguments: rawArgs, context }) {
+    const parsedArgs = safeParseToolArguments(rawArgs);
+    try {
+        const output = await executeToolCall({
+            name,
+            args: parsedArgs,
+            context,
+        });
+        return output || { status: 'ok' };
+    } catch (e) {
+        let detail = e?.message || stringifyDeep(e);
+        if (!IS_DEV) {
+            detail = redactErrorDetail({
+                errorLike: e,
+                detail,
+                env: process.env,
+                secretKeys: REDACTION_KEYS,
+            });
+        }
+        return {
+            status: 'error',
+            message: String(detail || '').slice(0, 220),
+        };
+    }
+}
+
+/**
+ * Run SMS response with multi-step tool calls.
+ *
+ * @param {object} root0
+ * @param {string} root0.input
+ * @param {string} root0.instructions
+ * @param {{ currentCallerE164?: string | null }} root0.context
+ * @returns {Promise<import('openai/resources/responses/responses').Response>}
+ */
+async function runSmsResponseWithTools({ input, instructions, context }) {
+    /** @type {import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming} */
+    const baseConfig = {
+        model: GPT_5_2_MODEL,
+        reasoning: { effort: /** @type {'high'} */ ('high') },
+        truncation: 'auto',
+        instructions,
+        ...buildSmsToolConfig(),
+    };
+
+    let response = await openaiClient.responses.create({
+        ...baseConfig,
+        input,
+    });
+
+    let rounds = 0;
+    while (rounds < MAX_SMS_TOOL_ROUNDS) {
+        const toolCalls =
+            response?.output?.filter(
+                (item) => item?.type === 'function_call'
+            ) || [];
+        if (!toolCalls.length) return response;
+
+        /** @type {Array<import('openai/resources/responses/responses').ResponseInputItem>} */
+        const outputs = [];
+        for (const toolCall of toolCalls) {
+            const toolName = toolCall?.name;
+            const callId = toolCall?.call_id;
+            if (!toolName || !callId) continue;
+
+            const toolResult = await executeSmsToolCallSafe({
+                name: toolName,
+                arguments: toolCall?.arguments,
+                context,
+            });
+
+            outputs.push(
+                /** @type {import('openai/resources/responses/responses').ResponseInputItem} */ ({
+                    type: 'function_call_output',
+                    call_id: callId,
+                    output: JSON.stringify(toolResult),
+                })
+            );
+        }
+
+        response = await openaiClient.responses.create({
+            ...baseConfig,
+            previous_response_id: response?.id,
+            input: outputs,
+        });
+
+        rounds += 1;
+    }
+
+    return response;
+}
 
 /**
  * @param {import('fastify').FastifyRequest} request - Incoming Twilio SMS webhook request.
@@ -172,26 +315,30 @@ export async function smsHandler(request, reply) {
             });
         }
 
-        // Prepare OpenAI request with web_search tool
-        const reqPayload = buildWebSearchResponseParams({
-            input: smsPrompt,
-            instructions: SMS_REPLY_INSTRUCTIONS,
-        });
-
         // Concise log of AI request (dev-friendly, but short)
         console.info(
-            `sms ai request: model=${GPT_5_2_MODEL} tools=web_search promptLen=${String(smsPrompt || '').length}`,
+            `sms ai request: model=${GPT_5_2_MODEL} tools=web_search,places_text_search,find_currently_nearby_place,get_current_location,send_email promptLen=${String(smsPrompt || '').length}`,
             {
                 event: 'sms.ai.request',
                 model: GPT_5_2_MODEL,
-                tools: ['web_search'],
+                tools: [
+                    'web_search',
+                    'places_text_search',
+                    'find_currently_nearby_place',
+                    'get_current_location',
+                    'send_email',
+                ],
                 prompt_len: String(smsPrompt || '').length,
             }
         );
 
         let aiText = '';
         try {
-            const aiResult = await openaiClient.responses.create(reqPayload);
+            const aiResult = await runSmsResponseWithTools({
+                input: smsPrompt,
+                instructions: SMS_REPLY_INSTRUCTIONS,
+                context: { currentCallerE164: fromE164 },
+            });
             aiText = String(aiResult?.output_text || '').trim();
         } catch (e) {
             console.error('OpenAI SMS reply error:', e?.message || e);
