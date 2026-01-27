@@ -12,6 +12,7 @@ import {
 } from '../init.js';
 import { readPcmuFile } from '../utils/audio.js';
 import { getTimeGreeting } from '../utils/calls.js';
+import { getLatestTrackTimezone } from '../utils/spot.js';
 import { executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
@@ -684,11 +685,23 @@ export function mediaStreamHandler(connection, req) {
     });
 
     // Send initial conversation item using the caller's name once available
-    const sendInitialConversationItem = (callerNameValue = 'legend') => {
+    const sendInitialConversationItem = async (callerNameValue = 'legend') => {
         initialGreetingRequested = true;
-        const timeGreeting = getTimeGreeting({
-            timeZone: 'America/Los_Angeles',
-        });
+        let timeZone = 'America/Los_Angeles';
+        try {
+            const trackTimezone = await getLatestTrackTimezone();
+            if (trackTimezone?.timezoneId) {
+                timeZone = trackTimezone.timezoneId;
+            }
+        } catch (e) {
+            if (IS_DEV) {
+                console.warn(
+                    'Failed to resolve track timezone; using default:',
+                    e?.message || e
+                );
+            }
+        }
+        const timeGreeting = getTimeGreeting({ timeZone });
         const initialConversationItem = {
             type: 'conversation.item.create',
             item: {
@@ -875,7 +888,7 @@ export function mediaStreamHandler(connection, req) {
                             callerName = secondaryName;
                         }
                         // Send the personalized greeting to OpenAI to speak first
-                        sendInitialConversationItem(callerName);
+                        void sendInitialConversationItem(callerName);
                     } catch {
                         // noop: missing custom parameters should not break stream handling
                         void 0;
@@ -883,7 +896,7 @@ export function mediaStreamHandler(connection, req) {
                             'No custom caller parameter found on start event.'
                         );
                         // Fallback greeting without a personalized name
-                        sendInitialConversationItem('legend');
+                        void sendInitialConversationItem('legend');
                     }
                     break;
                 case 'mark':
