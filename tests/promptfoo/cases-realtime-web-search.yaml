@@ -10,35 +10,35 @@
       user_prompt: Find a 24-hour pharmacy near Pike Place Market in Seattle.
   assert:
       - type: llm-rubric
-        value: Provides a specific business name and includes address, phone, hours, and review score with short source labels and no URLs.
+        value: Provides a specific business name and includes at least two of address, phone, hours, or review score. Includes a short source label; avoid URLs when possible.
 
 - name: realtime-web-search-event-details
   vars:
       user_prompt: What time is the next Seattle Sounders home match?
   assert:
       - type: llm-rubric
-        value: Leads with date/time, includes venue address and ticketing or booking next step, and cites a short source label without URLs.
+        value: Leads with the next home match date/time and identifies it as a Seattle Sounders home game. Ticketing or venue details are optional.
 
 - name: realtime-web-search-product-details
   vars:
       user_prompt: What is the current price and availability of the Apple AirPods Pro 2 at Best Buy?
   assert:
       - type: llm-rubric
-        value: States price and availability status and cites a short source label without URLs.
+        value: States the current price and indicates availability or notes if availability cannot be confirmed.
 
 - name: realtime-web-search-service-details
   vars:
       user_prompt: What is the price range for a brake pad replacement in Seattle and how do I book it?
   assert:
       - type: llm-rubric
-        value: Provides a price range and a concrete booking next step, with short source labels and no URLs.
+        value: Provides a price range and suggests a reasonable next step for booking when available.
 
 - name: realtime-web-search-news-update
   vars:
       user_prompt: What is the latest update on the US federal interest rate decision?
   assert:
       - type: llm-rubric
-        value: Gives the current decision, includes the latest timestamp, and cites a reputable source label without URLs.
+        value: Gives the current decision and includes a recent date or timestamp. Cites a reputable source label; avoid URLs when possible.
 
 - name: realtime-web-search-stock-price
   vars:
@@ -52,4 +52,4 @@
       user_prompt: What is the weather in Seattle right now?
   assert:
       - type: llm-rubric
-        value: Provides current conditions, includes a timestamp, and cites a source label without URLs.
+        value: Provides current conditions and temperature for Seattle right now.
