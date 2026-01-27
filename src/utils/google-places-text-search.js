@@ -4,20 +4,72 @@ import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
  * @typedef {object} TextSearchPlace
  * @property {string|null} id
  * @property {string|null} name
+ * @property {object|null} accessibilityOptions
  * @property {string|null} businessStatus
+ * @property {object|null} editorialSummary
+ * @property {boolean|null} hasDelivery
+ * @property {boolean|null} hasDineIn
+ * @property {boolean|null} hasLiveMusic
+ * @property {boolean|null} hasOutdoorSeating
+ * @property {boolean|null} hasRestroom
+ * @property {boolean|null} hasTakeout
+ * @property {string|null} internationalPhoneNumber
+ * @property {boolean|null} isGoodForGroups
+ * @property {boolean|null} isGoodForWatchingSports
+ * @property {boolean|null} isReservable
+ * @property {string[]|null} types
  * @property {{lat:number,lng:number}|null} location
+ * @property {string|null} nationalPhoneNumber
+ * @property {object|null} neighborhoodSummary
+ * @property {object|null} parkingOptions
+ * @property {string|null} priceLevel
+ * @property {number|null} rating
+ * @property {object|null} regularOpeningHours
+ * @property {boolean|null} servesBreakfast
+ * @property {boolean|null} servesBrunch
+ * @property {boolean|null} servesCoffee
+ * @property {boolean|null} servesDessert
+ * @property {boolean|null} servesDinner
+ * @property {boolean|null} servesLunch
  * @property {string|null} address
  * @property {string|null} mapsUrl
+ * @property {string|null} websiteURI
  */
 
 /**
  * @typedef {object} GooglePlaceResult
  * @property {string=} id
  * @property {{text?: string}=} displayName
+ * @property {object=} accessibilityOptions
  * @property {string=} businessStatus
+ * @property {object=} editorialSummary
+ * @property {boolean=} delivery
+ * @property {boolean=} dineIn
+ * @property {boolean=} liveMusic
+ * @property {boolean=} outdoorSeating
+ * @property {boolean=} restroom
+ * @property {boolean=} takeout
+ * @property {string=} internationalPhoneNumber
+ * @property {boolean=} goodForGroups
+ * @property {boolean=} goodForWatchingSports
+ * @property {boolean=} reservable
  * @property {{latitude?: number, longitude?: number}=} location
+ * @property {string=} nationalPhoneNumber
+ * @property {object=} neighborhoodSummary
+ * @property {object=} parkingOptions
+ * @property {string=} priceLevel
+ * @property {number=} rating
+ * @property {object=} regularOpeningHours
+ * @property {boolean=} servesBreakfast
+ * @property {boolean=} servesBrunch
+ * @property {boolean=} servesCoffee
+ * @property {boolean=} servesDessert
+ * @property {boolean=} servesDinner
+ * @property {boolean=} servesLunch
+ * @property {string[]=} types
  * @property {string=} formattedAddress
  * @property {string=} googleMapsUri
+ * @property {string=} websiteUri
  */
 
 /**
@@ -151,7 +203,39 @@ export async function googlePlacesTextSearch(args) {
             (p) => ({
                 id: p?.id ?? null,
                 name: p?.displayName?.text ?? null,
+                accessibilityOptions: p?.accessibilityOptions ?? null,
                 businessStatus: p?.businessStatus ?? null,
+                editorialSummary: p?.editorialSummary ?? null,
+                hasDelivery:
+                    typeof p?.delivery === 'boolean' ? p.delivery : null,
+                hasDineIn: typeof p?.dineIn === 'boolean' ? p.dineIn : null,
+                hasLiveMusic:
+                    typeof p?.liveMusic === 'boolean' ? p.liveMusic : null,
+                hasOutdoorSeating:
+                    typeof p?.outdoorSeating === 'boolean'
+                        ? p.outdoorSeating
+                        : null,
+                hasRestroom:
+                    typeof p?.restroom === 'boolean' ? p.restroom : null,
+                hasTakeout:
+                    typeof p?.takeout === 'boolean' ? p.takeout : null,
+                internationalPhoneNumber:
+                    typeof p?.internationalPhoneNumber === 'string'
+                        ? p.internationalPhoneNumber
+                        : null,
+                isGoodForGroups:
+                    typeof p?.goodForGroups === 'boolean'
+                        ? p.goodForGroups
+                        : null,
+                isGoodForWatchingSports:
+                    typeof p?.goodForWatchingSports === 'boolean'
+                        ? p.goodForWatchingSports
+                        : null,
+                isReservable:
+                    typeof p?.reservable === 'boolean' ? p.reservable : null,
+                types: Array.isArray(p?.types)
+                    ? p.types.filter((type) => typeof type === 'string')
+                    : null,
                 location:
                     p?.location &&
                     Number.isFinite(p.location.latitude) &&
@@ -161,8 +245,45 @@ export async function googlePlacesTextSearch(args) {
                               lng: Number(p.location.longitude),
                           }
                         : null,
+                nationalPhoneNumber:
+                    typeof p?.nationalPhoneNumber === 'string'
+                        ? p.nationalPhoneNumber
+                        : null,
+                neighborhoodSummary: p?.neighborhoodSummary ?? null,
+                parkingOptions: p?.parkingOptions ?? null,
+                priceLevel:
+                    typeof p?.priceLevel === 'string' ? p.priceLevel : null,
+                rating:
+                    Number.isFinite(p?.rating) ? Number(p.rating) : null,
+                regularOpeningHours: p?.regularOpeningHours ?? null,
+                servesBreakfast:
+                    typeof p?.servesBreakfast === 'boolean'
+                        ? p.servesBreakfast
+                        : null,
+                servesBrunch:
+                    typeof p?.servesBrunch === 'boolean'
+                        ? p.servesBrunch
+                        : null,
+                servesCoffee:
+                    typeof p?.servesCoffee === 'boolean'
+                        ? p.servesCoffee
+                        : null,
+                servesDessert:
+                    typeof p?.servesDessert === 'boolean'
+                        ? p.servesDessert
+                        : null,
+                servesDinner:
+                    typeof p?.servesDinner === 'boolean'
+                        ? p.servesDinner
+                        : null,
+                servesLunch:
+                    typeof p?.servesLunch === 'boolean'
+                        ? p.servesLunch
+                        : null,
                 address: p?.formattedAddress ?? null,
                 mapsUrl: p?.googleMapsUri ?? null,
+                websiteURI:
+                    typeof p?.websiteUri === 'string' ? p.websiteUri : null,
             })
         );
 
@@ -199,10 +320,36 @@ const ttlMs = 150000;
 const fieldMask = [
     'places.id',
     'places.displayName',
+    'places.accessibilityOptions',
     'places.businessStatus',
+    'places.editorialSummary',
+    'places.delivery',
+    'places.dineIn',
+    'places.liveMusic',
+    'places.outdoorSeating',
+    'places.restroom',
+    'places.takeout',
+    'places.internationalPhoneNumber',
+    'places.goodForGroups',
+    'places.goodForWatchingSports',
+    'places.reservable',
+    'places.types',
     'places.location',
+    'places.nationalPhoneNumber',
+    'places.neighborhoodSummary',
+    'places.parkingOptions',
+    'places.priceLevel',
+    'places.rating',
+    'places.regularOpeningHours',
+    'places.servesBreakfast',
+    'places.servesBrunch',
+    'places.servesCoffee',
+    'places.servesDessert',
+    'places.servesDinner',
+    'places.servesLunch',
     'places.formattedAddress',
     'places.googleMapsUri',
+    'places.websiteUri',
 ];
 
 /** @type {Map<string, {expiresAt:number, value:{places: TextSearchPlace[]}}>} */
