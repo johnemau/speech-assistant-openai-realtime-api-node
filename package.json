@@ -18,7 +18,7 @@
         "convert:wav": "node scripts/convert-wav.mjs",
         "pf:eval:realtime-web-search": "promptfoo eval -c tests/promptfoo/promptfooconfig.realtime-web-search.mjs",
         "pf:eval:sms": "promptfoo eval -c tests/promptfoo/promptfooconfig.sms.mjs",
-        "pf:eval": "npm run pf:eval:realtime && npm run pf:eval:realtime-web-search && npm run pf:eval:sms",
+        "pf:eval": "npm run pf:eval:realtime-web-search && npm run pf:eval:sms",
         "pf:view": "promptfoo view"
     },
     "keywords": [],
