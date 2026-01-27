@@ -35,17 +35,18 @@ test('find-currently-nearby-place.execute defaults to 5 miles', async () => {
     setFindCurrentlyNearbyPlacesForTests(async (radius_m, options) => {
         seen.radius = radius_m;
         seen.options = options;
+        const place = /** @type {import('../utils/google-places.js').NearbyPlace} */ (
+            /** @type {any} */ ({
+                id: '1',
+                name: 'Place',
+                address: '123 Main',
+                location: { lat: 1, lng: 2 },
+                primaryType: 'restaurant',
+                mapsUrl: 'https://maps.example.com',
+            })
+        );
         return {
-            places: [
-                {
-                    id: '1',
-                    name: 'Place',
-                    address: '123 Main',
-                    location: { lat: 1, lng: 2 },
-                    primaryType: 'restaurant',
-                    mapsUrl: 'https://maps.example.com',
-                },
-            ],
+            places: [place],
         };
     });
 
