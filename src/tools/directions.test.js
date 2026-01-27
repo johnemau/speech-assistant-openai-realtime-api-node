@@ -5,18 +5,53 @@ const {
     execute,
     setComputeRouteForTests,
     resetComputeRouteForTests,
+    setGooglePlacesTextSearchForTests,
+    resetGooglePlacesTextSearchForTests,
     setGetLatestTrackLatLngForTests,
     resetGetLatestTrackLatLngForTests,
 } = await import('./directions.js');
 
 test.afterEach(() => {
     resetComputeRouteForTests();
+    resetGooglePlacesTextSearchForTests();
     resetGetLatestTrackLatLngForTests();
 });
 
-test('directions.execute uses provided origin and formats steps', async () => {
+test('directions.execute resolves places and formats steps', async () => {
     setGetLatestTrackLatLngForTests(async () => {
         throw new Error('getLatestTrackLatLng should not be called');
+    });
+
+    setGooglePlacesTextSearchForTests(async ({ textQuery }) => {
+        if (textQuery === 'Origin Place') {
+            return {
+                places: [
+                    {
+                        id: null,
+                        name: null,
+                        businessStatus: null,
+                        address: null,
+                        mapsUrl: null,
+                        location: { lat: 47.61, lng: -122.33 },
+                    },
+                ],
+            };
+        }
+        if (textQuery === 'Destination Place') {
+            return {
+                places: [
+                    {
+                        id: null,
+                        name: null,
+                        businessStatus: null,
+                        address: null,
+                        mapsUrl: null,
+                        location: { lat: 47.62, lng: -122.34 },
+                    },
+                ],
+            };
+        }
+        return { places: [] };
     });
 
     setComputeRouteForTests(async () => ({
@@ -53,8 +88,8 @@ test('directions.execute uses provided origin and formats steps', async () => {
 
     const res = await execute({
         args: {
-            origin: { lat: 47.61, lng: -122.33 },
-            destination: { lat: 47.62, lng: -122.34 },
+            origin_place: 'Origin Place',
+            destination_place: 'Destination Place',
         },
     });
 
@@ -77,6 +112,24 @@ test('directions.execute uses latest track when origin missing', async () => {
 
     /** @type {any} */
     let seenArgs = null;
+    setGooglePlacesTextSearchForTests(async ({ textQuery }) => {
+        if (textQuery === 'Destination Place') {
+            return {
+                places: [
+                    {
+                        id: null,
+                        name: null,
+                        businessStatus: null,
+                        address: null,
+                        mapsUrl: null,
+                        location: { lat: 41, lng: -71 },
+                    },
+                ],
+            };
+        }
+        return { places: [] };
+    });
+
     setComputeRouteForTests(async (args) => {
         seenArgs = args;
         return {
@@ -92,7 +145,7 @@ test('directions.execute uses latest track when origin missing', async () => {
     });
 
     const res = await execute({
-        args: { destination: { lat: 41, lng: -71 } },
+        args: { destination_place: 'Destination Place' },
     });
 
     assert.equal(res.status, 'ok');
@@ -103,12 +156,29 @@ test('directions.execute uses latest track when origin missing', async () => {
 
 test('directions.execute returns unavailable when no origin available', async () => {
     setGetLatestTrackLatLngForTests(async () => null);
+    setGooglePlacesTextSearchForTests(async ({ textQuery }) => {
+        if (textQuery === 'Destination Place') {
+            return {
+                places: [
+                    {
+                        id: null,
+                        name: null,
+                        businessStatus: null,
+                        address: null,
+                        mapsUrl: null,
+                        location: { lat: 41, lng: -71 },
+                    },
+                ],
+            };
+        }
+        return { places: [] };
+    });
     setComputeRouteForTests(async () => {
         throw new Error('computeRoute should not be called');
     });
 
     const res = await execute({
-        args: { destination: { lat: 41, lng: -71 } },
+        args: { destination_place: 'Destination Place' },
     });
 
     assert.deepEqual(res, {
@@ -126,10 +196,28 @@ test('directions.execute returns unavailable when computeRoute fails', async () 
         messageType: 'TRACK',
     }));
 
+    setGooglePlacesTextSearchForTests(async ({ textQuery }) => {
+        if (textQuery === 'Destination Place') {
+            return {
+                places: [
+                    {
+                        id: null,
+                        name: null,
+                        businessStatus: null,
+                        address: null,
+                        mapsUrl: null,
+                        location: { lat: 41, lng: -71 },
+                    },
+                ],
+            };
+        }
+        return { places: [] };
+    });
+
     setComputeRouteForTests(async () => null);
 
     const res = await execute({
-        args: { destination: { lat: 41, lng: -71 } },
+        args: { destination_place: 'Destination Place' },
     });
 
     assert.deepEqual(res, {

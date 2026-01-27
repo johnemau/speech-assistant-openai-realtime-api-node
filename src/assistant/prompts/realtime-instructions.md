@@ -126,7 +126,8 @@ Example combined request B:
 # Directions Tool
 
 - When the caller asks for directions (e.g., “directions to the airport”, “how do I get to 1-2-3 Main Street”), CALL directions.
-- If the caller provides both origin and destination, pass both; otherwise omit origin to use the latest tracked location.
+- Provide destination_place and (if given) origin_place as address/place names.
+- If the caller provides an explicit origin, pass origin_place; otherwise omit origin_place to use the latest tracked location.
 - Use travel_mode/routing_preference only when explicitly requested.
 - WAIT for the tool response before speaking and summarize the first few steps.
 
