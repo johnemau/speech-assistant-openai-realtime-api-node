@@ -103,10 +103,11 @@ import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
  */
 export async function googlePlacesTextSearch(args) {
     try {
-        const err = validate(args);
+        const apiKey = String(getGoogleMapsApiKey() || '');
+        const err = validate(args, apiKey);
         if (err) return null;
 
-        const key = cacheKey(args);
+        const key = cacheKey(args, apiKey);
         const now = Date.now();
         const hit = cache.get(key);
         if (hit && hit.expiresAt > now) return hit.value;
@@ -311,7 +312,6 @@ export async function googlePlacesTextSearch(args) {
     }
 }
 
-const apiKey = String(getGoogleMapsApiKey() || '');
 const ttlMs = 150000;
 const fieldMask = [
     'places.id',
@@ -353,9 +353,10 @@ const cache = new Map();
 
 /**
  * @param {GooglePlacesTextSearchArgs} args - Tool input args.
+ * @param {string} apiKey - Google Maps API key for cache scoping.
  * @returns {string} Cache key.
  */
-function cacheKey(args) {
+function cacheKey(args, apiKey) {
     const bias = args.locationBias
         ? {
               lat: Math.round(args.locationBias.lat * 1e6) / 1e6,
@@ -378,6 +379,7 @@ function cacheKey(args) {
         : null;
 
     return JSON.stringify({
+        apiKey,
         textQuery: args.textQuery,
         includedType: args.includedType || null,
         useStrictTypeFiltering: !!args.useStrictTypeFiltering,
@@ -393,9 +395,10 @@ function cacheKey(args) {
 
 /**
  * @param {GooglePlacesTextSearchArgs} args - Tool input args.
+ * @param {string} apiKey - Google Maps API key for validation.
  * @returns {string|null} Returns an error string if invalid, otherwise null.
  */
-function validate(args) {
+function validate(args, apiKey) {
     if (!apiKey) return 'Missing apiKey';
     if (!args || typeof args !== 'object') return 'Missing args';
     if (typeof args.textQuery !== 'string' || !args.textQuery.trim())

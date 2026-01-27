@@ -169,7 +169,7 @@ export async function get_current_conditions(args, options = {}) {
         if (err) return null;
 
         const ttlMs = Number.isFinite(options.ttlMs)
-            ? options.ttlMs
+            ? Number(options.ttlMs)
             : DEFAULT_TTL_MS;
 
         const lat = Math.round(args.lat * 1e6) / 1e6;
@@ -324,7 +324,7 @@ export async function get_daily_forecast(args, options = {}) {
         }
 
         const ttlMs = Number.isFinite(options.ttlMs)
-            ? options.ttlMs
+            ? Number(options.ttlMs)
             : DEFAULT_TTL_MS;
 
         const lat = Math.round(args.lat * 1e6) / 1e6;
@@ -368,7 +368,7 @@ export async function get_daily_forecast(args, options = {}) {
                         statusText: resp.statusText,
                         url: resp.url,
                         errorBody,
-                        request: { lat, lng, ...args },
+                        request: { ...args, lat, lng },
                     });
                 }
                 return null;
@@ -432,7 +432,7 @@ export async function get_hourly_forecast(args, options = {}) {
         }
 
         const ttlMs = Number.isFinite(options.ttlMs)
-            ? options.ttlMs
+            ? Number(options.ttlMs)
             : DEFAULT_TTL_MS;
 
         const lat = Math.round(args.lat * 1e6) / 1e6;
@@ -476,7 +476,7 @@ export async function get_hourly_forecast(args, options = {}) {
                         statusText: resp.statusText,
                         url: resp.url,
                         errorBody,
-                        request: { lat, lng, ...args },
+                        request: { ...args, lat, lng },
                     });
                 }
                 return null;
