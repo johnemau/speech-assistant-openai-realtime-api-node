@@ -28,7 +28,7 @@ import { getGoogleMapsApiKey } from '../env.js';
 /**
  * @typedef {object} GooglePlacesTextSearchArgs
  * @property {string} textQuery Text query or phone number (e.g., "pizza in New York", "+1 650-253-0000").
- * @property {string=} includedType Restrict results to a specific type (leave blank/undefined for any).
+ * @property {import('./google-places.js').IncludedPrimaryType=} includedType Restrict results to a specific type (leave blank/undefined for any).
  * @property {boolean=} useStrictTypeFiltering Whether to strictly enforce includedType. Default: false.
  *
  * @property {boolean=} isOpenNow Only return places that are open now.
@@ -62,11 +62,36 @@ export async function googlePlacesTextSearch(args) {
         /** @type {any} */
         const body = {
             fields: [
-                'displayName',
-                'location',
+                'accessibilityOptions',
                 'businessStatus',
-                'rating',
+                'displayName',
+                'editorialSummary',
+                'hasDelivery',
+                'hasDineIn',
+                'hasLiveMusic',
+                'hasOutdoorSeating',
+                'hasRestroom',
+                'hasTakeout',
+                'internationalPhoneNumber',
+                'isGoodForGroups',
+                'isGoodForWatchingSports',
+                'isReservable',
+                'isReservable',
+                'location',
+                'location',
+                'nationalPhoneNumber',
+                'neighborhoodSummary',
+                'parkingOptions',
                 'priceLevel',
+                'rating',
+                'regularOpeningHours',
+                'servesBreakfast',
+                'servesBrunch',
+                'servesCoffee',
+                'servesDessert',
+                'servesDinner',
+                'servesLunch',
+                'types',
                 'websiteURI',
             ],
             textQuery: args.textQuery,
