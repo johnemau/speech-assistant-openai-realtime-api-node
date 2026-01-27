@@ -168,6 +168,17 @@ TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=your_auth_token
 ```
 
+Optional integrations:
+
+```
+# Google Routes API (Directions tool)
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+
+# SPOT public feed (latest track + timezone greeting)
+SPOT_FEED_ID=your_spot_feed_id
+SPOT_FEED_PASSWORD=your_spot_feed_password
+```
+
 Note: Do not set `TWILIO_ACCOUNT_SID` to an API Key (values starting with `SK`). If you use an API Key, pass `TWILIO_ACCOUNT_SID` separately as shown above.
 
 Then start the server:
@@ -189,6 +200,10 @@ Quick local checks:
 - Visit http://localhost:10000/ to confirm the root endpoint.
 - Visit http://localhost:10000/healthz for a simple health check.
 - Run `npm test` to lint, typecheck, and verify tests.
+
+### Debug logging (development)
+
+Set `NODE_ENV=development` to enable verbose diagnostic logs across routes, tools, and utilities. This is helpful for tracing tool inputs, Google Routes requests, and greeting behavior.
 
 ### SMS Auto‑Reply
 
@@ -258,6 +273,11 @@ SECONDARY_USER_FIRST_NAME=Taylor
 
 If a name is not set for the matching caller group, the assistant will greet you as "legend".
 
+**Timezone-aware greeting (primary callers only):**
+
+- If `SPOT_FEED_ID` and `SPOT_FEED_PASSWORD` are configured, the assistant uses the latest SPOT track location to resolve a time zone and selects an appropriate time-of-day greeting.
+- If lookup fails or is not configured, the greeting defaults to the `America/Los_Angeles` time zone.
+
 ## Test the app
 
 With the development server running, call the phone number you purchased in the **Prerequisites**. After the introduction, you should be able to talk to the AI Assistant. Have fun!
@@ -266,7 +286,7 @@ With the development server running, call the phone number you purchased in the 
 
 ### Assistant speaks first (default)
 
-The assistant sends a short greeting on stream start and then speaks first. To customize the greeting, edit the `sendInitialConversationItem` helper in [src/routes/media-stream.js](src/routes/media-stream.js). The TwiML webhook also greets the caller by name before connecting the media stream.
+The assistant sends a short greeting on stream start and then speaks first. To customize the greeting, edit the `sendInitialConversationItem` helper in [src/routes/media-stream.js](src/routes/media-stream.js). The TwiML webhook also greets the caller by name and includes a brief “please hold for assistance” message before connecting the media stream.
 
 ### Interrupt handling/AI preemption
 
@@ -298,7 +318,30 @@ npm run convert:wav -- input.wav output.pcmu --format=mulaw
 
 - `--format=mulaw` generates µ-law audio (recommended for waiting music). Use `--format=pcm` for linear PCM.
 - Music starts after `WAIT_MUSIC_THRESHOLD_MS` when a tool call begins and stops on the first assistant `response.output_audio.delta`, on `input_audio_buffer.speech_started`, and at cleanup.
+- If the caller interrupts or the assistant starts speaking while a tool is still running, waiting music automatically resumes after the interruption until the tool finishes.
 - `WAIT_MUSIC_VOLUME` is retained for compatibility but is not applied to raw PCMU files.
+
+### Directions Tool (Google Routes)
+
+Let the assistant provide step-by-step directions during a call or via SMS replies.
+
+- Tool: `directions`
+- Inputs: use address/place names (`origin_place`, `destination_place`) or coordinates (`origin`, `destination`).
+- If `origin` is omitted, the tool uses the latest SPOT track location (if configured).
+- Output: a concise list of steps with distance and duration where available.
+
+Required environment variable:
+
+```
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+```
+
+Optional SPOT feed (for implicit origin + timezone greeting):
+
+```
+SPOT_FEED_ID=your_spot_feed_id
+SPOT_FEED_PASSWORD=your_spot_feed_password
+```
 
 ### Follow-up Questions (optional)
 

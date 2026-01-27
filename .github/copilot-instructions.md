@@ -26,10 +26,13 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
 - Public ingress: bind ngrok domain via `NGROK_DOMAIN` and optional `NGROK_AUTHTOKEN`. The server also runs locally without ngrok.
 - Minimal health checks: GET `/` and `/healthz`.
+- Debug logging: set `NODE_ENV=development` for verbose logs across routes/tools.
 
 ## Environment & Secrets
 
 - Required: `OPENAI_API_KEY`. Optional: `NGROK_DOMAIN`, `PRIMARY_USER_FIRST_NAME`, `SECONDARY_USER_FIRST_NAME`.
+- Google Routes (directions): `GOOGLE_MAPS_API_KEY`.
+- SPOT feed (latest track + timezone greeting): `SPOT_FEED_ID`, `SPOT_FEED_PASSWORD`.
 - Email tool requires: `SENDER_FROM_EMAIL`, `SMTP_USER`, `SMTP_PASS`, `PRIMARY_TO_EMAIL`, `SECONDARY_TO_EMAIL`, `SMTP_NODEMAILER_SERVICE_ID`.
 - Call allowlists: `PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS` (comma‑separated E.164).
 - Tool toggles: `ALLOW_SEND_SMS=true` and `ALLOW_SEND_EMAIL=true` to enable `send_sms`/`send_email`.
@@ -38,7 +41,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 
 ## Routing & Twilio Integration
 
-- `/incoming-call`: returns TwiML that greets the caller, then `<Connect><Stream>` to `/media-stream`. Caller number is passed via `<Parameter name="caller_number" ...>` and used for allowlist and email recipient selection.
+- `/incoming-call`: returns TwiML that greets the caller, plays a brief hold message, then `<Connect><Stream>` to `/media-stream`. Caller number is passed via `<Parameter name="caller_number" ...>` and used for allowlist and email recipient selection.
 - `/incoming-call` also passes `<Parameter name="twilio_number" ...>` so `send_sms` can reply from the same Twilio number.
 - `/media-stream` (WebSocket):
     - Forwards Twilio `media` frames to OpenAI (`input_audio_buffer.append`).
@@ -56,6 +59,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 
 - Session initialization sets `type: realtime`, `model: gpt-realtime`, audio I/O formats (`audio/pcmu`), `voice: cedar`, and concatenated `REALTIME_INSTRUCTIONS` policy.
 - Tools declared in session (implementations in [src/tools](../src/tools)):
+    - `directions`: Uses Google Routes API to fetch turn-by-turn steps. Accepts address/place or lat/lng for origin/destination; origin can fall back to latest SPOT track when omitted. Requires `GOOGLE_MAPS_API_KEY`.
     - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
     - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.
     - `send_sms`: Sends a concise SMS from the call’s Twilio number (or fallback) and returns `sid/status/length` as `function_call_output`.
@@ -84,6 +88,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Only raw PCMU (G.711 µ‑law) files are supported; frames are sent at ~20 ms (160 bytes).
 - Use the conversion script when needed (requires `ffmpeg`): `npm run convert:wav -- input.wav output.pcmu --format=mulaw`.
 - Waiting music starts after the threshold when a tool call begins and stops on first assistant audio delta or caller speech.
+- If the caller or assistant interrupts while a tool is still running, waiting music resumes after the interruption until the tool finishes.
 
 ## Conventions & Gotchas
 
@@ -93,6 +98,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Startup test email: sends a one‑time message to the PRIMARY user if email is configured.
 - Health endpoint: `/healthz` (not `/health`).
 - Greeting uses `PRIMARY_USER_FIRST_NAME`/`SECONDARY_USER_FIRST_NAME` only; there is no `USER_FIRST_NAME` env.
+- Primary caller greetings optionally use the latest SPOT track timezone when available; otherwise default to `America/Los_Angeles`.
 
 ## Extending
 
