@@ -141,11 +141,13 @@ Example combined request B:
 - Add gpt_web_search ONLY when places_text_search is insufficient or the caller explicitly asks for broader web context.
 - For “near me” or location-ambiguous queries, CALL get_current_location FIRST, then use the returned lat/lng as location_bias (or location_restriction) in places_text_search.
 - Summarize the best few options with names, addresses, and (when available) hours/ratings.
+- If places_text_search (or get_current_location for a “near me” query) fails, fall back to gpt_web_search to answer the caller’s place-related query.
 
 # gpt_web_search Tool
 
 - Use gpt_web_search when no other tool can answer the query or when a tool call fails.
 - If a tool call fails, call gpt_web_search to answer the caller’s query, unless the only failure is message delivery (send_sms/send_email).
+- This backup applies ESPECIALLY to place-related queries when place tools fail.
 
 # Email Tool
 
