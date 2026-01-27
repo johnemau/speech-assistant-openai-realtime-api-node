@@ -220,3 +220,34 @@ test('spot.getLatestTrackLatLng throttles repeated calls', async () => {
     assert.equal(calls, 1);
     resetSpotCacheForTests();
 });
+
+test('spot.getLatestTrackTimezone returns IANA timezone', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    const { getLatestTrackTimezone, resetSpotCacheForTests } =
+        await loadSpotModule();
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () =>
+            makeJsonResponse({
+                response: {
+                    feedMessageResponse: {
+                        messages: {
+                            message: {
+                                messageType: 'TRACK',
+                                latitude: 47.61,
+                                longitude: -122.33,
+                                unixTime: 1700000000,
+                                id: 'abc',
+                            },
+                        },
+                    },
+                },
+            })
+    );
+
+    const result = await getLatestTrackTimezone();
+
+    assert.equal(result?.timezoneId, 'America/Los_Angeles');
+    assert.equal(result?.track?.messageId, 'abc');
+    resetSpotCacheForTests();
+});

@@ -1,3 +1,4 @@
+import tzLookup from 'tz-lookup';
 import { getSpotFeedId, getSpotFeedPassword, IS_DEV } from '../env.js';
 
 const SPOT_THROTTLE_MS = 2.5 * 60 * 1000;
@@ -206,6 +207,39 @@ export async function getLatestTrackLatLng(opts = {}) {
         });
     }
     return result;
+}
+
+/**
+ * Fetch the latest SPOT track and resolve its IANA timezone.
+ *
+ * @param {object} [opts] - Optional request settings.
+ * @param {boolean} [opts.force=false] - Bypass throttle (still updates cache).
+ * @param {number} [opts.timeoutMs=15000] - Request timeout in ms.
+ * @returns {Promise<{ timezoneId: string, track: SpotLatestTrack } | null>} Timezone result or null.
+ */
+export async function getLatestTrackTimezone(opts = {}) {
+    const track = await getLatestTrackLatLng(opts);
+    if (!track) return null;
+
+    try {
+        const timezoneId = tzLookup(track.latitude, track.longitude);
+        if (IS_DEV) {
+            console.log('getLatestTrackTimezone:return', {
+                latitude: track.latitude,
+                longitude: track.longitude,
+                timezoneId,
+            });
+        }
+        return { timezoneId, track };
+    } catch (error) {
+        if (IS_DEV) {
+            console.log('getLatestTrackTimezone:error', {
+                message:
+                    error instanceof Error ? error.message : 'Unknown error',
+            });
+        }
+        return null;
+    }
 }
 
 /**
