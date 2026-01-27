@@ -4,10 +4,37 @@ import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
  * @typedef {object} NearbyPlace
  * @property {string|null} id
  * @property {string|null} name
+ * @property {object|null} accessibilityOptions
+ * @property {string|null} businessStatus
+ * @property {object|null} editorialSummary
+ * @property {boolean|null} hasDelivery
+ * @property {boolean|null} hasDineIn
+ * @property {boolean|null} hasLiveMusic
+ * @property {boolean|null} hasOutdoorSeating
+ * @property {boolean|null} hasRestroom
+ * @property {boolean|null} hasTakeout
+ * @property {string|null} internationalPhoneNumber
+ * @property {boolean|null} isGoodForGroups
+ * @property {boolean|null} isGoodForWatchingSports
+ * @property {boolean|null} isReservable
  * @property {string|null} address
  * @property {{lat:number,lng:number}|null} location
+ * @property {string|null} nationalPhoneNumber
+ * @property {object|null} neighborhoodSummary
+ * @property {object|null} parkingOptions
+ * @property {string|null} priceLevel
+ * @property {number|null} rating
+ * @property {object|null} regularOpeningHours
+ * @property {boolean|null} servesBreakfast
+ * @property {boolean|null} servesBrunch
+ * @property {boolean|null} servesCoffee
+ * @property {boolean|null} servesDessert
+ * @property {boolean|null} servesDinner
+ * @property {boolean|null} servesLunch
+ * @property {string[]|null} types
  * @property {string|null} primaryType
  * @property {string|null} mapsUrl
+ * @property {string|null} websiteURI
  */
 
 /**
@@ -636,10 +663,37 @@ const INCLUDED_PRIMARY_TYPES = new Set([
 const DEFAULT_FIELD_MASK = [
     'places.id',
     'places.displayName',
+    'places.accessibilityOptions',
+    'places.businessStatus',
+    'places.editorialSummary',
+    'places.delivery',
+    'places.dineIn',
+    'places.liveMusic',
+    'places.outdoorSeating',
+    'places.restroom',
+    'places.takeout',
+    'places.internationalPhoneNumber',
+    'places.goodForGroups',
+    'places.goodForWatchingSports',
+    'places.reservable',
     'places.formattedAddress',
     'places.location',
+    'places.nationalPhoneNumber',
+    'places.neighborhoodSummary',
+    'places.parkingOptions',
+    'places.priceLevel',
+    'places.rating',
+    'places.regularOpeningHours',
+    'places.servesBreakfast',
+    'places.servesBrunch',
+    'places.servesCoffee',
+    'places.servesDessert',
+    'places.servesDinner',
+    'places.servesLunch',
+    'places.types',
     'places.primaryType',
     'places.googleMapsUri',
+    'places.websiteUri',
 ];
 
 const DEFAULT_TTL_MS = 150000;
@@ -745,39 +799,6 @@ export async function searchPlacesNearby(args, options = {}) {
         if (hit && hit.expiresAt > now) return hit.value;
 
         const body = {
-            fields: [
-                'accessibilityOptions',
-                'businessStatus',
-                'displayName',
-                'editorialSummary',
-                'hasDelivery',
-                'hasDineIn',
-                'hasLiveMusic',
-                'hasOutdoorSeating',
-                'hasRestroom',
-                'hasTakeout',
-                'internationalPhoneNumber',
-                'isGoodForGroups',
-                'isGoodForWatchingSports',
-                'isReservable',
-                'isReservable',
-                'location',
-                'location',
-                'nationalPhoneNumber',
-                'neighborhoodSummary',
-                'parkingOptions',
-                'priceLevel',
-                'rating',
-                'regularOpeningHours',
-                'servesBreakfast',
-                'servesBrunch',
-                'servesCoffee',
-                'servesDessert',
-                'servesDinner',
-                'servesLunch',
-                'types',
-                'websiteURI',
-            ],
             locationRestriction: {
                 circle: {
                     center: {
@@ -847,6 +868,36 @@ export async function searchPlacesNearby(args, options = {}) {
         const places = (data?.places || []).map((p) => ({
             id: p?.id ?? null,
             name: p?.displayName?.text ?? null,
+            accessibilityOptions: p?.accessibilityOptions ?? null,
+            businessStatus: p?.businessStatus ?? null,
+            editorialSummary: p?.editorialSummary ?? null,
+            hasDelivery:
+                typeof p?.delivery === 'boolean' ? p.delivery : null,
+            hasDineIn: typeof p?.dineIn === 'boolean' ? p.dineIn : null,
+            hasLiveMusic:
+                typeof p?.liveMusic === 'boolean' ? p.liveMusic : null,
+            hasOutdoorSeating:
+                typeof p?.outdoorSeating === 'boolean'
+                    ? p.outdoorSeating
+                    : null,
+            hasRestroom:
+                typeof p?.restroom === 'boolean' ? p.restroom : null,
+            hasTakeout:
+                typeof p?.takeout === 'boolean' ? p.takeout : null,
+            internationalPhoneNumber:
+                typeof p?.internationalPhoneNumber === 'string'
+                    ? p.internationalPhoneNumber
+                    : null,
+            isGoodForGroups:
+                typeof p?.goodForGroups === 'boolean'
+                    ? p.goodForGroups
+                    : null,
+            isGoodForWatchingSports:
+                typeof p?.goodForWatchingSports === 'boolean'
+                    ? p.goodForWatchingSports
+                    : null,
+            isReservable:
+                typeof p?.reservable === 'boolean' ? p.reservable : null,
             address: p?.formattedAddress ?? null,
             location: p?.location
                 ? {
@@ -854,8 +905,47 @@ export async function searchPlacesNearby(args, options = {}) {
                       lng: p.location.longitude,
                   }
                 : null,
+            nationalPhoneNumber:
+                typeof p?.nationalPhoneNumber === 'string'
+                    ? p.nationalPhoneNumber
+                    : null,
+            neighborhoodSummary: p?.neighborhoodSummary ?? null,
+            parkingOptions: p?.parkingOptions ?? null,
+            priceLevel:
+                typeof p?.priceLevel === 'string' ? p.priceLevel : null,
+            rating: typeof p?.rating === 'number' ? p.rating : null,
+            regularOpeningHours: p?.regularOpeningHours ?? null,
+            servesBreakfast:
+                typeof p?.servesBreakfast === 'boolean'
+                    ? p.servesBreakfast
+                    : null,
+            servesBrunch:
+                typeof p?.servesBrunch === 'boolean'
+                    ? p.servesBrunch
+                    : null,
+            servesCoffee:
+                typeof p?.servesCoffee === 'boolean'
+                    ? p.servesCoffee
+                    : null,
+            servesDessert:
+                typeof p?.servesDessert === 'boolean'
+                    ? p.servesDessert
+                    : null,
+            servesDinner:
+                typeof p?.servesDinner === 'boolean'
+                    ? p.servesDinner
+                    : null,
+            servesLunch:
+                typeof p?.servesLunch === 'boolean'
+                    ? p.servesLunch
+                    : null,
+            types: Array.isArray(p?.types)
+                ? p.types.filter((type) => typeof type === 'string')
+                : null,
             primaryType: p?.primaryType ?? null,
             mapsUrl: p?.googleMapsUri ?? null,
+            websiteURI:
+                typeof p?.websiteUri === 'string' ? p.websiteUri : null,
         }));
 
         const value = { places };

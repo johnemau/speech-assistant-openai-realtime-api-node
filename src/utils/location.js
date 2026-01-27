@@ -226,7 +226,7 @@ function mapGeocodeToAddress(geocodeJson) {
  * @param {number} [root0.timeoutMs] - Optional timeout override in ms.
  * @returns {Promise<GeocodeResponse>} Raw geocode JSON payload.
  */
-async function reverseGeocode({
+export async function reverseGeocode({
     lat,
     lng,
     apiKey,
