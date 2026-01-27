@@ -4,8 +4,8 @@ import { getSpotFeedId, getSpotFeedPassword, IS_DEV } from '../env.js';
 const SPOT_THROTTLE_MS = 2.5 * 60 * 1000;
 
 /**
- * @param {string} url
- * @returns {string}
+ * @param {string} url - SPOT API URL to redact.
+ * @returns {string} Redacted URL.
  */
 function redactSpotUrl(url) {
     try {

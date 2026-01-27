@@ -137,7 +137,7 @@ if (!apiKey) {
 }
 
 /**
- * @param {boolean|null} value
+ * @param {boolean|null} value - Value to validate.
  */
 function assertNullableBoolean(value) {
     assert.ok(value === null || typeof value === 'boolean');
