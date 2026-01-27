@@ -8,3 +8,80 @@
   assert:
       - type: llm-rubric
         value: Provides at least one coffee shop with hours and phone numbers.
+
+- name: sms-weather-now
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          What's the weather right now in Austin, TX?
+  assert:
+      - type: llm-rubric
+        value: Uses web search results, includes current conditions with a timestamp and a source label, and no URLs.
+
+- name: sms-news-quick
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Any breaking news about SpaceX Starship today?
+  assert:
+      - type: llm-rubric
+        value: Uses web search, includes a brief update with timestamp and source label, and stays under 320 characters.
+
+- name: sms-places-with-location
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Best pizza spots in Chicago near Wrigley Field.
+  assert:
+      - type: llm-rubric
+        value: Combines places search and web search, includes name, address, and phone for at least one place.
+
+- name: sms-near-me-ambiguous
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Find a nearby pharmacy open now.
+  assert:
+      - type: llm-rubric
+        value: Calls get_current_location first, then returns a nearby place with hours and phone when available.
+
+- name: sms-directions-request
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Directions to 1600 Amphitheatre Parkway, Mountain View.
+  assert:
+      - type: llm-rubric
+        value: Uses the directions tool and replies with clear step-by-step guidance, concise and actionable.
+
+- name: sms-product-availability
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Price and availability for PlayStation 5 in Seattle.
+  assert:
+      - type: llm-rubric
+        value: Uses web search, includes current price and availability with a source label and no URLs.
+
+- name: sms-service-booking
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Need a dog groomer in Portland with prices.
+  assert:
+      - type: llm-rubric
+        value: Combines places search and web search, includes price range and next-step booking details if available.
