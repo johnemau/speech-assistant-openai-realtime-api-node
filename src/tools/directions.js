@@ -161,7 +161,9 @@ export async function execute({ args }) {
         Number.isFinite(destination.lng);
 
     const originPlace =
-        typeof rawArgs?.origin_place === 'string' ? rawArgs.origin_place.trim() : '';
+        typeof rawArgs?.origin_place === 'string'
+            ? rawArgs.origin_place.trim()
+            : '';
 
     const origin = rawArgs?.origin;
     const hasOriginLatLng =
@@ -176,7 +178,7 @@ export async function execute({ args }) {
         'TRANSIT',
     ].includes(String(args?.travel_mode))
         ? /** @type {import('../utils/google-routes.js').TravelMode} */ (
-                            rawArgs?.travel_mode
+              rawArgs?.travel_mode
           )
         : undefined;
 
@@ -187,13 +189,15 @@ export async function execute({ args }) {
         'TRAFFIC_AWARE_OPTIMAL',
     ].includes(String(args?.routing_preference))
         ? /** @type {import('../utils/google-routes.js').RoutingPreference} */ (
-                            rawArgs?.routing_preference
+              rawArgs?.routing_preference
           )
         : undefined;
 
     /** @type {import('../utils/google-routes.js').Units | undefined} */
     const units = ['METRIC', 'IMPERIAL'].includes(String(args?.units))
-        ? /** @type {import('../utils/google-routes.js').Units} */ (rawArgs?.units)
+        ? /** @type {import('../utils/google-routes.js').Units} */ (
+              rawArgs?.units
+          )
         : undefined;
 
     let originInput;
@@ -267,7 +271,9 @@ export async function execute({ args }) {
                     avoid_highways: Boolean(
                         rawArgs?.route_modifiers?.avoid_highways
                     ),
-                    avoid_ferries: Boolean(rawArgs?.route_modifiers?.avoid_ferries),
+                    avoid_ferries: Boolean(
+                        rawArgs?.route_modifiers?.avoid_ferries
+                    ),
                 },
                 language_code:
                     typeof rawArgs?.language_code === 'string'
@@ -285,8 +291,12 @@ export async function execute({ args }) {
                 ),
                 routeModifiers: {
                     avoidTolls: Boolean(rawArgs?.route_modifiers?.avoid_tolls),
-                    avoidHighways: Boolean(rawArgs?.route_modifiers?.avoid_highways),
-                    avoidFerries: Boolean(rawArgs?.route_modifiers?.avoid_ferries),
+                    avoidHighways: Boolean(
+                        rawArgs?.route_modifiers?.avoid_highways
+                    ),
+                    avoidFerries: Boolean(
+                        rawArgs?.route_modifiers?.avoid_ferries
+                    ),
                 },
                 languageCode:
                     typeof rawArgs?.language_code === 'string'
