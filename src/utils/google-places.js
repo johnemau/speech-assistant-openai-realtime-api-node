@@ -871,8 +871,7 @@ export async function searchPlacesNearby(args, options = {}) {
             accessibilityOptions: p?.accessibilityOptions ?? null,
             businessStatus: p?.businessStatus ?? null,
             editorialSummary: p?.editorialSummary ?? null,
-            hasDelivery:
-                typeof p?.delivery === 'boolean' ? p.delivery : null,
+            hasDelivery: typeof p?.delivery === 'boolean' ? p.delivery : null,
             hasDineIn: typeof p?.dineIn === 'boolean' ? p.dineIn : null,
             hasLiveMusic:
                 typeof p?.liveMusic === 'boolean' ? p.liveMusic : null,
@@ -880,18 +879,14 @@ export async function searchPlacesNearby(args, options = {}) {
                 typeof p?.outdoorSeating === 'boolean'
                     ? p.outdoorSeating
                     : null,
-            hasRestroom:
-                typeof p?.restroom === 'boolean' ? p.restroom : null,
-            hasTakeout:
-                typeof p?.takeout === 'boolean' ? p.takeout : null,
+            hasRestroom: typeof p?.restroom === 'boolean' ? p.restroom : null,
+            hasTakeout: typeof p?.takeout === 'boolean' ? p.takeout : null,
             internationalPhoneNumber:
                 typeof p?.internationalPhoneNumber === 'string'
                     ? p.internationalPhoneNumber
                     : null,
             isGoodForGroups:
-                typeof p?.goodForGroups === 'boolean'
-                    ? p.goodForGroups
-                    : null,
+                typeof p?.goodForGroups === 'boolean' ? p.goodForGroups : null,
             isGoodForWatchingSports:
                 typeof p?.goodForWatchingSports === 'boolean'
                     ? p.goodForWatchingSports
@@ -911,8 +906,7 @@ export async function searchPlacesNearby(args, options = {}) {
                     : null,
             neighborhoodSummary: p?.neighborhoodSummary ?? null,
             parkingOptions: p?.parkingOptions ?? null,
-            priceLevel:
-                typeof p?.priceLevel === 'string' ? p.priceLevel : null,
+            priceLevel: typeof p?.priceLevel === 'string' ? p.priceLevel : null,
             rating: typeof p?.rating === 'number' ? p.rating : null,
             regularOpeningHours: p?.regularOpeningHours ?? null,
             servesBreakfast:
@@ -920,32 +914,21 @@ export async function searchPlacesNearby(args, options = {}) {
                     ? p.servesBreakfast
                     : null,
             servesBrunch:
-                typeof p?.servesBrunch === 'boolean'
-                    ? p.servesBrunch
-                    : null,
+                typeof p?.servesBrunch === 'boolean' ? p.servesBrunch : null,
             servesCoffee:
-                typeof p?.servesCoffee === 'boolean'
-                    ? p.servesCoffee
-                    : null,
+                typeof p?.servesCoffee === 'boolean' ? p.servesCoffee : null,
             servesDessert:
-                typeof p?.servesDessert === 'boolean'
-                    ? p.servesDessert
-                    : null,
+                typeof p?.servesDessert === 'boolean' ? p.servesDessert : null,
             servesDinner:
-                typeof p?.servesDinner === 'boolean'
-                    ? p.servesDinner
-                    : null,
+                typeof p?.servesDinner === 'boolean' ? p.servesDinner : null,
             servesLunch:
-                typeof p?.servesLunch === 'boolean'
-                    ? p.servesLunch
-                    : null,
+                typeof p?.servesLunch === 'boolean' ? p.servesLunch : null,
             types: Array.isArray(p?.types)
                 ? p.types.filter((type) => typeof type === 'string')
                 : null,
             primaryType: p?.primaryType ?? null,
             mapsUrl: p?.googleMapsUri ?? null,
-            websiteURI:
-                typeof p?.websiteUri === 'string' ? p.websiteUri : null,
+            websiteURI: typeof p?.websiteUri === 'string' ? p.websiteUri : null,
         }));
 
         const value = { places };

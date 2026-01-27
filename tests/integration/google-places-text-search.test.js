@@ -19,7 +19,11 @@ async function loadTextSearchModule() {
 }
 
 if (!apiKey) {
-    test('googlePlacesTextSearch integration', { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' }, () => {});
+    test(
+        'googlePlacesTextSearch integration',
+        { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' },
+        () => {}
+    );
 } else {
     test('googlePlacesTextSearch integration', async () => {
         const { googlePlacesTextSearch } = await loadTextSearchModule();

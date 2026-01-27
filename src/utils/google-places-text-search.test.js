@@ -55,7 +55,9 @@ test('googlePlacesTextSearch returns mapped places', async () => {
                     {
                         id: 'abc',
                         displayName: { text: 'Cafe Luna' },
-                        accessibilityOptions: { wheelchairAccessibleEntrance: true },
+                        accessibilityOptions: {
+                            wheelchairAccessibleEntrance: true,
+                        },
                         businessStatus: 'OPERATIONAL',
                         editorialSummary: { text: 'Cozy cafe.' },
                         delivery: true,

@@ -17,7 +17,11 @@ async function loadLocationModule() {
 }
 
 if (!apiKey) {
-    test('reverseGeocode integration', { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' }, () => {});
+    test(
+        'reverseGeocode integration',
+        { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' },
+        () => {}
+    );
 } else {
     test('reverseGeocode integration', async () => {
         const { reverseGeocode } = await loadLocationModule();
@@ -42,7 +46,9 @@ if (!apiKey) {
         });
 
         assert.ok(result, 'Expected a response object');
-        assert.ok(!Array.isArray(result.results) || result.results.length === 0);
+        assert.ok(
+            !Array.isArray(result.results) || result.results.length === 0
+        );
     });
 
     test('locationFromLatLng integration', async () => {

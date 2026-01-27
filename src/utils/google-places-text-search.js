@@ -217,8 +217,7 @@ export async function googlePlacesTextSearch(args) {
                         : null,
                 hasRestroom:
                     typeof p?.restroom === 'boolean' ? p.restroom : null,
-                hasTakeout:
-                    typeof p?.takeout === 'boolean' ? p.takeout : null,
+                hasTakeout: typeof p?.takeout === 'boolean' ? p.takeout : null,
                 internationalPhoneNumber:
                     typeof p?.internationalPhoneNumber === 'string'
                         ? p.internationalPhoneNumber
@@ -253,8 +252,7 @@ export async function googlePlacesTextSearch(args) {
                 parkingOptions: p?.parkingOptions ?? null,
                 priceLevel:
                     typeof p?.priceLevel === 'string' ? p.priceLevel : null,
-                rating:
-                    Number.isFinite(p?.rating) ? Number(p.rating) : null,
+                rating: Number.isFinite(p?.rating) ? Number(p.rating) : null,
                 regularOpeningHours: p?.regularOpeningHours ?? null,
                 servesBreakfast:
                     typeof p?.servesBreakfast === 'boolean'
@@ -277,9 +275,7 @@ export async function googlePlacesTextSearch(args) {
                         ? p.servesDinner
                         : null,
                 servesLunch:
-                    typeof p?.servesLunch === 'boolean'
-                        ? p.servesLunch
-                        : null,
+                    typeof p?.servesLunch === 'boolean' ? p.servesLunch : null,
                 address: p?.formattedAddress ?? null,
                 mapsUrl: p?.googleMapsUri ?? null,
                 websiteURI:

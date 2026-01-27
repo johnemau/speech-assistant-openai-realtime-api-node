@@ -17,7 +17,11 @@ async function loadRoutesModule() {
 }
 
 if (!apiKey) {
-    test('computeRoute integration', { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' }, () => {});
+    test(
+        'computeRoute integration',
+        { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' },
+        () => {}
+    );
 } else {
     test('computeRoute integration', async () => {
         const { computeRoute } = await loadRoutesModule();

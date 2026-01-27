@@ -17,7 +17,11 @@ async function loadPlacesModule() {
 }
 
 if (!apiKey) {
-    test('searchPlacesNearby integration', { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' }, () => {});
+    test(
+        'searchPlacesNearby integration',
+        { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' },
+        () => {}
+    );
 } else {
     test('searchPlacesNearby integration', async () => {
         const { searchPlacesNearby } = await loadPlacesModule();
