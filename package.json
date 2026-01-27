@@ -9,6 +9,8 @@
         "lint:fix": "npm run lint:eslint:fix && npm run format:fix",
         "lint:eslint": "eslint .",
         "lint:eslint:fix": "npm run lint:eslint -- --fix",
+        "eslint": "npm run lint:eslint",
+        "eslint:fix": "npm run lint:eslint:fix",
         "format": "prettier . --check",
         "format:fix": "npm run format:write",
         "format:write": "prettier . --write",
