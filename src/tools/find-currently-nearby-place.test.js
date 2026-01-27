@@ -1,8 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-process.env.PRIMARY_USER_PHONE_NUMBERS =
-    process.env.PRIMARY_USER_PHONE_NUMBERS || '+12065551234';
+const originalPrimaryNumbers = process.env.PRIMARY_USER_PHONE_NUMBERS;
+const requiredPrimaryNumber = '+12065551234';
+if (originalPrimaryNumbers) {
+    if (!originalPrimaryNumbers.split(',').includes(requiredPrimaryNumber)) {
+        process.env.PRIMARY_USER_PHONE_NUMBERS = `${originalPrimaryNumbers},${requiredPrimaryNumber}`;
+    }
+} else {
+    process.env.PRIMARY_USER_PHONE_NUMBERS = requiredPrimaryNumber;
+}
 
 const {
     execute,
@@ -12,6 +19,14 @@ const {
 
 test.afterEach(() => {
     resetFindCurrentlyNearbyPlacesForTests();
+});
+
+test.after(() => {
+    if (originalPrimaryNumbers == null) {
+        delete process.env.PRIMARY_USER_PHONE_NUMBERS;
+    } else {
+        process.env.PRIMARY_USER_PHONE_NUMBERS = originalPrimaryNumbers;
+    }
 });
 
 test('find-currently-nearby-place.execute defaults to 5 miles', async () => {

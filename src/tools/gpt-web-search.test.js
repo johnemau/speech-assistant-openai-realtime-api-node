@@ -2,8 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
-process.env.PRIMARY_USER_PHONE_NUMBERS =
-    process.env.PRIMARY_USER_PHONE_NUMBERS || '+12065551234';
+
+const originalPrimaryNumbers = process.env.PRIMARY_USER_PHONE_NUMBERS;
+const requiredPrimaryNumber = '+12065551234';
+if (originalPrimaryNumbers) {
+    if (!originalPrimaryNumbers.split(',').includes(requiredPrimaryNumber)) {
+        process.env.PRIMARY_USER_PHONE_NUMBERS = `${originalPrimaryNumbers},${requiredPrimaryNumber}`;
+    }
+} else {
+    process.env.PRIMARY_USER_PHONE_NUMBERS = requiredPrimaryNumber;
+}
 
 const originalFetch = globalThis.fetch;
 const originalSpotFeedId = process.env.SPOT_FEED_ID;
@@ -16,6 +24,7 @@ const { REALTIME_WEB_SEARCH_INSTRUCTIONS } =
     await import('../assistant/prompts.js');
 const { DEFAULT_SMS_USER_LOCATION } =
     await import('../config/openai-models.js');
+const { resetSpotCacheForTests } = await import('../utils/spot.js');
 
 /**
  * @param {object | null} body - JSON body to return.
@@ -49,6 +58,15 @@ test.afterEach(() => {
         delete process.env.GOOGLE_MAPS_API_KEY;
     } else {
         process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
+    }
+    resetSpotCacheForTests();
+});
+
+test.after(() => {
+    if (originalPrimaryNumbers == null) {
+        delete process.env.PRIMARY_USER_PHONE_NUMBERS;
+    } else {
+        process.env.PRIMARY_USER_PHONE_NUMBERS = originalPrimaryNumbers;
     }
 });
 

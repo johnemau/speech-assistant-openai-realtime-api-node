@@ -98,7 +98,7 @@ function createConnection() {
 async function loadMediaStreamHandler({
     primaryCallers = new Set(['+12065550100']),
     secondaryCallers = new Set(),
-    waitMusicThreshold = 10000,
+    waitMusicThreshold = Number(process.env.WAIT_MUSIC_THRESHOLD_MS || 20),
 } = {}) {
     /** @type {{ sendCalls: any[], requestResponseCalls: number, onEvent?: (event: any) => void, onAssistantOutput?: (event: any) => void, onToolCall?: (call: any, response: any) => void }} */
     const sessionState = {
