@@ -22,6 +22,7 @@ import { definition as sendEmailDefinition } from '../tools/send-email.js';
 import { definition as getCurrentLocationDefinition } from '../tools/get-current-location.js';
 import { definition as findCurrentlyNearbyPlaceDefinition } from '../tools/find-currently-nearby-place.js';
 import { definition as placesTextSearchDefinition } from '../tools/places-text-search.js';
+import { definition as directionsDefinition } from '../tools/directions.js';
 
 /** @type {Array<import('openai/resources/responses/responses').Tool>} */
 const SMS_TOOL_DEFINITIONS = [
@@ -36,6 +37,9 @@ const SMS_TOOL_DEFINITIONS = [
     ),
     /** @type {import('openai/resources/responses/responses').Tool} */ (
         placesTextSearchDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        directionsDefinition
     ),
 ];
 
@@ -318,7 +322,7 @@ export async function smsHandler(request, reply) {
 
         // Concise log of AI request (dev-friendly, but short)
         console.info(
-            `sms ai request: model=${GPT_5_2_MODEL} tools=web_search,places_text_search,find_currently_nearby_place,get_current_location,send_email promptLen=${String(smsPrompt || '').length}`,
+            `sms ai request: model=${GPT_5_2_MODEL} tools=web_search,places_text_search,find_currently_nearby_place,get_current_location,send_email,directions promptLen=${String(smsPrompt || '').length}`,
             {
                 event: 'sms.ai.request',
                 model: GPT_5_2_MODEL,
@@ -328,6 +332,7 @@ export async function smsHandler(request, reply) {
                     'find_currently_nearby_place',
                     'get_current_location',
                     'send_email',
+                    'directions',
                 ],
                 prompt_len: String(smsPrompt || '').length,
             }
