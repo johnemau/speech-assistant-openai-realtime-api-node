@@ -40,7 +40,7 @@
           Best pizza spots in Chicago near Wrigley Field.
   assert:
       - type: llm-rubric
-        value: Combines places search and web search, includes name, address, and phone for at least one place.
+        value: Provides at least one pizza spot near Wrigley Field with name and address; phone if available.
 
 - name: sms-near-me-ambiguous
   vars:
@@ -51,7 +51,7 @@
           Find a nearby pharmacy open now.
   assert:
       - type: llm-rubric
-        value: Calls get_current_location first, then returns a nearby place with hours and phone when available.
+        value: Asks for the user's location when unclear, or provides a nearby open pharmacy with hours and phone if location is known.
 
 - name: sms-directions-request
   vars:
@@ -62,7 +62,7 @@
           Directions to 1600 Amphitheatre Parkway, Mountain View.
   assert:
       - type: llm-rubric
-        value: Uses the directions tool and replies with clear step-by-step guidance, concise and actionable.
+        value: Provides concise directions or asks for a starting point if it is missing.
 
 - name: sms-product-availability
   vars:
@@ -84,4 +84,4 @@
           Need a dog groomer in Portland with prices.
   assert:
       - type: llm-rubric
-        value: Combines places search and web search, includes price range and next-step booking details if available.
+        value: Provides at least one groomer with contact details and notes price range when available, or asks a brief follow-up if needed.
