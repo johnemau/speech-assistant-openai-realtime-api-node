@@ -33,6 +33,10 @@ export async function incomingCallHandler(request, reply) {
 
     const { VoiceResponse } = twilio.twiml;
     const twimlResponse = new VoiceResponse();
+    twimlResponse.say(
+        { voice: 'Google.en-US-Chirp3-HD-Charon' },
+        'please hold for assistance.'
+    );
     const connect = twimlResponse.connect();
     const stream = connect.stream({
         url: `wss://${request.headers.host}/media-stream`,
