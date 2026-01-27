@@ -1,4 +1,4 @@
-import { getGoogleMapsApiKey } from '../env.js';
+import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
 
 /**
  * @typedef {{lat:number,lng:number}} LatLng
@@ -108,12 +108,18 @@ const cache = new Map();
  * @returns {w is {address:string}} True when the waypoint is address-based.
  */
 function isAddressWaypoint(w) {
-    return (
+    const result =
         !!w &&
         typeof w === 'object' &&
         'address' in w &&
-        typeof w.address === 'string'
-    );
+        typeof w.address === 'string';
+    if (IS_DEV) {
+        console.log('routes: isAddressWaypoint', {
+            input: w,
+            result,
+        });
+    }
+    return result;
 }
 
 /**
@@ -121,15 +127,21 @@ function isAddressWaypoint(w) {
  * @returns {w is {latLng:LatLng}} True when the waypoint is lat/lng-based.
  */
 function isLatLngWaypoint(w) {
-    return (
+    const result =
         !!w &&
         typeof w === 'object' &&
         'latLng' in w &&
         !!w.latLng &&
         typeof w.latLng === 'object' &&
         typeof w.latLng.lat === 'number' &&
-        typeof w.latLng.lng === 'number'
-    );
+        typeof w.latLng.lng === 'number';
+    if (IS_DEV) {
+        console.log('routes: isLatLngWaypoint', {
+            input: w,
+            result,
+        });
+    }
+    return result;
 }
 
 /**
@@ -140,12 +152,18 @@ function toRoutesWaypoint(w) {
     if (isAddressWaypoint(w)) {
         const address = w.address.trim();
         if (!address) return null;
-        return { address };
+        const waypoint = { address };
+        if (IS_DEV) {
+            console.log('routes: toRoutesWaypoint address', {
+                address,
+            });
+        }
+        return waypoint;
     }
 
     if (isLatLngWaypoint(w)) {
         const { lat, lng } = w.latLng;
-        return {
+        const waypoint = {
             location: {
                 latLng: {
                     latitude: lat,
@@ -153,8 +171,20 @@ function toRoutesWaypoint(w) {
                 },
             },
         };
+        if (IS_DEV) {
+            console.log('routes: toRoutesWaypoint latLng', {
+                lat,
+                lng,
+            });
+        }
+        return waypoint;
     }
 
+    if (IS_DEV) {
+        console.log('routes: toRoutesWaypoint invalid', {
+            input: w,
+        });
+    }
     return null;
 }
 
@@ -187,7 +217,7 @@ function cacheKey(args) {
             }
           : null;
 
-    return JSON.stringify({
+    const key = JSON.stringify({
         origin: originKey,
         destination: destKey,
         regionCode: args.regionCode || null,
@@ -202,6 +232,12 @@ function cacheKey(args) {
         languageCode: args.languageCode || null,
         units: args.units ?? 'METRIC',
     });
+    if (IS_DEV) {
+        console.log('routes: cacheKey', {
+            key,
+        });
+    }
+    return key;
 }
 
 /**
@@ -287,6 +323,9 @@ function validate(args, apiKey) {
     if (args.routeModifiers && typeof args.routeModifiers !== 'object')
         return 'routeModifiers must be an object';
 
+    if (IS_DEV) {
+        console.log('routes: validate ok');
+    }
     return null;
 }
 
@@ -307,7 +346,12 @@ export async function computeRoute(args, options = {}) {
     try {
         const apiKey = String(getGoogleMapsApiKey() || '');
         const err = validate(args, apiKey);
-        if (err) return null;
+        if (err) {
+            if (IS_DEV) {
+                console.log('routes: computeRoute invalid', { error: err });
+            }
+            return null;
+        }
 
         const ttlMs = Number.isFinite(options.ttlMs)
             ? options.ttlMs
@@ -320,11 +364,27 @@ export async function computeRoute(args, options = {}) {
         const key = cacheKey(args);
         const now = Date.now();
         const hit = cache.get(key);
-        if (hit && hit.expiresAt > now) return hit.value;
+        if (hit && hit.expiresAt > now) {
+            if (IS_DEV) {
+                console.log('routes: cache hit', {
+                    expiresAt: hit.expiresAt,
+                    now,
+                });
+            }
+            return hit.value;
+        }
 
         const origin = toRoutesWaypoint(args.origin);
         const destination = toRoutesWaypoint(args.destination);
-        if (!origin || !destination) return null;
+        if (!origin || !destination) {
+            if (IS_DEV) {
+                console.log('routes: missing waypoint', {
+                    hasOrigin: Boolean(origin),
+                    hasDestination: Boolean(destination),
+                });
+            }
+            return null;
+        }
 
         /** @type {any} */
         const body = {
@@ -358,7 +418,14 @@ export async function computeRoute(args, options = {}) {
             }
         );
 
-        if (!resp.ok) return null;
+        if (!resp.ok) {
+            if (IS_DEV) {
+                console.log('routes: http error', {
+                    status: resp.status,
+                });
+            }
+            return null;
+        }
 
         /** @type {RoutesApiResponse} */
         const data = /** @type {any} */ (await resp.json());
@@ -383,8 +450,17 @@ export async function computeRoute(args, options = {}) {
         /** @type {ComputeRouteResult} */
         const value = { route: routes[0] ?? null, routes, raw: data };
         cache.set(key, { expiresAt: now + Number(ttlMs), value });
+        if (IS_DEV) {
+            console.log('routes: computeRoute success', {
+                routeCount: routes.length,
+                hasPrimaryRoute: Boolean(routes[0]),
+            });
+        }
         return value;
     } catch {
+        if (IS_DEV) {
+            console.log('routes: computeRoute exception');
+        }
         return null;
     }
 }

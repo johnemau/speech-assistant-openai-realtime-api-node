@@ -117,12 +117,29 @@ export function mediaStreamHandler(connection, req) {
             0,
             QUICK_RESPONSE_SUPPRESSION_MS - sinceLastResponse
         );
-        return Math.max(baseDelay, suppressRemaining);
+        const delay = Math.max(baseDelay, suppressRemaining);
+        if (IS_DEV) {
+            console.log('wait music delay computed', {
+                baseDelay,
+                sinceLastResponse,
+                suppressRemaining,
+                delay,
+            });
+        }
+        return delay;
     }
 
     function scheduleWaitingMusic(reason = 'unknown') {
         if (isWaitingMusic || waitingMusicStartTimeout) return;
         const delayMs = getWaitingMusicDelayMs();
+        if (IS_DEV) {
+            console.log('wait music schedule requested', {
+                reason,
+                delayMs,
+                isWaitingMusic,
+                hasTimeout: Boolean(waitingMusicStartTimeout),
+            });
+        }
         waitingMusicStartTimeout = setTimeout(() => {
             waitingMusicStartTimeout = null;
             if (!isWaitingMusic) startWaitingMusic(reason);
@@ -132,6 +149,13 @@ export function mediaStreamHandler(connection, req) {
     function startWaitingMusic(reason = 'unknown') {
         if (!streamSid || isWaitingMusic) return;
         isWaitingMusic = true;
+        if (IS_DEV) {
+            console.log('wait music start requested', {
+                reason,
+                streamSid,
+                folder: WAIT_MUSIC_FOLDER || null,
+            });
+        }
         console.info(
             `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS}`,
             {
@@ -688,6 +712,13 @@ export function mediaStreamHandler(connection, req) {
     const sendInitialConversationItem = async (callerNameValue = 'legend') => {
         initialGreetingRequested = true;
         let timeZone = 'America/Los_Angeles';
+        if (IS_DEV) {
+            console.log('initial greeting: start', {
+                callerNameValue,
+                currentCallerE164,
+                defaultTimeZone: timeZone,
+            });
+        }
         try {
             const shouldLookupTimezone =
                 currentCallerE164 && PRIMARY_CALLERS_SET.has(currentCallerE164);
@@ -696,6 +727,16 @@ export function mediaStreamHandler(connection, req) {
                 if (trackTimezone?.timezoneId) {
                     timeZone = trackTimezone.timezoneId;
                 }
+                if (IS_DEV) {
+                    console.log('initial greeting: timezone lookup', {
+                        shouldLookupTimezone,
+                        resolvedTimeZone: trackTimezone?.timezoneId || null,
+                    });
+                }
+            } else if (IS_DEV) {
+                console.log('initial greeting: timezone lookup skipped', {
+                    shouldLookupTimezone,
+                });
             }
         } catch (e) {
             if (IS_DEV) {
@@ -706,6 +747,12 @@ export function mediaStreamHandler(connection, req) {
             }
         }
         const timeGreeting = getTimeGreeting({ timeZone });
+        if (IS_DEV) {
+            console.log('initial greeting: prepared', {
+                timeZone,
+                timeGreeting,
+            });
+        }
         const initialConversationItem = {
             type: 'conversation.item.create',
             item: {
@@ -740,6 +787,12 @@ export function mediaStreamHandler(connection, req) {
             typeof errorLike === 'string'
                 ? errorLike
                 : /** @type {any} */ (errorLike)?.message || String(errorLike);
+        if (IS_DEV) {
+            console.log('tool error: sending to OpenAI', {
+                callId,
+                message: msg,
+            });
+        }
         try {
             console.error('Sending tool error to OpenAI WS:', msg);
             const toolErrorEvent = {
@@ -762,6 +815,14 @@ export function mediaStreamHandler(connection, req) {
 
     // Handle interruption when the caller's speech starts
     const handleSpeechStartedEvent = () => {
+        if (IS_DEV) {
+            console.log('speech started event', {
+                markQueueLength: markQueue.length,
+                responseStartTimestampTwilio,
+                lastAssistantItem,
+                latestMediaTimestamp,
+            });
+        }
         if (markQueue.length > 0 && responseStartTimestampTwilio != null) {
             const elapsedTime =
                 latestMediaTimestamp - responseStartTimestampTwilio;

@@ -1,5 +1,6 @@
 import { computeRoute as realComputeRoute } from '../utils/google-routes.js';
 import { getLatestTrackLatLng as realGetLatestTrackLatLng } from '../utils/spot.js';
+import { IS_DEV } from '../env.js';
 
 const DIRECTIONS_UNAVAILABLE_MESSAGE = 'Directions unavailable.';
 
@@ -14,10 +15,17 @@ let getLatestTrackLatLngImpl = realGetLatestTrackLatLng;
  * @returns {string} Cleaned instruction text.
  */
 function cleanInstruction(value) {
-    return String(value || '')
+    const cleaned = String(value || '')
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+    if (IS_DEV) {
+        console.log('directions: cleanInstruction', {
+            raw: String(value || ''),
+            cleaned,
+        });
+    }
+    return cleaned;
 }
 
 /**
@@ -27,7 +35,7 @@ function cleanInstruction(value) {
 function formatDirections(steps) {
     if (!Array.isArray(steps)) return [];
 
-    return steps
+    const formatted = steps
         .map((step, index) => {
             const instruction = cleanInstruction(
                 step?.navigationInstruction?.instructions || ''
@@ -42,6 +50,13 @@ function formatDirections(steps) {
             return suffix ? `${label} (${suffix})` : label;
         })
         .filter(Boolean);
+    if (IS_DEV) {
+        console.log('directions: formatDirections', {
+            stepCount: steps.length,
+            outputCount: formatted.length,
+        });
+    }
+    return formatted;
 }
 
 export const definition = {
@@ -128,6 +143,11 @@ export const definition = {
  * @returns {Promise<{ status: 'ok', route: import('../utils/google-routes.js').ComputedRoute | null, routes: import('../utils/google-routes.js').ComputedRoute[], directions: string[], raw: import('../utils/google-routes.js').RoutesApiResponse | null } | { status: 'unavailable', message: string }>} Tool result payload.
  */
 export async function execute({ args }) {
+    if (IS_DEV) {
+        console.log('directions: execute start', {
+            args,
+        });
+    }
     const destinationPlace =
         typeof args?.destination_place === 'string'
             ? args.destination_place.trim()
@@ -188,6 +208,9 @@ export async function execute({ args }) {
     } else {
         const latest = await getLatestTrackLatLngImpl();
         if (!latest) {
+            if (IS_DEV) {
+                console.log('directions: origin unavailable (no latest track)');
+            }
             return {
                 status: 'unavailable',
                 message: DIRECTIONS_UNAVAILABLE_MESSAGE,
@@ -215,6 +238,26 @@ export async function execute({ args }) {
         throw new Error('Missing destination.');
     }
 
+    if (IS_DEV) {
+        console.log('directions: computeRoute input', {
+            originInput,
+            destinationInput,
+            travelMode,
+            routingPreference,
+            computeAlternativeRoutes: Boolean(args?.compute_alternative_routes),
+            routeModifiers: {
+                avoidTolls: Boolean(args?.route_modifiers?.avoid_tolls),
+                avoidHighways: Boolean(args?.route_modifiers?.avoid_highways),
+                avoidFerries: Boolean(args?.route_modifiers?.avoid_ferries),
+            },
+            languageCode:
+                typeof args?.language_code === 'string'
+                    ? args.language_code
+                    : undefined,
+            units,
+        });
+    }
+
     const result = await computeRouteImpl({
         origin: originInput,
         destination: destinationInput,
@@ -234,6 +277,12 @@ export async function execute({ args }) {
     });
 
     if (!result || !result.route) {
+        if (IS_DEV) {
+            console.log('directions: route unavailable', {
+                hasResult: Boolean(result),
+                hasRoute: Boolean(result?.route),
+            });
+        }
         return {
             status: 'unavailable',
             message: DIRECTIONS_UNAVAILABLE_MESSAGE,
@@ -242,13 +291,21 @@ export async function execute({ args }) {
 
     const directions = formatDirections(result.route.steps);
 
-    return {
-        status: 'ok',
+    const payload = {
+        status: /** @type {'ok'} */ ('ok'),
         route: result.route,
         routes: result.routes,
         directions,
         raw: result.raw ?? null,
     };
+    if (IS_DEV) {
+        console.log('directions: execute success', {
+            directionsCount: directions.length,
+            routeDistance: result.route?.distanceMeters ?? null,
+            routeDuration: result.route?.duration ?? null,
+        });
+    }
+    return payload;
 }
 
 /**
@@ -256,11 +313,19 @@ export async function execute({ args }) {
  * @param {typeof realComputeRoute} override - Replacement implementation.
  */
 export function setComputeRouteForTests(override) {
+    if (IS_DEV) {
+        console.log('directions: setComputeRouteForTests', {
+            hasOverride: Boolean(override),
+        });
+    }
     computeRouteImpl = override || realComputeRoute;
 }
 
 /** Restore the default computeRoute implementation. */
 export function resetComputeRouteForTests() {
+    if (IS_DEV) {
+        console.log('directions: resetComputeRouteForTests');
+    }
     computeRouteImpl = realComputeRoute;
 }
 
@@ -269,10 +334,18 @@ export function resetComputeRouteForTests() {
  * @param {typeof realGetLatestTrackLatLng} override - Replacement implementation.
  */
 export function setGetLatestTrackLatLngForTests(override) {
+    if (IS_DEV) {
+        console.log('directions: setGetLatestTrackLatLngForTests', {
+            hasOverride: Boolean(override),
+        });
+    }
     getLatestTrackLatLngImpl = override || realGetLatestTrackLatLng;
 }
 
 /** Restore the default getLatestTrackLatLng implementation. */
 export function resetGetLatestTrackLatLngForTests() {
+    if (IS_DEV) {
+        console.log('directions: resetGetLatestTrackLatLngForTests');
+    }
     getLatestTrackLatLngImpl = realGetLatestTrackLatLng;
 }

@@ -50,7 +50,8 @@ const MAX_SMS_TOOL_ROUNDS = 6;
  * @returns {{ tools: Array<import('openai/resources/responses/responses').Tool>, tool_choice: 'auto' }} Tool config.
  */
 function buildSmsToolConfig() {
-    return {
+    /** @type {{ tools: Array<import('openai/resources/responses/responses').Tool>, tool_choice: 'auto' }} */
+    const config = {
         tools: [
             /** @type {import('openai/resources/responses/responses').Tool} */ (
                 buildWebSearchTool({
@@ -61,6 +62,19 @@ function buildSmsToolConfig() {
         ],
         tool_choice: 'auto',
     };
+    if (IS_DEV) {
+        const toolNames = config.tools.map((tool) =>
+            tool?.type === 'function'
+                ? /** @type {any} */ (tool)?.function?.name || ''
+                : tool?.type || ''
+        );
+        console.log('sms tool config built', {
+            toolCount: config.tools.length,
+            toolNames,
+            toolChoice: config.tool_choice,
+        });
+    }
+    return config;
 }
 
 /**
@@ -74,12 +88,25 @@ function buildSmsToolConfig() {
  */
 async function executeSmsToolCallSafe({ name, arguments: rawArgs, context }) {
     const parsedArgs = safeParseToolArguments(rawArgs);
+    if (IS_DEV) {
+        console.log('sms tool call: start', {
+            name,
+            args: parsedArgs,
+            hasCaller: Boolean(context?.currentCallerE164),
+        });
+    }
     try {
         const output = await executeToolCall({
             name,
             args: parsedArgs,
             context,
         });
+        if (IS_DEV) {
+            console.log('sms tool call: success', {
+                name,
+                output,
+            });
+        }
         return output || { status: 'ok' };
     } catch (e) {
         let detail = e?.message || stringifyDeep(e);
@@ -89,6 +116,12 @@ async function executeSmsToolCallSafe({ name, arguments: rawArgs, context }) {
                 detail,
                 env: process.env,
                 secretKeys: REDACTION_KEYS,
+            });
+        }
+        if (IS_DEV) {
+            console.log('sms tool call: error', {
+                name,
+                detail,
             });
         }
         return {
@@ -116,6 +149,14 @@ async function runSmsResponseWithTools({ input, instructions, context }) {
         instructions,
         ...buildSmsToolConfig(),
     };
+
+    if (IS_DEV) {
+        console.log('sms response: start', {
+            inputLength: input?.length || 0,
+            hasCaller: Boolean(context?.currentCallerE164),
+            model: baseConfig.model,
+        });
+    }
 
     let response = await openaiClient.responses.create({
         ...baseConfig,

@@ -34,6 +34,7 @@ import {
     definition as directionsDefinition,
     execute as executeDirections,
 } from './directions.js';
+import { IS_DEV } from '../env.js';
 
 const toolExecutors = new Map(
     /** @type {Array<[string, (input: { args: object, context: object }) => Promise<unknown>]>} */ ([
@@ -78,9 +79,23 @@ export function getToolDefinitions() {
  * @returns {Promise<unknown>} Tool result.
  */
 async function realExecuteToolCall({ name, args, context }) {
+    if (IS_DEV) {
+        console.log('tool executor: dispatch', {
+            name,
+            hasArgs: Boolean(args),
+            hasContext: Boolean(context),
+        });
+    }
     const executor = toolExecutors.get(name);
     if (!executor) throw new Error(`Unknown tool: ${name}`);
-    return executor({ args, context });
+    const result = await executor({ args, context });
+    if (IS_DEV) {
+        console.log('tool executor: result', {
+            name,
+            result,
+        });
+    }
+    return result;
 }
 
 let executeToolCallImpl = realExecuteToolCall;
@@ -92,6 +107,11 @@ let executeToolCallImpl = realExecuteToolCall;
  * @returns {Promise<unknown>} Tool result.
  */
 export async function executeToolCall({ name, args, context }) {
+    if (IS_DEV) {
+        console.log('tool executor: executeToolCall', {
+            name,
+        });
+    }
     return executeToolCallImpl({ name, args, context });
 }
 
@@ -100,6 +120,11 @@ export async function executeToolCall({ name, args, context }) {
  * @param {(input: { name: string, args: object, context: object }) => Promise<unknown>} override - Replacement executor.
  */
 export function setExecuteToolCallForTests(override) {
+    if (IS_DEV) {
+        console.log('tool executor: set override', {
+            hasOverride: Boolean(override),
+        });
+    }
     executeToolCallImpl = override || realExecuteToolCall;
 }
 
@@ -108,5 +133,8 @@ export function setExecuteToolCallForTests(override) {
  * @returns {void}
  */
 export function resetExecuteToolCallForTests() {
+    if (IS_DEV) {
+        console.log('tool executor: reset override');
+    }
     executeToolCallImpl = realExecuteToolCall;
 }
