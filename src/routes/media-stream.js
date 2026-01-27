@@ -24,6 +24,8 @@ import {
     WAIT_MUSIC_THRESHOLD_MS,
     PRIMARY_USER_FIRST_NAME,
     SECONDARY_USER_FIRST_NAME,
+    getSpotFeedId,
+    getSpotFeedPassword,
 } from '../env.js';
 
 /**
@@ -722,7 +724,10 @@ export function mediaStreamHandler(connection, req) {
         try {
             const shouldLookupTimezone =
                 currentCallerE164 && PRIMARY_CALLERS_SET.has(currentCallerE164);
-            if (shouldLookupTimezone) {
+            const hasSpotCredentials = Boolean(
+                getSpotFeedId() && getSpotFeedPassword()
+            );
+            if (shouldLookupTimezone && hasSpotCredentials) {
                 const trackTimezone = await getLatestTrackTimezone();
                 if (trackTimezone?.timezoneId) {
                     timeZone = trackTimezone.timezoneId;
@@ -736,6 +741,7 @@ export function mediaStreamHandler(connection, req) {
             } else if (IS_DEV) {
                 console.log('initial greeting: timezone lookup skipped', {
                     shouldLookupTimezone,
+                    hasSpotCredentials,
                 });
             }
         } catch (e) {
