@@ -72,17 +72,17 @@ const DEFAULT_TTL_MS = 150000;
 const cache = new Map();
 
 /**
- * @param {object} o
- * @returns {string}
+ * @param {object} o Plain object to serialize deterministically.
+ * @returns {string} Stable JSON string key.
  */
 function stableJsonKey(o) {
     return JSON.stringify(o, Object.keys(o).sort());
 }
 
 /**
- * @param {WeatherCommonArgs} args
- * @param {string} apiKey
- * @returns {string|null}
+ * @param {WeatherCommonArgs} args Request arguments.
+ * @param {string} apiKey Google Maps API key.
+ * @returns {string|null} Error message when invalid, otherwise null.
  */
 function validateCommon(args, apiKey) {
     if (!apiKey) return 'Missing apiKey';
@@ -111,11 +111,11 @@ function validateCommon(args, apiKey) {
 }
 
 /**
- * @param {number|undefined} n
- * @param {number} min
- * @param {number} max
- * @param {string} name
- * @returns {string|null}
+ * @param {number|undefined} n Value to validate.
+ * @param {number} min Minimum allowed value.
+ * @param {number} max Maximum allowed value.
+ * @param {string} name Field name for error context.
+ * @returns {string|null} Error message when invalid, otherwise null.
  */
 function validateRange(n, min, max, name) {
     if (n == null) return null;
@@ -126,9 +126,9 @@ function validateRange(n, min, max, name) {
 }
 
 /**
- * @param {string} endpointPath e.g. "/v1/currentConditions:lookup"
- * @param {Record<string, string | number | undefined | null>} query
- * @returns {string}
+ * @param {string} endpointPath e.g. "/v1/currentConditions:lookup".
+ * @param {Record<string, string | number | undefined | null>} query Query params.
+ * @returns {string} Fully-qualified URL.
  */
 function buildUrl(endpointPath, query) {
     const u = new URL(`https://weather.googleapis.com${endpointPath}`);
@@ -140,9 +140,10 @@ function buildUrl(endpointPath, query) {
 }
 
 /**
- * @param {string} cacheKeyStr
- * @param {number} ttlMs
- * @param {() => Promise<any>} fn
+ * @param {string} cacheKeyStr Cache key.
+ * @param {number} ttlMs Cache TTL in ms.
+ * @param {() => Promise<any>} fn Fetcher function.
+ * @returns {Promise<any>} Cached or freshly fetched value.
  */
 async function withCache(cacheKeyStr, ttlMs, fn) {
     const now = Date.now();
@@ -157,9 +158,9 @@ async function withCache(cacheKeyStr, ttlMs, fn) {
 /**
  * Get current conditions at a point.
  *
- * @param {WeatherCommonArgs} args
- * @param {{ttlMs?: number}=} options
- * @returns {Promise<NormalizedCurrentConditions|null>}
+ * @param {WeatherCommonArgs} args Request arguments.
+ * @param {{ttlMs?: number}=} options Optional caching options.
+ * @returns {Promise<NormalizedCurrentConditions|null>} Normalized current conditions.
  */
 export async function get_current_conditions(args, options = {}) {
     try {
@@ -302,9 +303,9 @@ export async function get_current_conditions(args, options = {}) {
 /**
  * Get daily forecast page(s) for a point.
  *
- * @param {DailyForecastArgs} args
- * @param {{ttlMs?: number}=} options
- * @returns {Promise<NormalizedForecastPage|null>}
+ * @param {DailyForecastArgs} args Request arguments.
+ * @param {{ttlMs?: number}=} options Optional caching options.
+ * @returns {Promise<NormalizedForecastPage|null>} Normalized forecast page.
  */
 export async function get_daily_forecast(args, options = {}) {
     try {
@@ -410,9 +411,9 @@ export async function get_daily_forecast(args, options = {}) {
 /**
  * Get hourly forecast page(s) for a point.
  *
- * @param {HourlyForecastArgs} args
- * @param {{ttlMs?: number}=} options
- * @returns {Promise<NormalizedForecastPage|null>}
+ * @param {HourlyForecastArgs} args Request arguments.
+ * @param {{ttlMs?: number}=} options Optional caching options.
+ * @returns {Promise<NormalizedForecastPage|null>} Normalized forecast page.
  */
 export async function get_hourly_forecast(args, options = {}) {
     try {
@@ -518,5 +519,6 @@ export async function get_hourly_forecast(args, options = {}) {
 /**
  * Back-compat alias for your requested function name typo.
  * @deprecated Prefer `get_hourly_forecast`.
+ * @returns {Promise<NormalizedForecastPage|null>} Normalized forecast page.
  */
 export const get_hourly_forcast = get_hourly_forecast;
