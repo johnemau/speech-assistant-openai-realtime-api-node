@@ -1,5 +1,4 @@
 import { computeRoute as realComputeRoute } from '../utils/google-routes.js';
-import { googlePlacesTextSearch as realGooglePlacesTextSearch } from '../utils/google-places-text-search.js';
 import { getLatestTrackLatLng as realGetLatestTrackLatLng } from '../utils/spot.js';
 
 const DIRECTIONS_UNAVAILABLE_MESSAGE = 'Directions unavailable.';
@@ -9,9 +8,6 @@ let computeRouteImpl = realComputeRoute;
 
 /** @type {typeof realGetLatestTrackLatLng} */
 let getLatestTrackLatLngImpl = realGetLatestTrackLatLng;
-
-/** @type {typeof realGooglePlacesTextSearch} */
-let googlePlacesTextSearchImpl = realGooglePlacesTextSearch;
 
 /**
  * @param {string} value - Raw instruction text.
@@ -48,24 +44,6 @@ function formatDirections(steps) {
         .filter(Boolean);
 }
 
-/**
- * @param {string} query - Place name or address.
- * @param {{ language?: string }=} options - Optional search options.
- * @returns {Promise<{ lat: number, lng: number } | null>} Location or null.
- */
-async function resolvePlaceLocation(query, options = {}) {
-    const result = await googlePlacesTextSearchImpl({
-        textQuery: query,
-        language: options.language,
-        maxResultCount: 1,
-    });
-
-    const loc = result?.places?.[0]?.location;
-    if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng))
-        return null;
-    return { lat: Number(loc.lat), lng: Number(loc.lng) };
-}
-
 export const definition = {
     type: 'function',
     name: 'directions',
@@ -75,7 +53,7 @@ export const definition = {
             origin: {
                 type: 'object',
                 description:
-                    "Optional origin coordinates. If omitted, the tool uses the caller's latest tracked location.",
+                    "Optional origin coordinates. Use either origin or origin_place (address). If omitted, the tool uses the caller's latest tracked location.",
                 properties: {
                     lat: { type: 'number' },
                     lng: { type: 'number' },
@@ -83,7 +61,8 @@ export const definition = {
             },
             destination: {
                 type: 'object',
-                description: 'Destination coordinates.',
+                description:
+                    'Optional destination coordinates. Use either destination or destination_place (address).',
                 properties: {
                     lat: { type: 'number' },
                     lng: { type: 'number' },
@@ -92,11 +71,12 @@ export const definition = {
             origin_place: {
                 type: 'string',
                 description:
-                    "Optional origin address or place name. If omitted, uses the caller's latest tracked location.",
+                    "Optional origin address or place name. Use either origin_place or origin coordinates. If omitted, uses the caller's latest tracked location.",
             },
             destination_place: {
                 type: 'string',
-                description: 'Destination address or place name.',
+                description:
+                    'Optional destination address or place name. Use either destination_place or destination coordinates.',
             },
             travel_mode: {
                 type: 'string',
@@ -135,17 +115,16 @@ export const definition = {
                 enum: ['METRIC', 'IMPERIAL'],
             },
         },
-        required: ['destination_place'],
     },
     description:
-        'Get directions between two locations using Google Routes API. If origin is omitted, uses the latest tracked caller location.',
+        'Get directions between two locations using Google Routes API. Provide either address or coordinates for each origin/destination. If origin is omitted, uses the latest tracked caller location.',
 };
 
 /**
  * Execute directions tool.
  *
  * @param {object} root0 - Tool inputs.
- * @param {{ origin?: { lat?: number, lng?: number }, destination?: { lat?: number, lng?: number }, origin_place?: string, destination_place?: string, travel_mode?: string, routing_preference?: string, compute_alternative_routes?: boolean, route_modifiers?: { avoid_tolls?: boolean, avoid_highways?: boolean, avoid_ferries?: boolean }, language_code?: string, units?: string }} root0.args - Tool arguments.
+ * @param {{ origin?: { lat?: number, lng?: number }, destination?: { lat?: number, lng?: number }, origin_place?: string, destination_place?: string, travel_mode?: string, routing_preference?: string, compute_alternative_routes?: boolean, route_modifiers?: { avoid_tolls?: boolean, avoid_highways?: boolean, avoid_ferries?: boolean }, language_code?: string, units?: string }} root0.args - Tool arguments (use address or coordinates for each origin/destination).
  * @returns {Promise<{ status: 'ok', route: import('../utils/google-routes.js').ComputedRoute | null, routes: import('../utils/google-routes.js').ComputedRoute[], directions: string[], raw: import('../utils/google-routes.js').RoutesApiResponse | null } | { status: 'unavailable', message: string }>} Tool result payload.
  */
 export async function execute({ args }) {
@@ -154,67 +133,18 @@ export async function execute({ args }) {
             ? args.destination_place.trim()
             : '';
 
-    let destination = args?.destination;
-    if (
-        !destination ||
-        !Number.isFinite(destination.lat) ||
-        !Number.isFinite(destination.lng)
-    ) {
-        if (!destinationPlace) {
-            throw new Error('Missing destination.');
-        }
-        const resolved = await resolvePlaceLocation(destinationPlace, {
-            language:
-                typeof args?.language_code === 'string'
-                    ? args.language_code
-                    : undefined,
-        });
-        if (!resolved) {
-            return {
-                status: 'unavailable',
-                message: DIRECTIONS_UNAVAILABLE_MESSAGE,
-            };
-        }
-        destination = resolved;
-    }
+    const destination = args?.destination;
+    const hasDestinationLatLng =
+        !!destination &&
+        Number.isFinite(destination.lat) &&
+        Number.isFinite(destination.lng);
 
     const originPlace =
         typeof args?.origin_place === 'string' ? args.origin_place.trim() : '';
 
-    let origin = args?.origin;
-    if (
-        !origin ||
-        !Number.isFinite(origin.lat) ||
-        !Number.isFinite(origin.lng)
-    ) {
-        if (originPlace) {
-            const resolved = await resolvePlaceLocation(originPlace, {
-                language:
-                    typeof args?.language_code === 'string'
-                        ? args.language_code
-                        : undefined,
-            });
-            if (!resolved) {
-                return {
-                    status: 'unavailable',
-                    message: DIRECTIONS_UNAVAILABLE_MESSAGE,
-                };
-            }
-            origin = resolved;
-        } else {
-            const latest = await getLatestTrackLatLngImpl();
-            if (!latest) {
-                return {
-                    status: 'unavailable',
-                    message: DIRECTIONS_UNAVAILABLE_MESSAGE,
-                };
-            }
-            origin = {
-                lat: Number(latest.latitude),
-                lng: Number(latest.longitude),
-            };
-        }
-    }
+    const origin = args?.origin;
+    const hasOriginLatLng =
+        !!origin && Number.isFinite(origin.lat) && Number.isFinite(origin.lng);
 
     /** @type {import('../utils/google-routes.js').TravelMode | undefined} */
     const travelMode = [
@@ -245,19 +175,49 @@ export async function execute({ args }) {
         ? /** @type {import('../utils/google-routes.js').Units} */ (args?.units)
         : undefined;
 
-    const result = await computeRouteImpl({
-        origin: {
+    let originInput;
+    if (originPlace) {
+        originInput = { address: originPlace };
+    } else if (hasOriginLatLng) {
+        originInput = {
             latLng: {
                 lat: Number(origin.lat),
                 lng: Number(origin.lng),
             },
-        },
-        destination: {
+        };
+    } else {
+        const latest = await getLatestTrackLatLngImpl();
+        if (!latest) {
+            return {
+                status: 'unavailable',
+                message: DIRECTIONS_UNAVAILABLE_MESSAGE,
+            };
+        }
+        originInput = {
+            latLng: {
+                lat: Number(latest.latitude),
+                lng: Number(latest.longitude),
+            },
+        };
+    }
+
+    let destinationInput;
+    if (destinationPlace) {
+        destinationInput = { address: destinationPlace };
+    } else if (hasDestinationLatLng) {
+        destinationInput = {
             latLng: {
                 lat: Number(destination.lat),
                 lng: Number(destination.lng),
             },
-        },
+        };
+    } else {
+        throw new Error('Missing destination.');
+    }
+
+    const result = await computeRouteImpl({
+        origin: originInput,
+        destination: destinationInput,
         travelMode,
         routingPreference,
         computeAlternativeRoutes: Boolean(args?.compute_alternative_routes),
@@ -315,17 +275,4 @@ export function setGetLatestTrackLatLngForTests(override) {
 /** Restore the default getLatestTrackLatLng implementation. */
 export function resetGetLatestTrackLatLngForTests() {
     getLatestTrackLatLngImpl = realGetLatestTrackLatLng;
-}
-
-/**
- * Test-only override for googlePlacesTextSearch.
- * @param {typeof realGooglePlacesTextSearch} override - Replacement implementation.
- */
-export function setGooglePlacesTextSearchForTests(override) {
-    googlePlacesTextSearchImpl = override || realGooglePlacesTextSearch;
-}
-
-/** Restore the default googlePlacesTextSearch implementation. */
-export function resetGooglePlacesTextSearchForTests() {
-    googlePlacesTextSearchImpl = realGooglePlacesTextSearch;
 }

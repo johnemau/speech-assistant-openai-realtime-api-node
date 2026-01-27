@@ -5,86 +5,56 @@ const {
     execute,
     setComputeRouteForTests,
     resetComputeRouteForTests,
-    setGooglePlacesTextSearchForTests,
-    resetGooglePlacesTextSearchForTests,
     setGetLatestTrackLatLngForTests,
     resetGetLatestTrackLatLngForTests,
 } = await import('./directions.js');
 
 test.afterEach(() => {
     resetComputeRouteForTests();
-    resetGooglePlacesTextSearchForTests();
     resetGetLatestTrackLatLngForTests();
 });
 
-test('directions.execute resolves places and formats steps', async () => {
+test('directions.execute uses address inputs and formats steps', async () => {
     setGetLatestTrackLatLngForTests(async () => {
         throw new Error('getLatestTrackLatLng should not be called');
     });
 
-    setGooglePlacesTextSearchForTests(async ({ textQuery }) => {
-        if (textQuery === 'Origin Place') {
-            return {
-                places: [
-                    {
-                        id: null,
-                        name: null,
-                        businessStatus: null,
-                        address: null,
-                        mapsUrl: null,
-                        location: { lat: 47.61, lng: -122.33 },
-                    },
-                ],
-            };
-        }
-        if (textQuery === 'Destination Place') {
-            return {
-                places: [
-                    {
-                        id: null,
-                        name: null,
-                        businessStatus: null,
-                        address: null,
-                        mapsUrl: null,
-                        location: { lat: 47.62, lng: -122.34 },
-                    },
-                ],
-            };
-        }
-        return { places: [] };
-    });
-
-    setComputeRouteForTests(async () => ({
-        route: {
-            distanceMeters: 1200,
-            duration: '300s',
-            encodedPolyline: 'abcd',
-            steps: [
-                {
-                    navigationInstruction: {
-                        instructions: 'Head <b>north</b>',
-                        maneuver: 'TURN_LEFT',
-                    },
-                    distanceMeters: 200,
-                    duration: '30s',
-                },
-                {
-                    navigationInstruction: {
-                        instructions: 'Turn right',
-                    },
-                },
-            ],
-        },
-        routes: [
-            {
+    /** @type {any} */
+    let seenArgs = null;
+    setComputeRouteForTests(async (args) => {
+        seenArgs = args;
+        return {
+            route: {
                 distanceMeters: 1200,
                 duration: '300s',
                 encodedPolyline: 'abcd',
-                steps: [],
+                steps: [
+                    {
+                        navigationInstruction: {
+                            instructions: 'Head <b>north</b>',
+                            maneuver: 'TURN_LEFT',
+                        },
+                        distanceMeters: 200,
+                        duration: '30s',
+                    },
+                    {
+                        navigationInstruction: {
+                            instructions: 'Turn right',
+                        },
+                    },
+                ],
             },
-        ],
-        raw: { routes: [] },
-    }));
+            routes: [
+                {
+                    distanceMeters: 1200,
+                    duration: '300s',
+                    encodedPolyline: 'abcd',
+                    steps: [],
+                },
+            ],
+            raw: { routes: [] },
+        };
+    });
 
     const res = await execute({
         args: {
@@ -99,6 +69,10 @@ test('directions.execute resolves places and formats steps', async () => {
     assert.ok(res.route);
     if (!res.route) throw new Error('Expected route');
     assert.equal(res.route.distanceMeters, 1200);
+    assert.ok(seenArgs);
+    if (!seenArgs) throw new Error('Expected route args');
+    assert.deepEqual(seenArgs.origin, { address: 'Origin Place' });
+    assert.deepEqual(seenArgs.destination, { address: 'Destination Place' });
 });
 
 test('directions.execute uses latest track when origin missing', async () => {
@@ -112,24 +86,6 @@ test('directions.execute uses latest track when origin missing', async () => {
 
     /** @type {any} */
     let seenArgs = null;
-    setGooglePlacesTextSearchForTests(async ({ textQuery }) => {
-        if (textQuery === 'Destination Place') {
-            return {
-                places: [
-                    {
-                        id: null,
-                        name: null,
-                        businessStatus: null,
-                        address: null,
-                        mapsUrl: null,
-                        location: { lat: 41, lng: -71 },
-                    },
-                ],
-            };
-        }
-        return { places: [] };
-    });
-
     setComputeRouteForTests(async (args) => {
         seenArgs = args;
         return {
@@ -152,27 +108,11 @@ test('directions.execute uses latest track when origin missing', async () => {
     assert.ok(seenArgs);
     if (!seenArgs) throw new Error('Expected route args');
     assert.deepEqual(seenArgs.origin, { latLng: { lat: 40, lng: -70 } });
+    assert.deepEqual(seenArgs.destination, { address: 'Destination Place' });
 });
 
 test('directions.execute returns unavailable when no origin available', async () => {
     setGetLatestTrackLatLngForTests(async () => null);
-    setGooglePlacesTextSearchForTests(async ({ textQuery }) => {
-        if (textQuery === 'Destination Place') {
-            return {
-                places: [
-                    {
-                        id: null,
-                        name: null,
-                        businessStatus: null,
-                        address: null,
-                        mapsUrl: null,
-                        location: { lat: 41, lng: -71 },
-                    },
-                ],
-            };
-        }
-        return { places: [] };
-    });
     setComputeRouteForTests(async () => {
         throw new Error('computeRoute should not be called');
     });
@@ -195,24 +135,6 @@ test('directions.execute returns unavailable when computeRoute fails', async () 
         messageId: 'abc',
         messageType: 'TRACK',
     }));
-
-    setGooglePlacesTextSearchForTests(async ({ textQuery }) => {
-        if (textQuery === 'Destination Place') {
-            return {
-                places: [
-                    {
-                        id: null,
-                        name: null,
-                        businessStatus: null,
-                        address: null,
-                        mapsUrl: null,
-                        location: { lat: 41, lng: -71 },
-                    },
-                ],
-            };
-        }
-        return { places: [] };
-    });
 
     setComputeRouteForTests(async () => null);
 
