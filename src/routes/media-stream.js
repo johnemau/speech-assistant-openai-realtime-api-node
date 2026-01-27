@@ -689,9 +689,13 @@ export function mediaStreamHandler(connection, req) {
         initialGreetingRequested = true;
         let timeZone = 'America/Los_Angeles';
         try {
-            const trackTimezone = await getLatestTrackTimezone();
-            if (trackTimezone?.timezoneId) {
-                timeZone = trackTimezone.timezoneId;
+            const shouldLookupTimezone =
+                currentCallerE164 && PRIMARY_CALLERS_SET.has(currentCallerE164);
+            if (shouldLookupTimezone) {
+                const trackTimezone = await getLatestTrackTimezone();
+                if (trackTimezone?.timezoneId) {
+                    timeZone = trackTimezone.timezoneId;
+                }
             }
         } catch (e) {
             if (IS_DEV) {
