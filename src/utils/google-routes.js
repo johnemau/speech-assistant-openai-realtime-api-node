@@ -57,6 +57,7 @@ import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
  * @property {TravelMode=} travelMode
  * @property {number=} distanceMeters
  * @property {string=} duration
+ * @property {string=} staticDuration
  * @property {{instructions?:string, maneuver?:string}=} navigationInstruction
  * @property {object=} transitDetails
  */
@@ -90,7 +91,7 @@ const DEFAULT_FIELD_MASK = [
     // Needed for: routeResponse.routes[0].legs[0].steps[*]...
     'routes.legs.steps.travelMode',
     'routes.legs.steps.distanceMeters',
-    'routes.legs.steps.duration',
+    'routes.legs.steps.staticDuration',
     'routes.legs.steps.navigationInstruction.instructions',
     'routes.legs.steps.navigationInstruction.maneuver',
 
@@ -440,8 +441,7 @@ export async function computeRoute(args, options = {}) {
                         hasDestination: Boolean(destination),
                         travelMode: body.travelMode,
                         routingPreference: body.routingPreference,
-                        computeAlternativeRoutes:
-                            body.computeAlternativeRoutes,
+                        computeAlternativeRoutes: body.computeAlternativeRoutes,
                         routeModifiers: body.routeModifiers,
                         languageCode: body.languageCode ?? null,
                         units: body.units,
@@ -458,6 +458,24 @@ export async function computeRoute(args, options = {}) {
         /** @type {ComputedRoute[]} */
         const routes = (data?.routes || []).map((r) => {
             const steps = r?.legs?.[0]?.steps ?? [];
+            const normalizedSteps = Array.isArray(steps)
+                ? steps.map((step) => {
+                      const duration =
+                          typeof step?.duration === 'string'
+                              ? step.duration
+                              : typeof step?.staticDuration === 'string'
+                                ? step.staticDuration
+                                : undefined;
+                      if (!duration) {
+                          return step;
+                      }
+                      const { staticDuration, ...rest } = step ?? {};
+                      return {
+                          ...rest,
+                          duration,
+                      };
+                  })
+                : [];
             return {
                 distanceMeters:
                     typeof r?.distanceMeters === 'number'
@@ -468,7 +486,7 @@ export async function computeRoute(args, options = {}) {
                     typeof r?.polyline?.encodedPolyline === 'string'
                         ? r.polyline.encodedPolyline
                         : null,
-                steps: Array.isArray(steps) ? steps : [],
+                steps: normalizedSteps,
             };
         });
 

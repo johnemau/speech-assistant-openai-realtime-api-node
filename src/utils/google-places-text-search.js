@@ -1,4 +1,4 @@
-import { getGoogleMapsApiKey } from '../env.js';
+import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
 
 /**
  * @typedef {object} TextSearchPlace
@@ -139,7 +139,39 @@ export async function googlePlacesTextSearch(args) {
             }
         );
 
-        if (!resp.ok) return null;
+        if (!resp.ok) {
+            if (IS_DEV) {
+                let errorBody = null;
+                let contentType = null;
+                try {
+                    contentType = resp.headers?.get('content-type') ?? null;
+                    errorBody = await resp.text();
+                } catch {
+                    errorBody = null;
+                }
+
+                console.log('places: text-search http error', {
+                    status: resp.status,
+                    statusText: resp.statusText,
+                    url: resp.url,
+                    contentType,
+                    errorBody,
+                    request: {
+                        textQuery: args.textQuery,
+                        includedType: args.includedType ?? null,
+                        useStrictTypeFiltering: !!args.useStrictTypeFiltering,
+                        isOpenNow: args.isOpenNow ?? null,
+                        minRating: args.minRating ?? null,
+                        maxResultCount: args.maxResultCount ?? 10,
+                        language: args.language ?? null,
+                        region: args.region ?? null,
+                        locationBias: args.locationBias ?? null,
+                        locationRestriction: args.locationRestriction ?? null,
+                    },
+                });
+            }
+            return null;
+        }
 
         /** @type {PlacesTextSearchResponse} */
         const data = /** @type {PlacesTextSearchResponse} */ (
@@ -170,7 +202,27 @@ export async function googlePlacesTextSearch(args) {
         const value = { places };
         cache.set(key, { expiresAt: now + ttlMs, value });
         return value;
-    } catch {
+    } catch (error) {
+        if (IS_DEV) {
+            const err = /** @type {any} */ (error);
+            console.log('places: text-search exception', {
+                name: err?.name ?? null,
+                message: err?.message ?? null,
+                stack: err?.stack ?? null,
+                request: {
+                    textQuery: args.textQuery,
+                    includedType: args.includedType ?? null,
+                    useStrictTypeFiltering: !!args.useStrictTypeFiltering,
+                    isOpenNow: args.isOpenNow ?? null,
+                    minRating: args.minRating ?? null,
+                    maxResultCount: args.maxResultCount ?? 10,
+                    language: args.language ?? null,
+                    region: args.region ?? null,
+                    locationBias: args.locationBias ?? null,
+                    locationRestriction: args.locationRestriction ?? null,
+                },
+            });
+        }
         return null;
     }
 }

@@ -62,7 +62,7 @@ test('computeRoute returns mapped routes', async () => {
                                     {
                                         travelMode: 'WALK',
                                         distanceMeters: 100,
-                                        duration: '10s',
+                                        staticDuration: '10s',
                                         navigationInstruction: {
                                             instructions: 'Head north',
                                             maneuver: 'TURN_LEFT',
@@ -129,7 +129,7 @@ test('computeRoute returns mapped routes', async () => {
                                 {
                                     travelMode: 'WALK',
                                     distanceMeters: 100,
-                                    duration: '10s',
+                                    staticDuration: '10s',
                                     navigationInstruction: {
                                         instructions: 'Head north',
                                         maneuver: 'TURN_LEFT',
@@ -152,7 +152,7 @@ test('computeRoute returns mapped routes', async () => {
             'routes.polyline.encodedPolyline',
             'routes.legs.steps.travelMode',
             'routes.legs.steps.distanceMeters',
-            'routes.legs.steps.duration',
+            'routes.legs.steps.staticDuration',
             'routes.legs.steps.navigationInstruction.instructions',
             'routes.legs.steps.navigationInstruction.maneuver',
             'routes.legs.steps.transitDetails',

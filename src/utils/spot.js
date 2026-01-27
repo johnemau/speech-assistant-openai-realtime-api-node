@@ -3,6 +3,22 @@ import { getSpotFeedId, getSpotFeedPassword, IS_DEV } from '../env.js';
 
 const SPOT_THROTTLE_MS = 2.5 * 60 * 1000;
 
+/**
+ * @param {string} url
+ * @returns {string}
+ */
+function redactSpotUrl(url) {
+    try {
+        const parsed = new URL(url);
+        if (parsed.searchParams.has('feedPassword')) {
+            parsed.searchParams.set('feedPassword', 'REDACTED');
+        }
+        return parsed.toString();
+    } catch {
+        return url;
+    }
+}
+
 const spotLatestTrackCache = new Map();
 /*
   cache entry shape:
@@ -37,10 +53,25 @@ async function fetchWithTimeout(url, { timeoutMs = 15000, ...init } = {}) {
     if (typeof fetch !== 'function') return null;
 
     const controller = new AbortController();
+    const safeUrl = redactSpotUrl(url);
+    const method = init?.method ?? 'GET';
     const t = setTimeout(() => controller.abort(), timeoutMs);
     try {
         return await fetch(url, { ...init, signal: controller.signal });
-    } catch {
+    } catch (error) {
+        if (IS_DEV) {
+            const err = /** @type {any} */ (error);
+            console.log('spot: fetch exception', {
+                name: err?.name ?? null,
+                message: err?.message ?? null,
+                stack: err?.stack ?? null,
+                url: safeUrl,
+                request: {
+                    method,
+                    timeoutMs,
+                },
+            });
+        }
         return null;
     } finally {
         clearTimeout(t);
@@ -115,9 +146,26 @@ export async function getLatestTrackLatLng(opts = {}) {
             value: cached?.value ?? null,
         });
         if (IS_DEV) {
+            let errorBody = null;
+            let contentType = null;
+            if (res && !res.ok) {
+                try {
+                    contentType = res.headers?.get('content-type') ?? null;
+                    errorBody = await res.text();
+                } catch {
+                    errorBody = null;
+                }
+            }
             console.log('getLatestTrackLatLng:fetch-failed', {
-                ok: res?.ok,
-                status: res?.status,
+                ok: res?.ok ?? false,
+                status: res?.status ?? null,
+                statusText: res?.statusText ?? null,
+                url: redactSpotUrl(url),
+                contentType,
+                errorBody,
+                request: {
+                    timeoutMs,
+                },
             });
         }
         return cached?.value ?? null;

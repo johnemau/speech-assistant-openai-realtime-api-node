@@ -1,4 +1,4 @@
-import { getGoogleMapsApiKey } from '../env.js';
+import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
 
 /**
  * @typedef {object} NearbyPlace
@@ -807,7 +807,38 @@ export async function searchPlacesNearby(args, options = {}) {
             }
         );
 
-        if (!resp.ok) return null;
+        if (!resp.ok) {
+            if (IS_DEV) {
+                let errorBody = null;
+                let contentType = null;
+                try {
+                    contentType = resp.headers?.get('content-type') ?? null;
+                    errorBody = await resp.text();
+                } catch {
+                    errorBody = null;
+                }
+
+                console.log('places: nearby http error', {
+                    status: resp.status,
+                    statusText: resp.statusText,
+                    url: resp.url,
+                    contentType,
+                    errorBody,
+                    request: {
+                        lat: args.lat,
+                        lng: args.lng,
+                        radius_m: args.radius_m,
+                        included_primary_types:
+                            args.included_primary_types ?? null,
+                        max_result_count: args.max_result_count ?? 10,
+                        rank_preference: args.rank_preference ?? 'POPULARITY',
+                        language_code: args.language_code ?? null,
+                        region_code: args.region_code ?? null,
+                    },
+                });
+            }
+            return null;
+        }
 
         /** @type {{ places?: Array<Record<string, any>> }} */
         const data = /** @type {any} */ (await resp.json());
@@ -830,7 +861,25 @@ export async function searchPlacesNearby(args, options = {}) {
         const value = { places };
         cache.set(key, { expiresAt: now + Number(ttlMs), value });
         return value;
-    } catch {
+    } catch (error) {
+        if (IS_DEV) {
+            const err = /** @type {any} */ (error);
+            console.log('places: nearby exception', {
+                name: err?.name ?? null,
+                message: err?.message ?? null,
+                stack: err?.stack ?? null,
+                request: {
+                    lat: args.lat,
+                    lng: args.lng,
+                    radius_m: args.radius_m,
+                    included_primary_types: args.included_primary_types ?? null,
+                    max_result_count: args.max_result_count ?? 10,
+                    rank_preference: args.rank_preference ?? 'POPULARITY',
+                    language_code: args.language_code ?? null,
+                    region_code: args.region_code ?? null,
+                },
+            });
+        }
         return null;
     }
 }

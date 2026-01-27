@@ -3,6 +3,25 @@ import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
 const DEFAULT_TIMEOUT_MS = 15000;
 
 /**
+ * @param {string} url - URL to redact.
+ * @returns {string} Redacted URL.
+ */
+function redactUrl(url) {
+    try {
+        const parsed = new URL(url);
+        if (parsed.searchParams.has('key')) {
+            parsed.searchParams.set('key', 'REDACTED');
+        }
+        if (parsed.searchParams.has('apiKey')) {
+            parsed.searchParams.set('apiKey', 'REDACTED');
+        }
+        return parsed.toString();
+    } catch {
+        return url;
+    }
+}
+
+/**
  * @typedef {object} GeocodeComponent
  * @property {string[]} [types]
  * @property {string} [long_name]
@@ -40,34 +59,70 @@ function isValidLatLng(lat, lng) {
 
 /**
  * @param {string} url - Request URL.
- * @param {object} [init] - Fetch init options.
- * @param {number} [init.timeoutMs=15000] - Request timeout in ms.
+ * @param {RequestInit & { timeoutMs?: number }} [init] - Fetch init options.
  * @returns {Promise<unknown>} Parsed JSON response.
  */
-async function fetchJson(
-    url,
-    { timeoutMs = DEFAULT_TIMEOUT_MS, ...init } = {}
-) {
+async function fetchJson(url, init = {}) {
+    const { timeoutMs = DEFAULT_TIMEOUT_MS, ...requestInit } = init;
     if (typeof fetch !== 'function') {
         throw new Error('fetch is not available in this runtime.');
     }
 
     const controller = new AbortController();
+    const safeUrl = redactUrl(url);
+    const method = requestInit.method ?? 'GET';
     const t = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const res = await fetch(url, { ...init, signal: controller.signal });
+        const res = await fetch(url, {
+            ...requestInit,
+            signal: controller.signal,
+        });
         if (!res.ok) {
             let text = '';
+            let contentType = null;
             try {
+                contentType = res.headers?.get('content-type') ?? null;
                 text = await res.text();
             } catch {
                 text = '';
             }
-            throw new Error(
+            if (IS_DEV) {
+                console.log('location: http error', {
+                    status: res.status,
+                    statusText: res.statusText,
+                    url: safeUrl,
+                    contentType,
+                    errorBody: text || null,
+                    request: {
+                        method,
+                        timeoutMs,
+                    },
+                });
+            }
+            const httpError = new Error(
                 `HTTP ${res.status} ${res.statusText}${text ? ` - ${text}` : ''}`
             );
+            httpError.name = 'HttpError';
+            throw httpError;
         }
         return await res.json();
+    } catch (error) {
+        if (IS_DEV) {
+            const err = /** @type {any} */ (error);
+            if (err?.name !== 'HttpError') {
+                console.log('location: fetch exception', {
+                    name: err?.name ?? null,
+                    message: err?.message ?? null,
+                    stack: err?.stack ?? null,
+                    url: safeUrl,
+                    request: {
+                        method,
+                        timeoutMs,
+                    },
+                });
+            }
+        }
+        throw error;
     } finally {
         clearTimeout(t);
     }
