@@ -71,8 +71,36 @@ export function getToolDefinitions() {
  * @param {object} root0.context - Tool context.
  * @returns {Promise<unknown>} Tool result.
  */
-export async function executeToolCall({ name, args, context }) {
+async function realExecuteToolCall({ name, args, context }) {
     const executor = toolExecutors.get(name);
     if (!executor) throw new Error(`Unknown tool: ${name}`);
     return executor({ args, context });
+}
+
+let executeToolCallImpl = realExecuteToolCall;
+
+/**
+ * Execute a tool call by name (testable wrapper).
+ *
+ * @param {{ name: string, args: object, context: object }} root0 - Tool invocation data.
+ * @returns {Promise<unknown>} Tool result.
+ */
+export async function executeToolCall({ name, args, context }) {
+    return executeToolCallImpl({ name, args, context });
+}
+
+/**
+ * Test-only override for tool execution.
+ * @param {(input: { name: string, args: object, context: object }) => Promise<unknown>} override - Replacement executor.
+ */
+export function setExecuteToolCallForTests(override) {
+    executeToolCallImpl = override || realExecuteToolCall;
+}
+
+/**
+ * Restore the default tool executor.
+ * @returns {void}
+ */
+export function resetExecuteToolCallForTests() {
+    executeToolCallImpl = realExecuteToolCall;
 }

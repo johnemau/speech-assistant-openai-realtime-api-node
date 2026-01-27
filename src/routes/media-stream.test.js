@@ -1,7 +1,61 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
+
+import {
+    setExecuteToolCallForTests,
+    resetExecuteToolCallForTests,
+} from '../tools/index.js';
 
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
+process.env.WAIT_MUSIC_THRESHOLD_MS =
+    process.env.WAIT_MUSIC_THRESHOLD_MS || '20';
+process.env.WAIT_MUSIC_FOLDER =
+    process.env.WAIT_MUSIC_FOLDER || path.join(process.cwd(), 'music');
+
+/**
+ * @returns {{ promise: Promise<unknown>, resolve: (value?: unknown) => void, reject: (error: Error) => void }} Deferred promise handle.
+ */
+function createDeferred() {
+    /** @type {(value?: unknown) => void} */
+    let resolve = () => {};
+    /** @type {(error: Error) => void} */
+    let reject = () => {};
+    const promise = new Promise((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return { promise, resolve, reject };
+}
+
+/**
+ * @param {number} ms - Delay in milliseconds.
+ * @returns {Promise<void>} Promise resolved after delay.
+ */
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * @param {{ sends: string[] }} connection - Connection mock with send buffer.
+ * @param {number} baseline - Baseline send count to exceed.
+ * @param {number} timeoutMs - Max time to wait.
+ * @param {number} intervalMs - Polling interval.
+ * @returns {Promise<boolean>} Whether send count increased in time.
+ */
+async function waitForSendIncrease(
+    connection,
+    baseline,
+    timeoutMs,
+    intervalMs = 50
+) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        if (connection.sends.length > baseline) return true;
+        await delay(intervalMs);
+    }
+    return false;
+}
 
 /**
  * @returns {{
@@ -308,6 +362,88 @@ test('no extra response.create after end_call (only goodbye)', async () => {
         // Ensure still only one response request after end_call
         assert.equal(sessionState.requestResponseCalls, afterEndCall);
     } finally {
+        cleanup();
+    }
+});
+
+test('speech_stopped requests a response when not hanging up', async () => {
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+
+    try {
+        mediaStreamHandler(connection, {});
+
+        const before = sessionState.requestResponseCalls;
+        // Simulate end of caller speech (no pending disconnect)
+        sessionState.onEvent?.({ type: 'input_audio_buffer.speech_stopped' });
+        const after = sessionState.requestResponseCalls;
+        assert.equal(after, before + 1);
+    } finally {
+        cleanup();
+    }
+});
+
+test('waiting music resumes after interrupt while tool is running', async () => {
+    const deferred = createDeferred();
+    setExecuteToolCallForTests(async () => deferred.promise);
+
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+
+    try {
+        mediaStreamHandler(connection, {});
+        connection.handlers.message(
+            JSON.stringify({
+                event: 'start',
+                start: {
+                    streamSid: 'SID-WAIT-RESUME',
+                    customParameters: { caller_number: '+12065550100' },
+                },
+            })
+        );
+
+        const toolPromise = sessionState.onToolCall?.(
+            {
+                type: 'function_call',
+                name: 'update_mic_distance',
+                call_id: 'call-wait-1',
+                arguments: JSON.stringify({ mode: 'far_field' }),
+            },
+            {}
+        );
+
+        const started = await waitForSendIncrease(connection, 0, 2000);
+        assert.ok(
+            started,
+            'waiting music should send media while tool is running'
+        );
+
+        sessionState.onAssistantOutput?.({
+            type: 'audio',
+            delta: 'AUDIO-INTERRUPT',
+            itemId: 'item-wait-1',
+        });
+
+        sessionState.onEvent?.({ type: 'response.done', response: {} });
+
+        const sendsAfterInterrupt = connection.sends.length;
+        const resumed = await waitForSendIncrease(
+            connection,
+            sendsAfterInterrupt,
+            3500
+        );
+        assert.ok(
+            resumed,
+            'waiting music should resume after interruption while tool is running'
+        );
+
+        deferred.resolve();
+        await toolPromise;
+    } finally {
+        resetExecuteToolCallForTests();
+        connection.close();
         cleanup();
     }
 });

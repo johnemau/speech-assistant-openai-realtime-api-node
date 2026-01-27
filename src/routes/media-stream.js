@@ -105,6 +105,7 @@ export function mediaStreamHandler(connection, req) {
     /** @type {string | null} */
     let lastAssistantResponseItemId = null;
     let lastAssistantResponseStartedAt = 0;
+    let resumeWaitingMusicAfterInterrupt = false;
 
     function getWaitingMusicDelayMs() {
         const baseDelay = WAIT_MUSIC_THRESHOLD_MS;
@@ -218,6 +219,12 @@ export function mediaStreamHandler(connection, req) {
         if (waitingMusicStartTimeout) {
             clearTimeout(waitingMusicStartTimeout);
             waitingMusicStartTimeout = null;
+        }
+        if (
+            toolCallInProgress &&
+            (reason === 'assistant_audio' || reason === 'caller_speech')
+        ) {
+            resumeWaitingMusicAfterInterrupt = true;
         }
         if (IS_DEV) {
             try {
@@ -405,6 +412,10 @@ export function mediaStreamHandler(connection, req) {
                     );
                 }
             }
+            if (resumeWaitingMusicAfterInterrupt && toolCallInProgress) {
+                scheduleWaitingMusic('tool_wait_resume_speech');
+                resumeWaitingMusicAfterInterrupt = false;
+            }
         }
 
         if (response.type === 'input_audio_buffer.speech_started') {
@@ -496,6 +507,10 @@ export function mediaStreamHandler(connection, req) {
                         void 0;
                     }
                 }
+            }
+            if (resumeWaitingMusicAfterInterrupt && toolCallInProgress) {
+                scheduleWaitingMusic('tool_wait_resume_response');
+                resumeWaitingMusicAfterInterrupt = false;
             }
         }
     };
