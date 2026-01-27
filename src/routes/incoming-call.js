@@ -1,13 +1,5 @@
 import twilio from 'twilio';
-import { getTimeGreeting, resolveCallerName } from '../utils/calls.js';
-import {
-    ALL_ALLOWED_CALLERS_SET,
-    PRIMARY_CALLERS_SET,
-    PRIMARY_USER_FIRST_NAME,
-    SECONDARY_CALLERS_SET,
-    SECONDARY_USER_FIRST_NAME,
-    IS_DEV,
-} from '../env.js';
+import { ALL_ALLOWED_CALLERS_SET, IS_DEV } from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
 /**
@@ -39,25 +31,8 @@ export async function incomingCallHandler(request, reply) {
         return reply.type('text/xml').send(denyTwiml.toString());
     }
 
-    const primaryName = String(PRIMARY_USER_FIRST_NAME || '').trim();
-    const secondaryName = String(SECONDARY_USER_FIRST_NAME || '').trim();
-    const callerName = resolveCallerName({
-        callerE164: fromE164,
-        primaryCallersSet: PRIMARY_CALLERS_SET,
-        secondaryCallersSet: SECONDARY_CALLERS_SET,
-        primaryName,
-        secondaryName,
-        fallbackName: 'legend',
-    });
-
-    const timeGreeting = getTimeGreeting({ timeZone: 'America/Los_Angeles' });
-
     const { VoiceResponse } = twilio.twiml;
     const twimlResponse = new VoiceResponse();
-    twimlResponse.say(
-        { voice: 'Google.en-US-Chirp3-HD-Charon' },
-        `${timeGreeting} ${callerName}—please hold for assistance`
-    );
     const connect = twimlResponse.connect();
     const stream = connect.stream({
         url: `wss://${request.headers.host}/media-stream`,

@@ -11,6 +11,7 @@ import {
     SHOW_TIMING_MATH as showTimingMath,
 } from '../init.js';
 import { readPcmuFile } from '../utils/audio.js';
+import { getTimeGreeting } from '../utils/calls.js';
 import { executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
@@ -685,6 +686,9 @@ export function mediaStreamHandler(connection, req) {
     // Send initial conversation item using the caller's name once available
     const sendInitialConversationItem = (callerNameValue = 'legend') => {
         initialGreetingRequested = true;
+        const timeGreeting = getTimeGreeting({
+            timeZone: 'America/Los_Angeles',
+        });
         const initialConversationItem = {
             type: 'conversation.item.create',
             item: {
@@ -693,7 +697,7 @@ export function mediaStreamHandler(connection, req) {
                 content: [
                     {
                         type: 'input_text',
-                        text: `Greet the caller in English with a single, concise, butler/service‑worker style line that politely addresses them as "${callerNameValue}" and is similar to "At your service ${callerNameValue}, how may I help?". Keep it light and optionally witty; always include the name.`,
+                        text: `Start the greeting with "${timeGreeting}" and politely address the caller as "${callerNameValue}" in a single, concise, butler/service‑worker style line. Keep it light and optionally witty; always include the name and the time greeting.`,
                     },
                 ],
             },

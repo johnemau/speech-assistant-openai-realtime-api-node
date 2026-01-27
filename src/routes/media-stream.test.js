@@ -182,7 +182,9 @@ test('media-stream start event sends initial greeting and response.create', asyn
         const greeting = sessionState.sendCalls[0];
         assert.equal(greeting.type, 'conversation.item.create');
         assert.ok(
-            String(greeting.item.content[0].text).includes('Greet the caller')
+            String(greeting.item.content[0].text).includes(
+                'Start the greeting with'
+            )
         );
     } finally {
         connection.close();
