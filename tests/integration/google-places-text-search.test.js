@@ -4,15 +4,25 @@ import { config as loadEnv } from 'dotenv';
 
 loadEnv({ path: '.env' });
 
+const originalGoogleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
 const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+let importCounter = 0;
+
+/**
+ * @returns {Promise<typeof import('../../src/utils/google-places-text-search.js')>} Module import.
+ */
+async function loadTextSearchModule() {
+    importCounter += 1;
+    return import(
+        `../../src/utils/google-places-text-search.js?test=${importCounter}`
+    );
+}
 
 if (!apiKey) {
     test('googlePlacesTextSearch integration', { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' }, () => {});
 } else {
     test('googlePlacesTextSearch integration', async () => {
-        const { googlePlacesTextSearch } = await import(
-            '../../src/utils/google-places-text-search.js'
-        );
+        const { googlePlacesTextSearch } = await loadTextSearchModule();
 
         const result = await googlePlacesTextSearch({
             textQuery: 'Space Needle Seattle',
@@ -81,6 +91,33 @@ if (!apiKey) {
                 assert.equal(typeof place.rating, 'number');
             }
         }
+    });
+
+    test('googlePlacesTextSearch integration returns null with invalid key', async () => {
+        process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
+        const { googlePlacesTextSearch } = await loadTextSearchModule();
+
+        const result = await googlePlacesTextSearch({
+            textQuery: 'Space Needle Seattle',
+            maxResultCount: 1,
+        });
+
+        assert.equal(result, null);
+        if (originalGoogleMapsKey == null) {
+            delete process.env.GOOGLE_MAPS_API_KEY;
+        } else {
+            process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
+        }
+    });
+
+    test('googlePlacesTextSearch integration returns null with invalid args', async () => {
+        const { googlePlacesTextSearch } = await loadTextSearchModule();
+
+        const result = await googlePlacesTextSearch({
+            textQuery: ' ',
+        });
+
+        assert.equal(result, null);
     });
 }
 
