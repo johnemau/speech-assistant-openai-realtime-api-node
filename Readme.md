@@ -69,11 +69,16 @@ npm test
 
 Notes:
 
-- `npm test` runs lint, typecheck, and the unit test suite.
-- Run `npm run lint` for ESLint checks.
-- Run `npm run lint:eslint:fix` to auto-fix ESLint issues.
+- `npm test` runs lint, typecheck, unit tests, and integration tests.
+- Run `npm run lint` for ESLint + Prettier checks.
+- Run `npm run lint:fix` to auto-fix ESLint + Prettier issues.
+- Run `npm run lint:eslint` for ESLint only.
+- Run `npm run lint:eslint:fix` to auto-fix ESLint only.
+- Run `npm run format` to check Prettier formatting.
+- Run `npm run format:write` (or `npm run format:fix`) to write formatting.
 - Run `npm run typecheck` for TypeScript type checking (JS + JSDoc).
 - Run `npm run test:unit` to execute unit tests only.
+- Run `npm run test:integration` to execute integration tests only.
 
 ### Promptfoo evals (prompt-only)
 
