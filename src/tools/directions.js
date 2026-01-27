@@ -143,11 +143,6 @@ export const definition = {
  * @returns {Promise<{ status: 'ok', route: import('../utils/google-routes.js').ComputedRoute | null, routes: import('../utils/google-routes.js').ComputedRoute[], directions: string[], raw: import('../utils/google-routes.js').RoutesApiResponse | null } | { status: 'unavailable', message: string }>} Tool result payload.
  */
 export async function execute({ args }) {
-    if (IS_DEV) {
-        console.log('directions: execute start', {
-            args,
-        });
-    }
     const rawArgs = args ?? {};
     const destinationPlace =
         typeof rawArgs?.destination_place === 'string'
@@ -168,6 +163,19 @@ export async function execute({ args }) {
     const origin = rawArgs?.origin;
     const hasOriginLatLng =
         !!origin && Number.isFinite(origin.lat) && Number.isFinite(origin.lng);
+
+    if (IS_DEV) {
+        console.log('directions: execute start', {
+            args,
+        });
+    } else {
+        console.info('directions: execute start', {
+            hasOriginPlace: Boolean(originPlace),
+            hasOriginLatLng,
+            hasDestinationPlace: Boolean(destinationPlace),
+            hasDestinationLatLng,
+        });
+    }
 
     /** @type {import('../utils/google-routes.js').TravelMode | undefined} */
     const travelMode = [
@@ -215,6 +223,8 @@ export async function execute({ args }) {
         if (!latest) {
             if (IS_DEV) {
                 console.log('directions: origin unavailable (no latest track)');
+            } else {
+                console.warn('directions: origin unavailable');
             }
             return {
                 status: 'unavailable',
@@ -331,6 +341,11 @@ export async function execute({ args }) {
                 hasResult: Boolean(result),
                 hasRoute: Boolean(result?.route),
             });
+        } else {
+            console.warn('directions: route unavailable', {
+                hasResult: Boolean(result),
+                hasRoute: Boolean(result?.route),
+            });
         }
         return {
             status: 'unavailable',
@@ -349,6 +364,12 @@ export async function execute({ args }) {
     };
     if (IS_DEV) {
         console.log('directions: execute success', {
+            directionsCount: directions.length,
+            routeDistance: result.route?.distanceMeters ?? null,
+            routeDuration: result.route?.duration ?? null,
+        });
+    } else {
+        console.info('directions: execute success', {
             directionsCount: directions.length,
             routeDistance: result.route?.distanceMeters ?? null,
             routeDuration: result.route?.duration ?? null,
