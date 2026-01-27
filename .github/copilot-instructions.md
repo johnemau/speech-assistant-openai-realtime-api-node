@@ -16,10 +16,11 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
     - `npm install`
     - `npm start`
 - Verify changes:
+    - Always run `npm test` after every change and keep running it until failures are fixed.
     - `npm test` runs lint, typecheck, and unit tests.
     - `npm run test:unit` for unit tests only.
     - `npm run lint` and `npm run typecheck` for targeted checks.
-    - `npm run lint:eslint:fix` and `npm run format:write` for autofixes.
+    - Use `npm run lint:fix` to automatically fix lint + prettier issues.
 - Prompt evaluations:
     - `npm run pf:eval:realtime-web-search`, `npm run pf:eval:sms`, `npm run pf:eval`, and `npm run pf:view` (configs in [tests/promptfoo](../tests/promptfoo)).
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
