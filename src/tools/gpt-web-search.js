@@ -5,7 +5,7 @@ import {
     DEFAULT_SMS_USER_LOCATION,
 } from '../config/web-search-models.js';
 import { getLatestTrackLocation } from '../utils/spot-location.js';
-import { PRIMARY_CALLERS_SET } from '../env.js';
+import { isPrimaryCaller } from '../env.js';
 
 export const definition = {
     type: 'function',
@@ -58,7 +58,7 @@ export async function execute({ args, context }) {
     let effectiveLocation = args?.user_location;
     const currentCallerE164 = context?.currentCallerE164 || null;
     const allowTrackedLocation =
-        !!currentCallerE164 && PRIMARY_CALLERS_SET.has(currentCallerE164);
+        !!currentCallerE164 && isPrimaryCaller(currentCallerE164);
     if (!effectiveLocation && allowTrackedLocation) {
         try {
             const latestTrack = await getLatestTrackLocation();

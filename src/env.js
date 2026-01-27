@@ -33,6 +33,25 @@ export const ALL_ALLOWED_CALLERS_SET = new Set([
     ...SECONDARY_CALLERS_SET,
 ]);
 
+/**
+ * Check whether a caller is in the primary allowlist, using live env values
+ * as a fallback for test environments that mutate process.env after module load.
+ *
+ * @param {string | null | undefined} callerE164 - Caller number in E.164.
+ * @returns {boolean} Whether the caller is in the primary allowlist.
+ */
+export function isPrimaryCaller(callerE164) {
+    if (!callerE164) return false;
+    if (PRIMARY_CALLERS_SET.has(callerE164)) return true;
+    const envList = String(process.env.PRIMARY_USER_PHONE_NUMBERS || '')
+        .split(',')
+        .map((s) => normalizeUSNumberToE164(s))
+        .filter(Boolean)
+        .map((value) => String(value));
+    if (envList.length === 0) return false;
+    return envList.includes(String(callerE164));
+}
+
 // Waiting music configuration (optional)
 export const WAIT_MUSIC_THRESHOLD_MS = Number(
     process.env.WAIT_MUSIC_THRESHOLD_MS || 500

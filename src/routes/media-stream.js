@@ -181,66 +181,73 @@ export function mediaStreamHandler(connection, req) {
                         );
                     if (files.length === 0) {
                         console.warn(
-                            'Waiting music folder has no files; disabling waiting music.'
+                            'Waiting music folder has no files; using silence frames.'
                         );
-                        return;
+                    } else {
+                        const selectedFile =
+                            files[Math.floor(Math.random() * files.length)];
+                        console.info(
+                            'Waiting music file selected:',
+                            selectedFile
+                        );
+                        // Read raw PCMU and pre-load into µ-law buffer
+                        waitingMusicUlawBuffer = readPcmuFile(selectedFile);
+                        waitingMusicOffset = 0;
                     }
-                    const selectedFile =
-                        files[Math.floor(Math.random() * files.length)];
-                    console.info('Waiting music file selected:', selectedFile);
-                    // Read raw PCMU and pre-load into µ-law buffer
-                    waitingMusicUlawBuffer = readPcmuFile(selectedFile);
-                    waitingMusicOffset = 0;
-                }
-                if (!waitingMusicInterval) {
-                    waitingMusicInterval = setInterval(() => {
-                        if (
-                            !isWaitingMusic ||
-                            !streamSid ||
-                            !waitingMusicUlawBuffer ||
-                            waitingMusicUlawBuffer.length < 160
-                        )
-                            return;
-                        const frameSize = 160; // 20ms @ 8kHz mono
-                        let end = waitingMusicOffset + frameSize;
-                        let frame;
-                        if (end <= waitingMusicUlawBuffer.length) {
-                            frame = waitingMusicUlawBuffer.subarray(
-                                waitingMusicOffset,
-                                end
-                            );
-                        } else {
-                            const first =
-                                waitingMusicUlawBuffer.subarray(
-                                    waitingMusicOffset
-                                );
-                            const rest = waitingMusicUlawBuffer.subarray(
-                                0,
-                                end - waitingMusicUlawBuffer.length
-                            );
-                            frame = Buffer.concat([first, rest]);
-                        }
-                        waitingMusicOffset =
-                            end % waitingMusicUlawBuffer.length;
-                        const payload = frame.toString('base64');
-                        connection.send(
-                            JSON.stringify({
-                                event: 'media',
-                                streamSid,
-                                media: { payload },
-                            })
-                        );
-                    }, 20);
                 }
             } catch (e) {
                 console.error(
-                    'Failed to load waiting music file; disabling waiting music:',
+                    'Failed to load waiting music file; using silence frames:',
                     e?.message || e
                 );
             }
         }
 
-        // No fallback tone; only raw PCMU file is supported for waiting music.
+        if (!waitingMusicUlawBuffer || waitingMusicUlawBuffer.length < 160) {
+            // Silence fallback (µ-law 0xFF) to keep media flowing during tool calls.
+            waitingMusicUlawBuffer = Buffer.alloc(1600, 0xff);
+            waitingMusicOffset = 0;
+        }
+
+        if (!waitingMusicInterval) {
+            waitingMusicInterval = setInterval(() => {
+                if (
+                    !isWaitingMusic ||
+                    !streamSid ||
+                    !waitingMusicUlawBuffer ||
+                    waitingMusicUlawBuffer.length < 160
+                )
+                    return;
+                const frameSize = 160; // 20ms @ 8kHz mono
+                let end = waitingMusicOffset + frameSize;
+                let frame;
+                if (end <= waitingMusicUlawBuffer.length) {
+                    frame = waitingMusicUlawBuffer.subarray(
+                        waitingMusicOffset,
+                        end
+                    );
+                } else {
+                    const first =
+                        waitingMusicUlawBuffer.subarray(waitingMusicOffset);
+                    const rest = waitingMusicUlawBuffer.subarray(
+                        0,
+                        end - waitingMusicUlawBuffer.length
+                    );
+                    frame = Buffer.concat([first, rest]);
+                }
+                waitingMusicOffset = end % waitingMusicUlawBuffer.length;
+                const payload = frame.toString('base64');
+                connection.send(
+                    JSON.stringify({
+                        event: 'media',
+                        streamSid,
+                        media: { payload },
+                    })
+                );
+            }, 20);
+        }
+
+        // No fallback tone; only raw PCMU or silence is supported for waiting music.
     }
 
     function stopWaitingMusic(reason = 'unknown') {

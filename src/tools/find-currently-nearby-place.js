@@ -1,5 +1,5 @@
 import { findCurrentlyNearbyPlaces as realFindCurrentlyNearbyPlaces } from '../utils/google-places-current.js';
-import { PRIMARY_CALLERS_SET } from '../env.js';
+import { isPrimaryCaller } from '../env.js';
 
 const METERS_PER_MILE = 1609.344;
 const DEFAULT_RADIUS_MILES = 5;
@@ -369,7 +369,7 @@ export const definition = {
  */
 export async function execute({ args, context }) {
     const currentCallerE164 = context?.currentCallerE164 || null;
-    if (!currentCallerE164 || !PRIMARY_CALLERS_SET.has(currentCallerE164)) {
+    if (!currentCallerE164 || !isPrimaryCaller(currentCallerE164)) {
         return {
             status: 'unavailable',
             message: LOCATION_UNAVAILABLE_MESSAGE,
