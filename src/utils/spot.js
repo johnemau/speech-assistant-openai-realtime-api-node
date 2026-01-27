@@ -145,16 +145,14 @@ export async function getLatestTrackLatLng(opts = {}) {
             fetchedAt: now,
             value: cached?.value ?? null,
         });
-        if (IS_DEV) {
+        if (IS_DEV && res && !res.ok) {
             let errorBody = null;
             let contentType = null;
-            if (res && !res.ok) {
-                try {
-                    contentType = res.headers?.get('content-type') ?? null;
-                    errorBody = await res.text();
-                } catch {
-                    errorBody = null;
-                }
+            try {
+                contentType = res.headers?.get('content-type') ?? null;
+                errorBody = await res.text();
+            } catch {
+                errorBody = null;
             }
             console.log('getLatestTrackLatLng:fetch-failed', {
                 ok: res?.ok ?? false,
