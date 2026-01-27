@@ -420,8 +420,33 @@ export async function computeRoute(args, options = {}) {
 
         if (!resp.ok) {
             if (IS_DEV) {
+                let errorBody = null;
+                let contentType = null;
+                try {
+                    contentType = resp.headers?.get('content-type') ?? null;
+                    errorBody = await resp.text();
+                } catch {
+                    errorBody = null;
+                }
+
                 console.log('routes: http error', {
                     status: resp.status,
+                    statusText: resp.statusText,
+                    url: resp.url,
+                    contentType,
+                    errorBody,
+                    request: {
+                        hasOrigin: Boolean(origin),
+                        hasDestination: Boolean(destination),
+                        travelMode: body.travelMode,
+                        routingPreference: body.routingPreference,
+                        computeAlternativeRoutes:
+                            body.computeAlternativeRoutes,
+                        routeModifiers: body.routeModifiers,
+                        languageCode: body.languageCode ?? null,
+                        units: body.units,
+                        regionCode: body.regionCode ?? null,
+                    },
                 });
             }
             return null;
@@ -457,9 +482,14 @@ export async function computeRoute(args, options = {}) {
             });
         }
         return value;
-    } catch {
+    } catch (error) {
         if (IS_DEV) {
-            console.log('routes: computeRoute exception');
+            const err = /** @type {any} */ (error);
+            console.log('routes: computeRoute exception', {
+                name: err?.name ?? null,
+                message: err?.message ?? null,
+                stack: err?.stack ?? null,
+            });
         }
         return null;
     }
