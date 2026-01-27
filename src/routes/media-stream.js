@@ -419,6 +419,10 @@ export function mediaStreamHandler(connection, req) {
             // During an assistant-initiated hangup, do not request another response
             if (pendingDisconnect) return;
             stopWaitingMusic('speech_stopped');
+            if (toolCallInProgress) {
+                scheduleWaitingMusic('caller_done_speaking');
+                resumeWaitingMusicAfterInterrupt = false;
+            }
             if (!responseActive) {
                 try {
                     assistantSession.requestResponse();
@@ -439,6 +443,9 @@ export function mediaStreamHandler(connection, req) {
         if (response.type === 'input_audio_buffer.speech_started') {
             // Caller barged in; stop waiting music and handle truncation
             stopWaitingMusic('caller_speech');
+            if (toolCallInProgress) {
+                resumeWaitingMusicAfterInterrupt = true;
+            }
             handleSpeechStartedEvent();
         }
 
