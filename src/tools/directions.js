@@ -246,10 +246,17 @@ export async function execute({ args }) {
         : undefined;
 
     const result = await computeRouteImpl({
-        origin: { lat: Number(origin.lat), lng: Number(origin.lng) },
+        origin: {
+            latLng: {
+                lat: Number(origin.lat),
+                lng: Number(origin.lng),
+            },
+        },
         destination: {
-            lat: Number(destination.lat),
-            lng: Number(destination.lng),
+            latLng: {
+                lat: Number(destination.lat),
+                lng: Number(destination.lng),
+            },
         },
         travelMode,
         routingPreference,

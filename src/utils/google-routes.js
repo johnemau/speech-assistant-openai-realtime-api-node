@@ -24,9 +24,25 @@ import { getGoogleMapsApiKey } from '../env.js';
  */
 
 /**
+ * Location input for a waypoint.
+ * - Use {address} to let Routes API geocode it internally.
+ * - Use {latLng} for explicit coordinates.
+ *
+ * @typedef {{address:string} | {latLng:LatLng}} WaypointInput
+ */
+
+/**
+ * ccTLD 2-character region bias for geocoding ambiguous/incomplete addresses.
+ * Example: "es" to bias "Toledo" toward Spain.
+ *
+ * @typedef {string} RegionCode
+ */
+
+/**
  * @typedef {object} ComputeRouteArgs
- * @property {LatLng} origin Origin lat/lng.
- * @property {LatLng} destination Destination lat/lng.
+ * @property {WaypointInput} origin Origin address or lat/lng.
+ * @property {WaypointInput} destination Destination address or lat/lng.
+ * @property {RegionCode=} regionCode Region bias for address geocoding (ccTLD 2-char).
  * @property {TravelMode=} travelMode Default: "DRIVE".
  * @property {RoutingPreference=} routingPreference Default: "TRAFFIC_AWARE".
  * @property {boolean=} computeAlternativeRoutes Default: false.
@@ -88,18 +104,93 @@ const DEFAULT_TTL_MS = 150000;
 const cache = new Map();
 
 /**
+ * @param {WaypointInput} w - Waypoint to inspect.
+ * @returns {w is {address:string}} True when the waypoint is address-based.
+ */
+function isAddressWaypoint(w) {
+    return (
+        !!w &&
+        typeof w === 'object' &&
+        'address' in w &&
+        typeof w.address === 'string'
+    );
+}
+
+/**
+ * @param {WaypointInput} w - Waypoint to inspect.
+ * @returns {w is {latLng:LatLng}} True when the waypoint is lat/lng-based.
+ */
+function isLatLngWaypoint(w) {
+    return (
+        !!w &&
+        typeof w === 'object' &&
+        'latLng' in w &&
+        !!w.latLng &&
+        typeof w.latLng === 'object' &&
+        typeof w.latLng.lat === 'number' &&
+        typeof w.latLng.lng === 'number'
+    );
+}
+
+/**
+ * @param {WaypointInput} w - Waypoint to normalize.
+ * @returns {object|null} Waypoint object for Routes API or null if invalid.
+ */
+function toRoutesWaypoint(w) {
+    if (isAddressWaypoint(w)) {
+        const address = w.address.trim();
+        if (!address) return null;
+        return { address };
+    }
+
+    if (isLatLngWaypoint(w)) {
+        const { lat, lng } = w.latLng;
+        return {
+            location: {
+                latLng: {
+                    latitude: lat,
+                    longitude: lng,
+                },
+            },
+        };
+    }
+
+    return null;
+}
+
+/**
  * @param {ComputeRouteArgs} args - Route input args.
  * @returns {string} Cache key.
  */
 function cacheKey(args) {
-    const oLat = Math.round(args.origin.lat * 1e6) / 1e6;
-    const oLng = Math.round(args.origin.lng * 1e6) / 1e6;
-    const dLat = Math.round(args.destination.lat * 1e6) / 1e6;
-    const dLng = Math.round(args.destination.lng * 1e6) / 1e6;
+    /** @type {any} */
+    const originKey = isAddressWaypoint(args.origin)
+        ? { address: args.origin.address.trim() }
+        : isLatLngWaypoint(args.origin)
+          ? {
+                latLng: {
+                    lat: Math.round(args.origin.latLng.lat * 1e6) / 1e6,
+                    lng: Math.round(args.origin.latLng.lng * 1e6) / 1e6,
+                },
+            }
+          : null;
+
+    /** @type {any} */
+    const destKey = isAddressWaypoint(args.destination)
+        ? { address: args.destination.address.trim() }
+        : isLatLngWaypoint(args.destination)
+          ? {
+                latLng: {
+                    lat: Math.round(args.destination.latLng.lat * 1e6) / 1e6,
+                    lng: Math.round(args.destination.latLng.lng * 1e6) / 1e6,
+                },
+            }
+          : null;
 
     return JSON.stringify({
-        origin: { lat: oLat, lng: oLng },
-        destination: { lat: dLat, lng: dLng },
+        origin: originKey,
+        destination: destKey,
+        regionCode: args.regionCode || null,
         travelMode: args.travelMode ?? 'DRIVE',
         routingPreference: args.routingPreference ?? 'TRAFFIC_AWARE',
         computeAlternativeRoutes: !!args.computeAlternativeRoutes,
@@ -122,19 +213,53 @@ function validate(args, apiKey) {
     if (!apiKey) return 'Missing apiKey';
     if (!args || typeof args !== 'object') return 'Missing args';
 
-    const o = args.origin;
-    const d = args.destination;
-    if (!o || typeof o !== 'object') return 'Missing origin';
-    if (!d || typeof d !== 'object') return 'Missing destination';
+    if (!args.origin || typeof args.origin !== 'object')
+        return 'Missing origin';
+    if (!args.destination || typeof args.destination !== 'object')
+        return 'Missing destination';
 
-    if (typeof o.lat !== 'number' || o.lat < -90 || o.lat > 90)
-        return 'Invalid origin.lat';
-    if (typeof o.lng !== 'number' || o.lng < -180 || o.lng > 180)
-        return 'Invalid origin.lng';
-    if (typeof d.lat !== 'number' || d.lat < -90 || d.lat > 90)
-        return 'Invalid destination.lat';
-    if (typeof d.lng !== 'number' || d.lng < -180 || d.lng > 180)
-        return 'Invalid destination.lng';
+    // Validate origin/destination
+    const oIsAddr = isAddressWaypoint(args.origin);
+    const oIsLL = isLatLngWaypoint(args.origin);
+    if (!oIsAddr && !oIsLL)
+        return 'Invalid origin (expected {address} or {latLng:{lat,lng}})';
+    if (oIsAddr) {
+        const originAddress = /** @type {{address:string}} */ (args.origin);
+        if (!originAddress.address.trim()) return 'Invalid origin.address';
+    }
+    if (oIsLL) {
+        const originLatLng = /** @type {{latLng:LatLng}} */ (args.origin);
+        const { lat, lng } = originLatLng.latLng;
+        if (lat < -90 || lat > 90) return 'Invalid origin.latLng.lat';
+        if (lng < -180 || lng > 180) return 'Invalid origin.latLng.lng';
+    }
+
+    const dIsAddr = isAddressWaypoint(args.destination);
+    const dIsLL = isLatLngWaypoint(args.destination);
+    if (!dIsAddr && !dIsLL)
+        return 'Invalid destination (expected {address} or {latLng:{lat,lng}})';
+    if (dIsAddr) {
+        const destinationAddress = /** @type {{address:string}} */ (
+            args.destination
+        );
+        if (!destinationAddress.address.trim())
+            return 'Invalid destination.address';
+    }
+    if (dIsLL) {
+        const destinationLatLng = /** @type {{latLng:LatLng}} */ (
+            args.destination
+        );
+        const { lat, lng } = destinationLatLng.latLng;
+        if (lat < -90 || lat > 90) return 'Invalid destination.latLng.lat';
+        if (lng < -180 || lng > 180) return 'Invalid destination.latLng.lng';
+    }
+
+    // regionCode: optional, but if provided keep it tight (2 chars)
+    if (args.regionCode != null) {
+        const rc = String(args.regionCode).trim();
+        if (rc.length !== 2)
+            return 'Invalid regionCode (expected 2 characters)';
+    }
 
     if (args.travelMode) {
         const ok =
@@ -197,23 +322,14 @@ export async function computeRoute(args, options = {}) {
         const hit = cache.get(key);
         if (hit && hit.expiresAt > now) return hit.value;
 
+        const origin = toRoutesWaypoint(args.origin);
+        const destination = toRoutesWaypoint(args.destination);
+        if (!origin || !destination) return null;
+
+        /** @type {any} */
         const body = {
-            origin: {
-                location: {
-                    latLng: {
-                        latitude: args.origin.lat,
-                        longitude: args.origin.lng,
-                    },
-                },
-            },
-            destination: {
-                location: {
-                    latLng: {
-                        latitude: args.destination.lat,
-                        longitude: args.destination.lng,
-                    },
-                },
-            },
+            origin,
+            destination,
             travelMode: args.travelMode ?? 'DRIVE',
             routingPreference: args.routingPreference ?? 'TRAFFIC_AWARE',
             computeAlternativeRoutes: !!args.computeAlternativeRoutes,
@@ -225,6 +341,9 @@ export async function computeRoute(args, options = {}) {
             languageCode: args.languageCode,
             units: args.units ?? 'METRIC',
         };
+
+        // Only include when provided (lets you bias ambiguous/incomplete addresses)
+        if (args.regionCode) body.regionCode = String(args.regionCode).trim();
 
         const resp = await fetch(
             'https://routes.googleapis.com/directions/v2:computeRoutes',

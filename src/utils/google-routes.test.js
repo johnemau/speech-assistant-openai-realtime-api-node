@@ -78,8 +78,8 @@ test('computeRoute returns mapped routes', async () => {
     );
 
     const result = await computeRoute({
-        origin: { lat: 47.61, lng: -122.33 },
-        destination: { lat: 47.62, lng: -122.34 },
+        origin: { latLng: { lat: 47.61, lng: -122.33 } },
+        destination: { latLng: { lat: 47.62, lng: -122.34 } },
     });
 
     assert.deepEqual(result, {
@@ -174,8 +174,8 @@ test('computeRoute sends option overrides in body', async () => {
     );
 
     await computeRoute({
-        origin: { lat: 47.61, lng: -122.33 },
-        destination: { lat: 47.62, lng: -122.34 },
+        origin: { latLng: { lat: 47.61, lng: -122.33 } },
+        destination: { latLng: { lat: 47.62, lng: -122.34 } },
         travelMode: 'BICYCLE',
         routingPreference: 'TRAFFIC_UNAWARE',
         computeAlternativeRoutes: true,
@@ -225,8 +225,8 @@ test('computeRoute returns null when apiKey missing', async () => {
     );
 
     const result = await computeRoute({
-        origin: { lat: 47.61, lng: -122.33 },
-        destination: { lat: 47.62, lng: -122.34 },
+        origin: { latLng: { lat: 47.61, lng: -122.33 } },
+        destination: { latLng: { lat: 47.62, lng: -122.34 } },
     });
 
     assert.equal(result, null);
@@ -246,8 +246,8 @@ test('computeRoute returns null for invalid args', async () => {
     );
 
     const result = await computeRoute({
-        origin: { lat: 47.61, lng: -122.33 },
-        destination: { lat: 47.62, lng: -122.34 },
+        origin: { latLng: { lat: 47.61, lng: -122.33 } },
+        destination: { latLng: { lat: 47.62, lng: -122.34 } },
         travelMode: /** @type {any} */ ('BOAT'),
     });
 
@@ -278,8 +278,8 @@ test('computeRoute caches responses', async () => {
 
     /** @type {import('./google-routes.js').ComputeRouteArgs} */
     const args = {
-        origin: { lat: 10, lng: 20 },
-        destination: { lat: 11, lng: 21 },
+        origin: { latLng: { lat: 10, lng: 20 } },
+        destination: { latLng: { lat: 11, lng: 21 } },
         routingPreference: 'TRAFFIC_AWARE',
     };
 
@@ -304,8 +304,8 @@ test('computeRoute returns null on non-ok response', async () => {
     );
 
     const result = await computeRoute({
-        origin: { lat: 10, lng: 20 },
-        destination: { lat: 11, lng: 21 },
+        origin: { latLng: { lat: 10, lng: 20 } },
+        destination: { latLng: { lat: 11, lng: 21 } },
     });
 
     assert.equal(result, null);

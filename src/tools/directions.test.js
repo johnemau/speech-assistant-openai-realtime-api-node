@@ -151,7 +151,7 @@ test('directions.execute uses latest track when origin missing', async () => {
     assert.equal(res.status, 'ok');
     assert.ok(seenArgs);
     if (!seenArgs) throw new Error('Expected route args');
-    assert.deepEqual(seenArgs.origin, { lat: 40, lng: -70 });
+    assert.deepEqual(seenArgs.origin, { latLng: { lat: 40, lng: -70 } });
 });
 
 test('directions.execute returns unavailable when no origin available', async () => {
