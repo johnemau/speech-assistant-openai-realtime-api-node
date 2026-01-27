@@ -148,21 +148,22 @@ export async function execute({ args }) {
             args,
         });
     }
+    const rawArgs = args ?? {};
     const destinationPlace =
-        typeof args?.destination_place === 'string'
-            ? args.destination_place.trim()
+        typeof rawArgs?.destination_place === 'string'
+            ? rawArgs.destination_place.trim()
             : '';
 
-    const destination = args?.destination;
+    const destination = rawArgs?.destination;
     const hasDestinationLatLng =
         !!destination &&
         Number.isFinite(destination.lat) &&
         Number.isFinite(destination.lng);
 
     const originPlace =
-        typeof args?.origin_place === 'string' ? args.origin_place.trim() : '';
+        typeof rawArgs?.origin_place === 'string' ? rawArgs.origin_place.trim() : '';
 
-    const origin = args?.origin;
+    const origin = rawArgs?.origin;
     const hasOriginLatLng =
         !!origin && Number.isFinite(origin.lat) && Number.isFinite(origin.lng);
 
@@ -175,7 +176,7 @@ export async function execute({ args }) {
         'TRANSIT',
     ].includes(String(args?.travel_mode))
         ? /** @type {import('../utils/google-routes.js').TravelMode} */ (
-              args?.travel_mode
+                            rawArgs?.travel_mode
           )
         : undefined;
 
@@ -186,13 +187,13 @@ export async function execute({ args }) {
         'TRAFFIC_AWARE_OPTIMAL',
     ].includes(String(args?.routing_preference))
         ? /** @type {import('../utils/google-routes.js').RoutingPreference} */ (
-              args?.routing_preference
+                            rawArgs?.routing_preference
           )
         : undefined;
 
     /** @type {import('../utils/google-routes.js').Units | undefined} */
     const units = ['METRIC', 'IMPERIAL'].includes(String(args?.units))
-        ? /** @type {import('../utils/google-routes.js').Units} */ (args?.units)
+        ? /** @type {import('../utils/google-routes.js').Units} */ (rawArgs?.units)
         : undefined;
 
     let originInput;
@@ -239,22 +240,60 @@ export async function execute({ args }) {
     }
 
     if (IS_DEV) {
-        console.log('directions: computeRoute input', {
-            originInput,
-            destinationInput,
-            travelMode,
-            routingPreference,
-            computeAlternativeRoutes: Boolean(args?.compute_alternative_routes),
-            routeModifiers: {
-                avoidTolls: Boolean(args?.route_modifiers?.avoid_tolls),
-                avoidHighways: Boolean(args?.route_modifiers?.avoid_highways),
-                avoidFerries: Boolean(args?.route_modifiers?.avoid_ferries),
-            },
-            languageCode:
-                typeof args?.language_code === 'string'
-                    ? args.language_code
+        console.log('directions: args normalized', {
+            rawArgs,
+            finalArgs: {
+                origin_place: originPlace || undefined,
+                origin: hasOriginLatLng
+                    ? {
+                          lat: Number(origin.lat),
+                          lng: Number(origin.lng),
+                      }
                     : undefined,
-            units,
+                destination_place: destinationPlace || undefined,
+                destination: hasDestinationLatLng
+                    ? {
+                          lat: Number(destination.lat),
+                          lng: Number(destination.lng),
+                      }
+                    : undefined,
+                travel_mode: travelMode,
+                routing_preference: routingPreference,
+                compute_alternative_routes: Boolean(
+                    rawArgs?.compute_alternative_routes
+                ),
+                route_modifiers: {
+                    avoid_tolls: Boolean(rawArgs?.route_modifiers?.avoid_tolls),
+                    avoid_highways: Boolean(
+                        rawArgs?.route_modifiers?.avoid_highways
+                    ),
+                    avoid_ferries: Boolean(rawArgs?.route_modifiers?.avoid_ferries),
+                },
+                language_code:
+                    typeof rawArgs?.language_code === 'string'
+                        ? rawArgs.language_code
+                        : undefined,
+                units,
+            },
+            computeRouteInput: {
+                originInput,
+                destinationInput,
+                travelMode,
+                routingPreference,
+                computeAlternativeRoutes: Boolean(
+                    rawArgs?.compute_alternative_routes
+                ),
+                routeModifiers: {
+                    avoidTolls: Boolean(rawArgs?.route_modifiers?.avoid_tolls),
+                    avoidHighways: Boolean(rawArgs?.route_modifiers?.avoid_highways),
+                    avoidFerries: Boolean(rawArgs?.route_modifiers?.avoid_ferries),
+                },
+                languageCode:
+                    typeof rawArgs?.language_code === 'string'
+                        ? rawArgs.language_code
+                        : undefined,
+                units,
+            },
         });
     }
 
