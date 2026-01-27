@@ -30,6 +30,10 @@ import {
     definition as placesTextSearchDefinition,
     execute as executePlacesTextSearch,
 } from './places-text-search.js';
+import {
+    definition as directionsDefinition,
+    execute as executeDirections,
+} from './directions.js';
 
 const toolExecutors = new Map(
     /** @type {Array<[string, (input: { args: object, context: object }) => Promise<unknown>]>} */ ([
@@ -41,6 +45,7 @@ const toolExecutors = new Map(
         ['get_current_location', executeGetCurrentLocation],
         ['find_currently_nearby_place', executeFindCurrentlyNearbyPlace],
         ['places_text_search', executePlacesTextSearch],
+        ['directions', executeDirections],
     ])
 );
 
@@ -59,6 +64,7 @@ export function getToolDefinitions() {
         getCurrentLocationDefinition,
         findCurrentlyNearbyPlaceDefinition,
         placesTextSearchDefinition,
+        directionsDefinition,
     ];
 }
 
