@@ -231,7 +231,9 @@ export async function get_current_conditions(args, options = {}) {
                         ? data.timeZone.id
                         : null,
                 isDaytime:
-                    typeof data?.isDaytime === 'boolean' ? data.isDaytime : null,
+                    typeof data?.isDaytime === 'boolean'
+                        ? data.isDaytime
+                        : null,
                 relativeHumidity: Number.isFinite(data?.relativeHumidity)
                     ? data.relativeHumidity
                     : null,
@@ -273,7 +275,8 @@ export async function get_current_conditions(args, options = {}) {
                               ? data.feelsLikeTemperature.degrees
                               : null,
                           unit:
-                              typeof data.feelsLikeTemperature?.unit === 'string'
+                              typeof data.feelsLikeTemperature?.unit ===
+                              'string'
                                   ? data.feelsLikeTemperature.unit
                                   : null,
                       }
@@ -383,7 +386,9 @@ export async function get_daily_forecast(args, options = {}) {
                     typeof data?.nextPageToken === 'string'
                         ? data.nextPageToken
                         : null,
-                items: Array.isArray(data?.forecastDays) ? data.forecastDays : [],
+                items: Array.isArray(data?.forecastDays)
+                    ? data.forecastDays
+                    : [],
                 raw: data ?? null,
             };
 

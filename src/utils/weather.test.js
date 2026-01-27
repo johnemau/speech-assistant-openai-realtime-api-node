@@ -44,23 +44,25 @@ test('get_current_conditions returns normalized data', async () => {
     const { get_current_conditions } = await loadWeatherModule();
 
     let seenUrl;
-    globalThis.fetch = /** @type {typeof fetch} */ (async (url) => {
-        seenUrl = String(url);
-        return makeJsonResponse({
-            currentTime: '2024-01-01T12:00:00Z',
-            timeZone: { id: 'America/Los_Angeles' },
-            isDaytime: true,
-            relativeHumidity: 55,
-            uvIndex: 4,
-            weatherCondition: {
-                description: { text: 'Clear' },
-                type: 'CLEAR',
-                iconBaseUri: 'https://example.com/icon',
-            },
-            temperature: { degrees: 21, unit: 'C' },
-            feelsLikeTemperature: { degrees: 20, unit: 'C' },
-        });
-    });
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async (url) => {
+            seenUrl = String(url);
+            return makeJsonResponse({
+                currentTime: '2024-01-01T12:00:00Z',
+                timeZone: { id: 'America/Los_Angeles' },
+                isDaytime: true,
+                relativeHumidity: 55,
+                uvIndex: 4,
+                weatherCondition: {
+                    description: { text: 'Clear' },
+                    type: 'CLEAR',
+                    iconBaseUri: 'https://example.com/icon',
+                },
+                temperature: { degrees: 21, unit: 'C' },
+                feelsLikeTemperature: { degrees: 20, unit: 'C' },
+            });
+        }
+    );
 
     const result = await get_current_conditions({
         lat: 34.0522,
@@ -113,10 +115,12 @@ test('get_current_conditions returns null for invalid args', async () => {
     const { get_current_conditions } = await loadWeatherModule();
 
     let calls = 0;
-    globalThis.fetch = /** @type {typeof fetch} */ (async () => {
-        calls += 1;
-        return makeJsonResponse({});
-    });
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () => {
+            calls += 1;
+            return makeJsonResponse({});
+        }
+    );
 
     const result = await get_current_conditions({ lat: 200, lng: 0 });
     assert.equal(result, null);
@@ -128,10 +132,12 @@ test('get_current_conditions caches responses', async () => {
     const { get_current_conditions } = await loadWeatherModule();
 
     let calls = 0;
-    globalThis.fetch = /** @type {typeof fetch} */ (async () => {
-        calls += 1;
-        return makeJsonResponse({ currentTime: '2024-01-01T00:00:00Z' });
-    });
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () => {
+            calls += 1;
+            return makeJsonResponse({ currentTime: '2024-01-01T00:00:00Z' });
+        }
+    );
 
     const args = { lat: 10.1234567, lng: 20.7654321 };
     const first = await get_current_conditions(args);
@@ -145,12 +151,13 @@ test('get_current_conditions returns null on non-ok response', async () => {
     process.env.GOOGLE_MAPS_API_KEY = 'test-key';
     const { get_current_conditions } = await loadWeatherModule();
 
-    globalThis.fetch = /** @type {typeof fetch} */ (async () =>
-        makeJsonResponse(null, {
-            ok: false,
-            status: 500,
-            statusText: 'Server Error',
-        })
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () =>
+            makeJsonResponse(null, {
+                ok: false,
+                status: 500,
+                statusText: 'Server Error',
+            })
     );
 
     const result = await get_current_conditions({ lat: 10, lng: 20 });
@@ -161,16 +168,18 @@ test('get_daily_forecast returns normalized page', async () => {
     process.env.GOOGLE_MAPS_API_KEY = 'test-key';
     const { get_daily_forecast } = await loadWeatherModule();
 
-    globalThis.fetch = /** @type {typeof fetch} */ (async (url) => {
-        const parsed = new URL(String(url));
-        assert.equal(parsed.pathname, '/v1/forecast/days:lookup');
-        assert.equal(parsed.searchParams.get('pageSize'), '3');
-        return makeJsonResponse({
-            timeZone: { id: 'America/Chicago' },
-            nextPageToken: 'next',
-            forecastDays: [{ day: 1 }, { day: 2 }],
-        });
-    });
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async (url) => {
+            const parsed = new URL(String(url));
+            assert.equal(parsed.pathname, '/v1/forecast/days:lookup');
+            assert.equal(parsed.searchParams.get('pageSize'), '3');
+            return makeJsonResponse({
+                timeZone: { id: 'America/Chicago' },
+                nextPageToken: 'next',
+                forecastDays: [{ day: 1 }, { day: 2 }],
+            });
+        }
+    );
 
     const result = await get_daily_forecast({
         lat: 41.8781,
@@ -196,10 +205,12 @@ test('get_daily_forecast returns null for invalid page size', async () => {
     const { get_daily_forecast } = await loadWeatherModule();
 
     let calls = 0;
-    globalThis.fetch = /** @type {typeof fetch} */ (async () => {
-        calls += 1;
-        return makeJsonResponse({});
-    });
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () => {
+            calls += 1;
+            return makeJsonResponse({});
+        }
+    );
 
     const result = await get_daily_forecast({
         lat: 41.8781,
@@ -213,18 +224,21 @@ test('get_daily_forecast returns null for invalid page size', async () => {
 
 test('get_hourly_forecast returns normalized page', async () => {
     process.env.GOOGLE_MAPS_API_KEY = 'test-key';
-    const { get_hourly_forecast, get_hourly_forcast } = await loadWeatherModule();
+    const { get_hourly_forecast, get_hourly_forcast } =
+        await loadWeatherModule();
 
-    globalThis.fetch = /** @type {typeof fetch} */ (async (url) => {
-        const parsed = new URL(String(url));
-        assert.equal(parsed.pathname, '/v1/forecast/hours:lookup');
-        assert.equal(parsed.searchParams.get('pageSize'), '4');
-        return makeJsonResponse({
-            timeZone: { id: 'America/New_York' },
-            nextPageToken: null,
-            forecastHours: [{ hour: 1 }],
-        });
-    });
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async (url) => {
+            const parsed = new URL(String(url));
+            assert.equal(parsed.pathname, '/v1/forecast/hours:lookup');
+            assert.equal(parsed.searchParams.get('pageSize'), '4');
+            return makeJsonResponse({
+                timeZone: { id: 'America/New_York' },
+                nextPageToken: null,
+                forecastHours: [{ hour: 1 }],
+            });
+        }
+    );
 
     const result = await get_hourly_forecast({
         lat: 40.7128,
