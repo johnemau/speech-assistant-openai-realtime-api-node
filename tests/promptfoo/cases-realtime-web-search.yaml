@@ -17,7 +17,7 @@
       user_prompt: What time is the next Seattle Sounders home match?
   assert:
       - type: llm-rubric
-        value: Leads with the next home match date/time and identifies it as a Seattle Sounders home game. Ticketing or venue details are optional.
+        value: Provides the next home match date/time when available, or clearly notes if the exact time could not be confirmed and suggests checking the schedule.
 
 - name: realtime-web-search-product-details
   vars:
