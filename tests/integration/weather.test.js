@@ -63,7 +63,7 @@ if (!apiKey) {
         assert.ok(result.items.length > 0);
     });
 
-    test('get_hourly_forecast integration', async () => {
+    test('get_hourly_forecast integration', async (t) => {
         process.env.GOOGLE_MAPS_API_KEY = apiKey;
         const { get_hourly_forecast } = await loadWeatherModule();
 
@@ -74,6 +74,9 @@ if (!apiKey) {
             page_size: 6,
         });
 
+        if (!result) {
+            t.skip('Hourly forecast unavailable for this API key.');
+        }
         assert.ok(result, 'Expected hourly forecast result');
         assert.equal(typeof result.timeZoneId, 'string');
         assert.ok(Array.isArray(result.items));
