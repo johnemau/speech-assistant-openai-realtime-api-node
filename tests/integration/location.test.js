@@ -9,6 +9,17 @@ const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 let importCounter = 0;
 
 /**
+ * @returns {string} Google Maps API key.
+ */
+function requireApiKey() {
+    assert.ok(
+        apiKey,
+        'GOOGLE_MAPS_API_KEY must be set in the environment or .env file.'
+    );
+    return /** @type {string} */ (apiKey);
+}
+
+/**
  * @returns {Promise<typeof import('../../src/utils/location.js')>} Module import.
  */
 async function loadLocationModule() {
@@ -29,7 +40,7 @@ test('reverseGeocode integration', async () => {
     const result = await reverseGeocode({
         lat: 47.6205,
         lng: -122.3493,
-        apiKey,
+        apiKey: requireApiKey(),
     });
 
     assert.ok(result, 'Expected a response object');

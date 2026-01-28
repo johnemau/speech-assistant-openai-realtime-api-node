@@ -68,6 +68,37 @@ test('weather.execute uses address for current conditions', async () => {
     assert.equal(result.result.currentTime, '2024-01-01T00:00:00Z');
 });
 
+test('weather.execute defaults to IMPERIAL units', async () => {
+    /** @type {{ args?: any }} */
+    const seen = {};
+    setWeatherForTests({
+        getCurrentConditions: async (args) => {
+            seen.args = args;
+            return {
+                currentTime: '2024-01-02T00:00:00Z',
+                timeZoneId: null,
+                isDaytime: null,
+                relativeHumidity: null,
+                uvIndex: null,
+                weather: null,
+                temperature: null,
+                feelsLikeTemperature: null,
+                raw: null,
+            };
+        },
+    });
+
+    const result = /** @type {any} */ (
+        await execute({
+            args: { address: 'Tacoma, WA' },
+            context: {},
+        })
+    );
+
+    assert.equal(result.status, 'ok');
+    assert.equal(seen.args.units_system, 'IMPERIAL');
+});
+
 test('weather.execute uses tracked location for primary caller', async () => {
     /** @type {{ args?: any }} */
     const seen = {};
