@@ -65,7 +65,7 @@ test('directions.execute uses address inputs and formats steps', async () => {
 
     assert.equal(res.status, 'ok');
     if (res.status !== 'ok') throw new Error('Expected ok response');
-    assert.deepEqual(res.directions, ['Head north (200 m, 30s)', 'Turn right']);
+    assert.deepEqual(res.directions, ['Head north (0.12 mi, 30s)', 'Turn right']);
     assert.ok(res.route);
     if (!res.route) throw new Error('Expected route');
     assert.equal(res.route.distanceMeters, 1200);

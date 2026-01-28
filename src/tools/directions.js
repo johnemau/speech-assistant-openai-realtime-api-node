@@ -29,10 +29,34 @@ function cleanInstruction(value) {
 }
 
 /**
+ * @param {number} meters - Distance in meters.
+ * @param {import('../utils/google-routes.js').Units} units - Units to format in.
+ * @returns {string} Formatted distance string.
+ */
+function formatDistance(meters, units) {
+    if (!Number.isFinite(meters)) return '';
+
+    if (units === 'IMPERIAL') {
+        const feet = meters * 3.28084;
+        const miles = feet / 5280;
+        if (miles >= 0.1) {
+            return `${miles.toFixed(miles >= 10 ? 1 : 2)} mi`;
+        }
+        return `${Math.round(feet)} ft`;
+    }
+
+    if (meters >= 1000) {
+        return `${(meters / 1000).toFixed(meters >= 10000 ? 1 : 2)} km`;
+    }
+    return `${Math.round(meters)} m`;
+}
+
+/**
  * @param {Array<import('../utils/google-routes.js').RouteStep>} steps - Route steps.
+ * @param {import('../utils/google-routes.js').Units} units - Units to format in.
  * @returns {string[]} Formatted directions strings.
  */
-function formatDirections(steps) {
+function formatDirections(steps, units) {
     if (!Array.isArray(steps)) return [];
 
     const formatted = steps
@@ -41,7 +65,7 @@ function formatDirections(steps) {
                 step?.navigationInstruction?.instructions || ''
             );
             const distance = Number.isFinite(step?.distanceMeters)
-                ? `${Math.round(Number(step.distanceMeters))} m`
+                ? formatDistance(Number(step.distanceMeters), units)
                 : null;
             const duration =
                 typeof step?.duration === 'string' ? step.duration : null;
@@ -54,6 +78,7 @@ function formatDirections(steps) {
         console.log('directions: formatDirections', {
             stepCount: steps.length,
             outputCount: formatted.length,
+            units,
         });
     }
     return formatted;
@@ -126,7 +151,7 @@ export const definition = {
             },
             units: {
                 type: 'string',
-                description: 'Units for distances. Default METRIC.',
+                description: 'Units for distances. Default IMPERIAL.',
                 enum: ['METRIC', 'IMPERIAL'],
             },
         },
@@ -201,12 +226,12 @@ export async function execute({ args }) {
           )
         : undefined;
 
-    /** @type {import('../utils/google-routes.js').Units | undefined} */
+    /** @type {import('../utils/google-routes.js').Units} */
     const units = ['METRIC', 'IMPERIAL'].includes(String(args?.units))
         ? /** @type {import('../utils/google-routes.js').Units} */ (
               rawArgs?.units
           )
-        : undefined;
+        : 'IMPERIAL';
 
     let originInput;
     if (originPlace) {
@@ -353,7 +378,7 @@ export async function execute({ args }) {
         };
     }
 
-    const directions = formatDirections(result.route.steps);
+    const directions = formatDirections(result.route.steps, units);
 
     const payload = {
         status: /** @type {'ok'} */ ('ok'),
