@@ -355,13 +355,17 @@ test('no extra response.create after end_call (only goodbye)', async () => {
             {}
         );
 
-        // One response should be requested for the goodbye
+        // Goodbye response is queued until the current response finishes
         const afterEndCall = sessionState.requestResponseCalls;
-        assert.equal(afterEndCall, callsBefore + 1);
+        assert.equal(afterEndCall, callsBefore);
+
+        // Simulate the current response finishing to drain the queue
+        sessionState.onEvent?.({ type: 'response.done', response: {} });
+        assert.equal(sessionState.requestResponseCalls, callsBefore + 1);
 
         // Simulate speech stopped (should not trigger another response during pending disconnect)
         sessionState.onEvent?.({ type: 'input_audio_buffer.speech_stopped' });
-        assert.equal(sessionState.requestResponseCalls, afterEndCall);
+        assert.equal(sessionState.requestResponseCalls, callsBefore + 1);
 
         // Simulate goodbye audio and completion to allow close
         sessionState.onAssistantOutput?.({
@@ -377,7 +381,7 @@ test('no extra response.create after end_call (only goodbye)', async () => {
 
         assert.equal(connection.closed, true);
         // Ensure still only one response request after end_call
-        assert.equal(sessionState.requestResponseCalls, afterEndCall);
+        assert.equal(sessionState.requestResponseCalls, callsBefore + 1);
     } finally {
         cleanup();
     }

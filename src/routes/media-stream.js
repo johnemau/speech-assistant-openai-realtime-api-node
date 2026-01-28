@@ -71,6 +71,10 @@ export function mediaStreamHandler(connection, req) {
 
     // Track response lifecycle to avoid overlapping response.create calls
     let responseActive = false;
+    let responsePending = false;
+    /** @type {{ reason: string }[]} */
+    const responseQueue = [];
+    const responseQueueSet = new Set();
 
     // One-time turn detection adjustment after initial greeting response
     let initialGreetingRequested = false;
@@ -385,9 +389,11 @@ export function mediaStreamHandler(connection, req) {
         // Track response lifecycle to avoid overlapping creates
         if (response.type === 'response.created') {
             responseActive = true;
+            responsePending = false;
         }
         if (response.type === 'response.done') {
             responseActive = false;
+            responsePending = false;
 
             if (initialGreetingRequested && !initialTurnDetectionUpdated) {
                 initialTurnDetectionUpdated = true;
@@ -431,7 +437,7 @@ export function mediaStreamHandler(connection, req) {
             }
             if (!responseActive) {
                 try {
-                    assistantSession.requestResponse();
+                    requestResponseQueued('speech_stopped');
                     scheduleWaitingMusic('speech_stopped');
                 } catch (e) {
                     console.warn(
@@ -544,7 +550,59 @@ export function mediaStreamHandler(connection, req) {
                 scheduleWaitingMusic('tool_wait_resume_response');
                 resumeWaitingMusicAfterInterrupt = false;
             }
+            if (!functionCall || functionCall?.type !== 'function_call') {
+                drainResponseQueue('response_done');
+            }
         }
+    };
+
+    /**
+     * Enqueue a response request when one is already active/pending.
+     * @param {string} reason - Reason for logging.
+     */
+    const requestResponseQueued = (reason = 'unknown') => {
+        if (responseActive || responsePending) {
+            if (IS_DEV) {
+                console.log('response.create queued (active/pending)', {
+                    reason,
+                    responseActive,
+                    responsePending,
+                });
+            }
+            enqueueResponse(reason);
+            return;
+        }
+        responsePending = true;
+        assistantSession.requestResponse();
+    };
+
+    /**
+     * @param {string} reason - Response reason to enqueue.
+     */
+    const enqueueResponse = (reason) => {
+        if (responseQueueSet.has(reason)) return;
+        responseQueueSet.add(reason);
+        responseQueue.push({ reason });
+    };
+
+    /**
+     * @param {string} reason - Reason for draining.
+     */
+    const drainResponseQueue = (reason = 'unknown') => {
+        if (responseActive || responsePending) return;
+        if (responseQueue.length === 0) return;
+        const next = responseQueue.shift();
+        if (!next) return;
+        responseQueueSet.delete(next.reason);
+        if (IS_DEV) {
+            console.log('response.create dequeued', {
+                reason,
+                next: next.reason,
+                remaining: responseQueue.length,
+            });
+        }
+        responsePending = true;
+        assistantSession.requestResponse();
     };
 
     /** @param {any} functionCall - Function call payload from OpenAI. */
@@ -640,7 +698,7 @@ export function mediaStreamHandler(connection, req) {
                 toolCallInProgress = false;
                 assistantSession.send(toolResultEvent);
                 if (!responseActive) {
-                    assistantSession.requestResponse();
+                    requestResponseQueued('tool_call_response');
                     scheduleWaitingMusic('tool_call_response');
                 }
                 if (IS_DEV)
@@ -682,7 +740,7 @@ export function mediaStreamHandler(connection, req) {
                 const shouldRequest =
                     !pendingDisconnect || toolName === 'end_call';
                 if (shouldRequest) {
-                    assistantSession.requestResponse();
+                    requestResponseQueued('tool_call_response');
                     scheduleWaitingMusic('tool_call_response');
                 }
             }
@@ -783,7 +841,7 @@ export function mediaStreamHandler(connection, req) {
                 JSON.stringify(initialConversationItem)
             );
         assistantSession.send(initialConversationItem);
-        assistantSession.requestResponse();
+        requestResponseQueued('initial_greeting');
         scheduleWaitingMusic('initial_greeting');
     };
 
@@ -815,7 +873,7 @@ export function mediaStreamHandler(connection, req) {
             };
             assistantSession.send(toolErrorEvent);
             if (!responseActive && !pendingDisconnect) {
-                assistantSession.requestResponse();
+                requestResponseQueued('tool_call_error');
                 scheduleWaitingMusic('tool_call_error');
             }
         } catch (e) {
@@ -1006,6 +1064,9 @@ export function mediaStreamHandler(connection, req) {
             pendingDisconnectTimeout = null;
         }
         responseActive = false;
+        responsePending = false;
+        responseQueue.length = 0;
+        responseQueueSet.clear();
         // Clear any queued messages on close
         assistantSession.clearPendingMessages?.();
         stopWaitingMusic('disconnect');
