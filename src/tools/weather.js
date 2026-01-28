@@ -36,7 +36,11 @@ let getLatestTrackLocationImpl = realGetLatestTrackLocation;
 let gptWebSearchImpl = realGptWebSearch;
 
 /**
- * @typedef {'current'|'daily'|'hourly'} WeatherForecastType
+ * @typedef {'current'|'daily'|'hourly'} ForecastType
+ */
+
+/**
+ * @typedef {ForecastType} WeatherForecastType
  */
 
 export const definition = {
@@ -129,7 +133,7 @@ function buildWeatherQuery(forecastType, label, hours, days) {
  * Execute weather tool.
  *
  * @param {object} root0 - Tool inputs.
- * @param {{ forecast_type?: string, address?: string, location?: { lat?: number, lng?: number }, lat?: number, lng?: number, days?: number, hours?: number, page_size?: number, page_token?: string, units_system?: 'METRIC'|'IMPERIAL', language_code?: string }} root0.args - Tool arguments.
+ * @param {{ forecast_type?: ForecastType, address?: string, location?: { lat?: number, lng?: number }, lat?: number, lng?: number, days?: number, hours?: number, page_size?: number, page_token?: string, units_system?: 'METRIC'|'IMPERIAL', language_code?: string }} root0.args - Tool arguments.
  * @param {{ currentCallerE164?: string | null }} root0.context - Tool context.
  * @returns {Promise<object>} Weather tool payload.
  */
