@@ -23,7 +23,7 @@ export const definition = {
         additionalProperties: false,
     },
     description:
-        'Get the current tracked location for the caller. Only available for primary callers; returns location, address, and timezone details when available.',
+        'Get the current tracked location for the caller. Only available for primary callers; returns location, address, and timezone details when available. Prefer reading location.address and location.userLocation when mentioning the street, city, and region.',
 };
 
 /**

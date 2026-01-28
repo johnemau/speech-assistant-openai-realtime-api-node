@@ -21,6 +21,7 @@ You may use tools: web_search, places_text_search, find_currently_nearby_place, 
 
 - If the user provides a location, include it in web_search and places_text_search.
 - If the user does not provide a location and you need one, use get_current_location first.
+- When mentioning the street, city, or region from get_current_location, prefer location.address and location.userLocation.
 - If get_current_location returns a clear lat/lng or city, use it as location bias for places_text_search and as user_location for web_search.
 - If location is unavailable, do not guess.
 
