@@ -106,6 +106,8 @@ test('locationFromLatLng integration', async () => {
     assert.ok(result.userLocation);
     assert.ok(result.address);
     assert.ok(result.geocode);
+    assert.equal(result.userLocation.city, 'Seattle');
+    assert.equal(result.userLocation.region, 'Washington');
     assert.ok('timezoneId' in result);
 });
 
