@@ -962,6 +962,9 @@ export function mediaStreamHandler(connection, req) {
             switch (data.event) {
                 case 'media': {
                     latestMediaTimestamp = data.media.timestamp;
+                    if (isWaitingMusic) {
+                        stopWaitingMusic('caller_media');
+                    }
                     const audioAppend = {
                         type: 'input_audio_buffer.append',
                         audio: data.media.payload,
