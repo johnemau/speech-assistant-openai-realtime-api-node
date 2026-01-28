@@ -32,7 +32,7 @@ export const definition = {
  * @param {object} root0 - Tool inputs.
  * @param {object} [root0.args] - Tool arguments (unused).
  * @param {{ currentCallerE164?: string | null }} root0.context - Tool context.
- * @returns {Promise<{ status: 'ok', track: object, location: CurrentLocationResult } | { status: 'unavailable', message: string }>} Location result.
+ * @returns {Promise<{ status: 'ok', location: CurrentLocationResult } | { status: 'unavailable', message: string }>} Location result.
  */
 export async function execute({ args: _args, context }) {
     const currentCallerE164 = context?.currentCallerE164 || null;
@@ -53,7 +53,6 @@ export async function execute({ args: _args, context }) {
 
     return {
         status: 'ok',
-        track: latest.track,
         location: latest.location,
     };
 }

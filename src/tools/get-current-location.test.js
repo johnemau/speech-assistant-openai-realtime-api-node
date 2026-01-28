@@ -145,15 +145,7 @@ test('get-current-location.execute returns latest location for primary caller', 
             context: { currentCallerE164: '+12065550100' },
         });
         assert.equal(res.status, 'ok');
-        assert.deepEqual(res.track, {
-            latitude: 44.9778,
-            longitude: -93.265,
-            unixTime: 1700000000,
-            messageId: 'abc',
-            messengerId: undefined,
-            messengerName: undefined,
-            messageType: 'TRACK',
-        });
+        assert.equal('track' in res, false);
         assert.deepEqual(res.location.userLocation, {
             type: 'approximate',
             country: 'US',
