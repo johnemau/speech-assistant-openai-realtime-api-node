@@ -426,6 +426,9 @@ export function mediaStreamHandler(connection, req) {
                 scheduleWaitingMusic('caller_done_speaking');
                 resumeWaitingMusicAfterInterrupt = false;
             }
+            if (responseActive && !toolCallInProgress) {
+                scheduleWaitingMusic('model_response_pending');
+            }
             if (!responseActive) {
                 try {
                     assistantSession.requestResponse();
