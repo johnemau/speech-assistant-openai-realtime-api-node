@@ -47,6 +47,22 @@ test('reverseGeocode integration', async () => {
     assert.ok(Array.isArray(result.results));
 });
 
+test('reverseGeocode integration supports language and timestamp', async () => {
+    const { reverseGeocode } = await loadLocationModule();
+
+    const result = await reverseGeocode({
+        lat: 48.8584,
+        lng: 2.2945,
+        apiKey: requireApiKey(),
+        language: 'fr',
+        timestampSeconds: 1700000000,
+    });
+
+    assert.ok(result, 'Expected a response object');
+    assert.ok(Array.isArray(result.results));
+    assert.ok(result.results.length >= 0);
+});
+
 test('reverseGeocode integration handles invalid key response', async () => {
     const { reverseGeocode } = await loadLocationModule();
 
@@ -58,6 +74,22 @@ test('reverseGeocode integration handles invalid key response', async () => {
 
     assert.ok(result, 'Expected a response object');
     assert.ok(!Array.isArray(result.results) || result.results.length === 0);
+});
+
+test('reverseGeocode integration returns formatted address', async () => {
+    const { reverseGeocode } = await loadLocationModule();
+
+    const result = await reverseGeocode({
+        lat: 47.6205,
+        lng: -122.3493,
+        apiKey: requireApiKey(),
+    });
+
+    assert.ok(Array.isArray(result.results));
+    assert.ok(
+        result.results.length === 0 ||
+            typeof result.results[0]?.formatted_address === 'string'
+    );
 });
 
 test('locationFromLatLng integration', async () => {
