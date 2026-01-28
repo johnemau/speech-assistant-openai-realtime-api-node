@@ -44,7 +44,7 @@ test.afterEach(() => {
     }
 });
 
-test('spot.getLatestTrackLatLng returns latest TRACK message', async () => {
+test('spot.getLatestTrackLatLng returns latest message', async () => {
     process.env.SPOT_FEED_ID = 'feed-id';
     process.env.SPOT_FEED_PASSWORD = 'feed-pass';
     const { getLatestTrackLatLng, resetSpotCacheForTests } =
@@ -88,7 +88,7 @@ test('spot.getLatestTrackLatLng returns latest TRACK message', async () => {
     resetSpotCacheForTests();
 });
 
-test('spot.getLatestTrackLatLng returns null for non-TRACK', async () => {
+test('spot.getLatestTrackLatLng returns message for non-TRACK', async () => {
     process.env.SPOT_FEED_ID = 'feed-id';
     process.env.SPOT_FEED_PASSWORD = 'feed-pass';
     const { getLatestTrackLatLng, resetSpotCacheForTests } =
@@ -114,7 +114,15 @@ test('spot.getLatestTrackLatLng returns null for non-TRACK', async () => {
 
     const result = await getLatestTrackLatLng();
 
-    assert.equal(result, null);
+    assert.deepEqual(result, {
+        latitude: 47.61,
+        longitude: -122.33,
+        unixTime: 1700000000,
+        messageId: 'abc',
+        messengerId: undefined,
+        messengerName: undefined,
+        messageType: 'OK',
+    });
     resetSpotCacheForTests();
 });
 
@@ -145,6 +153,48 @@ test('spot.getLatestTrackLatLng returns null for invalid lat/lng', async () => {
     const result = await getLatestTrackLatLng();
 
     assert.equal(result, null);
+    resetSpotCacheForTests();
+});
+
+test('spot.getLatestTrackLatLng handles array messages', async () => {
+    process.env.SPOT_FEED_ID = 'feed-id';
+    process.env.SPOT_FEED_PASSWORD = 'feed-pass';
+    const { getLatestTrackLatLng, resetSpotCacheForTests } =
+        await loadSpotModule();
+    globalThis.fetch = /** @type {typeof fetch} */ (
+        async () =>
+            makeJsonResponse({
+                response: {
+                    feedMessageResponse: {
+                        messages: {
+                            message: [
+                                {
+                                    messageType: 'NEWMOVEMENT',
+                                    latitude: 47.6619,
+                                    longitude: -122.09937,
+                                    unixTime: 1769584287,
+                                    id: 2400736677,
+                                    messengerId: '0-5074124',
+                                    messengerName: 'NimbusNode',
+                                },
+                            ],
+                        },
+                    },
+                },
+            })
+    );
+
+    const result = await getLatestTrackLatLng();
+
+    assert.deepEqual(result, {
+        latitude: 47.6619,
+        longitude: -122.09937,
+        unixTime: 1769584287,
+        messageId: '2400736677',
+        messengerId: '0-5074124',
+        messengerName: 'NimbusNode',
+        messageType: 'NEWMOVEMENT',
+    });
     resetSpotCacheForTests();
 });
 

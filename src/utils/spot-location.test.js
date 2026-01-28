@@ -165,13 +165,7 @@ test('getLatestTrackLocation returns null when no track', async () => {
                 response: {
                     feedMessageResponse: {
                         messages: {
-                            message: {
-                                messageType: 'OK',
-                                latitude: 47.61,
-                                longitude: -122.33,
-                                unixTime: 1700000000,
-                                id: 'abc',
-                            },
+                            message: null,
                         },
                     },
                 },

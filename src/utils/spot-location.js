@@ -15,7 +15,7 @@ import { locationFromLatLng } from './location.js';
  * @property {string} messageId
  * @property {string} [messengerId]
  * @property {string} [messengerName]
- * @property {'TRACK'} messageType
+ * @property {string} [messageType]
  */
 
 /**

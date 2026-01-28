@@ -86,7 +86,7 @@ async function fetchWithTimeout(url, { timeoutMs = 15000, ...init } = {}) {
  * @property {string} messageId
  * @property {string} [messengerId]
  * @property {string} [messengerName]
- * @property {'TRACK'} messageType
+ * @property {string} [messageType]
  */
 
 /**
@@ -183,11 +183,12 @@ export async function getLatestTrackLatLng(opts = {}) {
         return cached?.value ?? null;
     }
 
-    // latest.json returns ONE message per device
-    const msg =
+    // latest.json returns ONE message per device (sometimes wrapped in an array)
+    const rawMsg =
         data?.response?.feedMessageResponse?.messages?.message ??
         data?.feedMessageResponse?.messages?.message ??
         null;
+    const msg = Array.isArray(rawMsg) ? (rawMsg[0] ?? null) : rawMsg;
 
     if (!msg) {
         spotLatestTrackCache.set(cacheKey, {
@@ -196,19 +197,6 @@ export async function getLatestTrackLatLng(opts = {}) {
         });
         if (IS_DEV) {
             console.log('getLatestTrackLatLng:missing-message');
-        }
-        return cached?.value ?? null;
-    }
-
-    if ((msg.messageType || msg.message_type) !== 'TRACK') {
-        spotLatestTrackCache.set(cacheKey, {
-            fetchedAt: now,
-            value: cached?.value ?? null,
-        });
-        if (IS_DEV) {
-            console.log('getLatestTrackLatLng:non-track', {
-                messageType: msg.messageType || msg.message_type,
-            });
         }
         return cached?.value ?? null;
     }
@@ -238,7 +226,10 @@ export async function getLatestTrackLatLng(opts = {}) {
             ? String(msg.messengerName)
             : undefined,
         unixTime: Number(msg.unixTime),
-        messageType: 'TRACK',
+        messageType:
+            msg.messageType || msg.message_type
+                ? String(msg.messageType || msg.message_type)
+                : undefined,
         latitude,
         longitude,
     };

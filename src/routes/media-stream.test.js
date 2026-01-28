@@ -110,6 +110,8 @@ async function loadMediaStreamHandler({
     };
 
     const env = await import('../env.js');
+    const prevSpotFeedId = process.env.SPOT_FEED_ID;
+    const prevSpotFeedPassword = process.env.SPOT_FEED_PASSWORD;
     const prev = {
         primary: new Set(env.PRIMARY_CALLERS_SET),
         secondary: new Set(env.SECONDARY_CALLERS_SET),
@@ -119,6 +121,9 @@ async function loadMediaStreamHandler({
     env.SECONDARY_CALLERS_SET.clear();
     primaryCallers.forEach((value) => env.PRIMARY_CALLERS_SET.add(value));
     secondaryCallers.forEach((value) => env.SECONDARY_CALLERS_SET.add(value));
+
+    delete process.env.SPOT_FEED_ID;
+    delete process.env.SPOT_FEED_PASSWORD;
 
     if (Number.isFinite(waitMusicThreshold)) {
         process.env.WAIT_MUSIC_THRESHOLD_MS = String(waitMusicThreshold);
@@ -151,6 +156,16 @@ async function loadMediaStreamHandler({
         env.SECONDARY_CALLERS_SET.clear();
         prev.primary.forEach((value) => env.PRIMARY_CALLERS_SET.add(value));
         prev.secondary.forEach((value) => env.SECONDARY_CALLERS_SET.add(value));
+        if (prevSpotFeedId == null) {
+            delete process.env.SPOT_FEED_ID;
+        } else {
+            process.env.SPOT_FEED_ID = prevSpotFeedId;
+        }
+        if (prevSpotFeedPassword == null) {
+            delete process.env.SPOT_FEED_PASSWORD;
+        } else {
+            process.env.SPOT_FEED_PASSWORD = prevSpotFeedPassword;
+        }
         sessionModule.resetCreateAssistantSessionForTests();
     };
 
