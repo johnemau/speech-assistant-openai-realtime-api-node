@@ -224,7 +224,7 @@ export async function execute({ args, context }) {
     }
 
     const baseArgs = {
-        units_system: rawArgs?.units_system,
+        units_system: rawArgs?.units_system ?? 'IMPERIAL',
         language_code: rawArgs?.language_code,
     };
 
