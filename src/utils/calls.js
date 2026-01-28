@@ -45,7 +45,7 @@ export function getTimeGreeting({
         }).format(now)
     );
 
-    if (pacificHour >= 5 && pacificHour < 12) return 'Good morning';
+    if (pacificHour >= 4 && pacificHour < 12) return 'Good morning';
     if (pacificHour >= 12 && pacificHour < 17) return 'Good afternoon';
     return 'Good evening';
 }
