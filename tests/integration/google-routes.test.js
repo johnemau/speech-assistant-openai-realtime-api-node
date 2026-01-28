@@ -16,73 +16,72 @@ async function loadRoutesModule() {
     return import(`../../src/utils/google-routes.js?test=${importCounter}`);
 }
 
-if (!apiKey) {
-    test(
-        'computeRoute integration',
-        { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' },
-        () => {}
+test('requires GOOGLE_MAPS_API_KEY', () => {
+    assert.ok(
+        apiKey,
+        'GOOGLE_MAPS_API_KEY must be set in the environment or .env file.'
     );
-} else {
-    test('computeRoute integration', async () => {
-        const { computeRoute } = await loadRoutesModule();
+});
 
+test('computeRoute integration', async () => {
+    const { computeRoute } = await loadRoutesModule();
+
+    const result = await computeRoute({
+        origin: { address: 'Space Needle, Seattle, WA' },
+        destination: { address: 'Pike Place Market, Seattle, WA' },
+        travelMode: 'DRIVE',
+    });
+
+    assert.ok(result, 'Expected a response object');
+    assert.ok(Array.isArray(result.routes), 'Expected routes array');
+    assert.ok('route' in result);
+    assert.ok('raw' in result);
+
+    if (result.route) {
+        assert.ok('distanceMeters' in result.route);
+        assert.ok('duration' in result.route);
+        assert.ok('encodedPolyline' in result.route);
+        assert.ok(Array.isArray(result.route.steps));
+
+        if (result.route.distanceMeters !== null) {
+            assert.equal(typeof result.route.distanceMeters, 'number');
+        }
+        if (result.route.duration !== null) {
+            assert.equal(typeof result.route.duration, 'string');
+        }
+        if (result.route.encodedPolyline !== null) {
+            assert.equal(typeof result.route.encodedPolyline, 'string');
+        }
+    }
+});
+
+test('computeRoute integration returns null with invalid key', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
+    const { computeRoute } = await loadRoutesModule();
+
+    try {
         const result = await computeRoute({
             origin: { address: 'Space Needle, Seattle, WA' },
-            destination: { address: 'Pike Place Market, Seattle, WA' },
-            travelMode: 'DRIVE',
-        });
-
-        assert.ok(result, 'Expected a response object');
-        assert.ok(Array.isArray(result.routes), 'Expected routes array');
-        assert.ok('route' in result);
-        assert.ok('raw' in result);
-
-        if (result.route) {
-            assert.ok('distanceMeters' in result.route);
-            assert.ok('duration' in result.route);
-            assert.ok('encodedPolyline' in result.route);
-            assert.ok(Array.isArray(result.route.steps));
-
-            if (result.route.distanceMeters !== null) {
-                assert.equal(typeof result.route.distanceMeters, 'number');
-            }
-            if (result.route.duration !== null) {
-                assert.equal(typeof result.route.duration, 'string');
-            }
-            if (result.route.encodedPolyline !== null) {
-                assert.equal(typeof result.route.encodedPolyline, 'string');
-            }
-        }
-    });
-
-    test('computeRoute integration returns null with invalid key', async () => {
-        process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
-        const { computeRoute } = await loadRoutesModule();
-
-        try {
-            const result = await computeRoute({
-                origin: { address: 'Space Needle, Seattle, WA' },
-                destination: { address: 'Pike Place Market, Seattle, WA' },
-            });
-
-            assert.equal(result, null);
-        } finally {
-            if (originalGoogleMapsKey == null) {
-                delete process.env.GOOGLE_MAPS_API_KEY;
-            } else {
-                process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
-            }
-        }
-    });
-
-    test('computeRoute integration returns null with invalid args', async () => {
-        const { computeRoute } = await loadRoutesModule();
-
-        const result = await computeRoute({
-            origin: { address: '' },
             destination: { address: 'Pike Place Market, Seattle, WA' },
         });
 
         assert.equal(result, null);
+    } finally {
+        if (originalGoogleMapsKey == null) {
+            delete process.env.GOOGLE_MAPS_API_KEY;
+        } else {
+            process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
+        }
+    }
+});
+
+test('computeRoute integration returns null with invalid args', async () => {
+    const { computeRoute } = await loadRoutesModule();
+
+    const result = await computeRoute({
+        origin: { address: '' },
+        destination: { address: 'Pike Place Market, Seattle, WA' },
     });
-}
+
+    assert.equal(result, null);
+});

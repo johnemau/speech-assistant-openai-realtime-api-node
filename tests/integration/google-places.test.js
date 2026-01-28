@@ -16,125 +16,124 @@ async function loadPlacesModule() {
     return import(`../../src/utils/google-places.js?test=${importCounter}`);
 }
 
-if (!apiKey) {
-    test(
-        'searchPlacesNearby integration',
-        { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' },
-        () => {}
+test('requires GOOGLE_MAPS_API_KEY', () => {
+    assert.ok(
+        apiKey,
+        'GOOGLE_MAPS_API_KEY must be set in the environment or .env file.'
     );
-} else {
-    test('searchPlacesNearby integration', async () => {
-        const { searchPlacesNearby } = await loadPlacesModule();
+});
 
+test('searchPlacesNearby integration', async () => {
+    const { searchPlacesNearby } = await loadPlacesModule();
+
+    const result = await searchPlacesNearby({
+        lat: 47.6097,
+        lng: -122.3331,
+        radius_m: 1000,
+        max_result_count: 3,
+    });
+
+    assert.ok(result, 'Expected a response object');
+    assert.ok(Array.isArray(result.places), 'Expected places array');
+    for (const place of result.places) {
+        assert.ok('id' in place);
+        assert.ok('name' in place);
+        assert.ok('accessibilityOptions' in place);
+        assert.ok('businessStatus' in place);
+        assert.ok('editorialSummary' in place);
+        assert.ok('hasDelivery' in place);
+        assert.ok('hasDineIn' in place);
+        assert.ok('hasLiveMusic' in place);
+        assert.ok('hasOutdoorSeating' in place);
+        assert.ok('hasRestroom' in place);
+        assert.ok('hasTakeout' in place);
+        assert.ok('internationalPhoneNumber' in place);
+        assert.ok('isGoodForGroups' in place);
+        assert.ok('isGoodForWatchingSports' in place);
+        assert.ok('isReservable' in place);
+        assert.ok('address' in place);
+        assert.ok('location' in place);
+        assert.ok('nationalPhoneNumber' in place);
+        assert.ok('neighborhoodSummary' in place);
+        assert.ok('parkingOptions' in place);
+        assert.ok('priceLevel' in place);
+        assert.ok('rating' in place);
+        assert.ok('regularOpeningHours' in place);
+        assert.ok('servesBreakfast' in place);
+        assert.ok('servesBrunch' in place);
+        assert.ok('servesCoffee' in place);
+        assert.ok('servesDessert' in place);
+        assert.ok('servesDinner' in place);
+        assert.ok('servesLunch' in place);
+        assert.ok('types' in place);
+        assert.ok('primaryType' in place);
+        assert.ok('mapsUrl' in place);
+        assert.ok('websiteURI' in place);
+
+        if (place.location) {
+            assert.equal(typeof place.location.lat, 'number');
+            assert.equal(typeof place.location.lng, 'number');
+        }
+
+        if (place.types !== null) {
+            assert.ok(Array.isArray(place.types));
+        }
+
+        assertNullableBoolean(place.hasDelivery);
+        assertNullableBoolean(place.hasDineIn);
+        assertNullableBoolean(place.hasLiveMusic);
+        assertNullableBoolean(place.hasOutdoorSeating);
+        assertNullableBoolean(place.hasRestroom);
+        assertNullableBoolean(place.hasTakeout);
+        assertNullableBoolean(place.isGoodForGroups);
+        assertNullableBoolean(place.isGoodForWatchingSports);
+        assertNullableBoolean(place.isReservable);
+        assertNullableBoolean(place.servesBreakfast);
+        assertNullableBoolean(place.servesBrunch);
+        assertNullableBoolean(place.servesCoffee);
+        assertNullableBoolean(place.servesDessert);
+        assertNullableBoolean(place.servesDinner);
+        assertNullableBoolean(place.servesLunch);
+
+        if (place.rating !== null) {
+            assert.equal(typeof place.rating, 'number');
+        }
+    }
+});
+
+test('searchPlacesNearby integration returns null with invalid key', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
+    const { searchPlacesNearby } = await loadPlacesModule();
+
+    try {
         const result = await searchPlacesNearby({
             lat: 47.6097,
             lng: -122.3331,
-            radius_m: 1000,
-            max_result_count: 3,
-        });
-
-        assert.ok(result, 'Expected a response object');
-        assert.ok(Array.isArray(result.places), 'Expected places array');
-        for (const place of result.places) {
-            assert.ok('id' in place);
-            assert.ok('name' in place);
-            assert.ok('accessibilityOptions' in place);
-            assert.ok('businessStatus' in place);
-            assert.ok('editorialSummary' in place);
-            assert.ok('hasDelivery' in place);
-            assert.ok('hasDineIn' in place);
-            assert.ok('hasLiveMusic' in place);
-            assert.ok('hasOutdoorSeating' in place);
-            assert.ok('hasRestroom' in place);
-            assert.ok('hasTakeout' in place);
-            assert.ok('internationalPhoneNumber' in place);
-            assert.ok('isGoodForGroups' in place);
-            assert.ok('isGoodForWatchingSports' in place);
-            assert.ok('isReservable' in place);
-            assert.ok('address' in place);
-            assert.ok('location' in place);
-            assert.ok('nationalPhoneNumber' in place);
-            assert.ok('neighborhoodSummary' in place);
-            assert.ok('parkingOptions' in place);
-            assert.ok('priceLevel' in place);
-            assert.ok('rating' in place);
-            assert.ok('regularOpeningHours' in place);
-            assert.ok('servesBreakfast' in place);
-            assert.ok('servesBrunch' in place);
-            assert.ok('servesCoffee' in place);
-            assert.ok('servesDessert' in place);
-            assert.ok('servesDinner' in place);
-            assert.ok('servesLunch' in place);
-            assert.ok('types' in place);
-            assert.ok('primaryType' in place);
-            assert.ok('mapsUrl' in place);
-            assert.ok('websiteURI' in place);
-
-            if (place.location) {
-                assert.equal(typeof place.location.lat, 'number');
-                assert.equal(typeof place.location.lng, 'number');
-            }
-
-            if (place.types !== null) {
-                assert.ok(Array.isArray(place.types));
-            }
-
-            assertNullableBoolean(place.hasDelivery);
-            assertNullableBoolean(place.hasDineIn);
-            assertNullableBoolean(place.hasLiveMusic);
-            assertNullableBoolean(place.hasOutdoorSeating);
-            assertNullableBoolean(place.hasRestroom);
-            assertNullableBoolean(place.hasTakeout);
-            assertNullableBoolean(place.isGoodForGroups);
-            assertNullableBoolean(place.isGoodForWatchingSports);
-            assertNullableBoolean(place.isReservable);
-            assertNullableBoolean(place.servesBreakfast);
-            assertNullableBoolean(place.servesBrunch);
-            assertNullableBoolean(place.servesCoffee);
-            assertNullableBoolean(place.servesDessert);
-            assertNullableBoolean(place.servesDinner);
-            assertNullableBoolean(place.servesLunch);
-
-            if (place.rating !== null) {
-                assert.equal(typeof place.rating, 'number');
-            }
-        }
-    });
-
-    test('searchPlacesNearby integration returns null with invalid key', async () => {
-        process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
-        const { searchPlacesNearby } = await loadPlacesModule();
-
-        try {
-            const result = await searchPlacesNearby({
-                lat: 47.6097,
-                lng: -122.3331,
-                radius_m: 500,
-                max_result_count: 1,
-            });
-
-            assert.equal(result, null);
-        } finally {
-            if (originalGoogleMapsKey == null) {
-                delete process.env.GOOGLE_MAPS_API_KEY;
-            } else {
-                process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
-            }
-        }
-    });
-
-    test('searchPlacesNearby integration returns null with invalid args', async () => {
-        const { searchPlacesNearby } = await loadPlacesModule();
-
-        const result = await searchPlacesNearby({
-            lat: 200,
-            lng: -122.3331,
-            radius_m: 1000,
+            radius_m: 500,
+            max_result_count: 1,
         });
 
         assert.equal(result, null);
+    } finally {
+        if (originalGoogleMapsKey == null) {
+            delete process.env.GOOGLE_MAPS_API_KEY;
+        } else {
+            process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
+        }
+    }
+});
+
+test('searchPlacesNearby integration returns null with invalid args', async () => {
+    const { searchPlacesNearby } = await loadPlacesModule();
+
+    const result = await searchPlacesNearby({
+        lat: 200,
+        lng: -122.3331,
+        radius_m: 1000,
     });
-}
+
+    assert.equal(result, null);
+});
 
 /**
  * @param {boolean|null} value - Value to validate.

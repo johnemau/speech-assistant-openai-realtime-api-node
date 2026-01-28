@@ -24,83 +24,70 @@ test.afterEach(() => {
     }
 });
 
-if (!apiKey) {
-    test(
-        'weather integration',
-        { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' },
-        () => {}
+test('requires GOOGLE_MAPS_API_KEY', () => {
+    assert.ok(
+        apiKey,
+        'GOOGLE_MAPS_API_KEY must be set in the environment or .env file.'
     );
-} else {
-    test('get_current_conditions integration', async (t) => {
-        process.env.GOOGLE_MAPS_API_KEY = apiKey;
-        const { get_current_conditions } = await loadWeatherModule();
+});
 
-        const result = await get_current_conditions({
-            lat: 47.6205,
-            lng: -122.3493,
-            units_system: 'IMPERIAL',
-        });
+test('get_current_conditions integration', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = apiKey;
+    const { get_current_conditions } = await loadWeatherModule();
 
-        if (!result) {
-            t.skip('Weather API unavailable for this API key.');
-            return;
-        }
-        assert.ok(result, 'Expected current conditions result');
-        assert.equal(typeof result.timeZoneId, 'string');
-        assert.ok(result.raw, 'Expected raw payload');
+    const result = await get_current_conditions({
+        lat: 47.6205,
+        lng: -122.3493,
+        units_system: 'IMPERIAL',
     });
 
-    test('get_daily_forecast integration', async (t) => {
-        process.env.GOOGLE_MAPS_API_KEY = apiKey;
-        const { get_daily_forecast } = await loadWeatherModule();
+    assert.ok(result, 'Expected current conditions result');
+    assert.equal(typeof result.timeZoneId, 'string');
+    assert.ok(result.raw, 'Expected raw payload');
+});
 
-        const result = await get_daily_forecast({
-            lat: 47.6205,
-            lng: -122.3493,
-            days: 3,
-            page_size: 3,
-        });
+test('get_daily_forecast integration', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = apiKey;
+    const { get_daily_forecast } = await loadWeatherModule();
 
-        if (!result) {
-            t.skip('Weather API unavailable for this API key.');
-            return;
-        }
-        assert.ok(result, 'Expected daily forecast result');
-        assert.equal(typeof result.timeZoneId, 'string');
-        assert.ok(Array.isArray(result.items));
-        assert.ok(result.items.length > 0);
+    const result = await get_daily_forecast({
+        lat: 47.6205,
+        lng: -122.3493,
+        days: 3,
+        page_size: 3,
     });
 
-    test('get_hourly_forecast integration', async (t) => {
-        process.env.GOOGLE_MAPS_API_KEY = apiKey;
-        const { get_hourly_forecast } = await loadWeatherModule();
+    assert.ok(result, 'Expected daily forecast result');
+    assert.equal(typeof result.timeZoneId, 'string');
+    assert.ok(Array.isArray(result.items));
+    assert.ok(result.items.length > 0);
+});
 
-        const result = await get_hourly_forecast({
-            lat: 47.6205,
-            lng: -122.3493,
-            hours: 6,
-            page_size: 6,
-        });
+test('get_hourly_forecast integration', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = apiKey;
+    const { get_hourly_forecast } = await loadWeatherModule();
 
-        if (!result) {
-            t.skip('Hourly forecast unavailable for this API key.');
-            return;
-        }
-        assert.ok(result, 'Expected hourly forecast result');
-        assert.equal(typeof result.timeZoneId, 'string');
-        assert.ok(Array.isArray(result.items));
-        assert.ok(result.items.length > 0);
+    const result = await get_hourly_forecast({
+        lat: 47.6205,
+        lng: -122.3493,
+        hours: 6,
+        page_size: 6,
     });
 
-    test('get_current_conditions integration handles invalid key', async () => {
-        process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
-        const { get_current_conditions } = await loadWeatherModule();
+    assert.ok(result, 'Expected hourly forecast result');
+    assert.equal(typeof result.timeZoneId, 'string');
+    assert.ok(Array.isArray(result.items));
+    assert.ok(result.items.length > 0);
+});
 
-        const result = await get_current_conditions({
-            lat: 35.6895,
-            lng: 139.6917,
-        });
+test('get_current_conditions integration handles invalid key', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
+    const { get_current_conditions } = await loadWeatherModule();
 
-        assert.equal(result, null);
+    const result = await get_current_conditions({
+        lat: 35.6895,
+        lng: 139.6917,
     });
-}
+
+    assert.equal(result, null);
+});

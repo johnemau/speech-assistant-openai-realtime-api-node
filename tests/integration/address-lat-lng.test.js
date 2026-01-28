@@ -16,36 +16,35 @@ async function loadAddressLatLngModule() {
     return import(`../../src/utils/address-lat-lng.js?test=${importCounter}`);
 }
 
-if (!apiKey) {
-    test(
-        'getLatLngFromAddress integration',
-        { skip: 'Missing GOOGLE_MAPS_API_KEY in .env' },
-        () => {}
+test('requires GOOGLE_MAPS_API_KEY', () => {
+    assert.ok(
+        apiKey,
+        'GOOGLE_MAPS_API_KEY must be set in the environment or .env file.'
     );
-} else {
-    test('getLatLngFromAddress integration', async () => {
-        const { getLatLngFromAddress } = await loadAddressLatLngModule();
+});
 
-        const result = await getLatLngFromAddress('Space Needle Seattle');
+test('getLatLngFromAddress integration', async () => {
+    const { getLatLngFromAddress } = await loadAddressLatLngModule();
 
-        assert.ok(result, 'Expected coordinates');
-        assert.equal(typeof result.lat, 'number');
-        assert.equal(typeof result.lng, 'number');
-        assert.ok(result.lat > 47 && result.lat < 48);
-        assert.ok(result.lng < -121 && result.lng > -123);
-    });
+    const result = await getLatLngFromAddress('Space Needle Seattle');
 
-    test('getLatLngFromAddress integration returns null with invalid key', async () => {
-        process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
-        const { getLatLngFromAddress } = await loadAddressLatLngModule();
+    assert.ok(result, 'Expected coordinates');
+    assert.equal(typeof result.lat, 'number');
+    assert.equal(typeof result.lng, 'number');
+    assert.ok(result.lat > 47 && result.lat < 48);
+    assert.ok(result.lng < -121 && result.lng > -123);
+});
 
-        const result = await getLatLngFromAddress('Space Needle Seattle');
+test('getLatLngFromAddress integration returns null with invalid key', async () => {
+    process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
+    const { getLatLngFromAddress } = await loadAddressLatLngModule();
 
-        assert.equal(result, null);
-        if (originalGoogleMapsKey == null) {
-            delete process.env.GOOGLE_MAPS_API_KEY;
-        } else {
-            process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
-        }
-    });
-}
+    const result = await getLatLngFromAddress('Space Needle Seattle');
+
+    assert.equal(result, null);
+    if (originalGoogleMapsKey == null) {
+        delete process.env.GOOGLE_MAPS_API_KEY;
+    } else {
+        process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
+    }
+});
