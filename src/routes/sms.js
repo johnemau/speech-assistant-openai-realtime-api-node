@@ -23,6 +23,7 @@ import { definition as getCurrentLocationDefinition } from '../tools/get-current
 import { definition as findCurrentlyNearbyPlaceDefinition } from '../tools/find-currently-nearby-place.js';
 import { definition as placesTextSearchDefinition } from '../tools/places-text-search.js';
 import { definition as directionsDefinition } from '../tools/directions.js';
+import { definition as weatherDefinition } from '../tools/weather.js';
 
 /** @type {Array<import('openai/resources/responses/responses').Tool>} */
 const SMS_TOOL_DEFINITIONS = [
@@ -40,6 +41,9 @@ const SMS_TOOL_DEFINITIONS = [
     ),
     /** @type {import('openai/resources/responses/responses').Tool} */ (
         directionsDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        weatherDefinition
     ),
 ];
 
@@ -374,6 +378,7 @@ export async function smsHandler(request, reply) {
                     'get_current_location',
                     'send_email',
                     'directions',
+                    'weather',
                 ],
                 prompt_len: String(smsPrompt || '').length,
             }

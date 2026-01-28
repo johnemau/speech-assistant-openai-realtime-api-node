@@ -34,6 +34,10 @@ import {
     definition as directionsDefinition,
     execute as executeDirections,
 } from './directions.js';
+import {
+    definition as weatherDefinition,
+    execute as executeWeather,
+} from './weather.js';
 import { IS_DEV } from '../env.js';
 
 const toolExecutors = new Map(
@@ -47,6 +51,7 @@ const toolExecutors = new Map(
         ['find_currently_nearby_place', executeFindCurrentlyNearbyPlace],
         ['places_text_search', executePlacesTextSearch],
         ['directions', executeDirections],
+        ['weather', executeWeather],
     ])
 );
 
@@ -66,6 +71,7 @@ export function getToolDefinitions() {
         findCurrentlyNearbyPlaceDefinition,
         placesTextSearchDefinition,
         directionsDefinition,
+        weatherDefinition,
     ];
 }
 

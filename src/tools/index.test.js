@@ -14,6 +14,7 @@ test('tools.getToolDefinitions returns known tools', () => {
     assert.ok(names.includes('get_current_location'));
     assert.ok(names.includes('find_currently_nearby_place'));
     assert.ok(names.includes('directions'));
+    assert.ok(names.includes('weather'));
 });
 
 test('tools.executeToolCall executes end_call', async () => {
