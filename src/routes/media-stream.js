@@ -551,6 +551,14 @@ export function mediaStreamHandler(connection, req) {
                 resumeWaitingMusicAfterInterrupt = false;
             }
             if (!functionCall || functionCall?.type !== 'function_call') {
+                if (
+                    toolCallInProgress &&
+                    !isCallerSpeaking &&
+                    !postHangupSilentMode &&
+                    !pendingDisconnect
+                ) {
+                    scheduleWaitingMusic('tool_call_pending_response_done');
+                }
                 drainResponseQueue('response_done');
             }
         }
