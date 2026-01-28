@@ -18,13 +18,13 @@ export const definition = {
             body_html: {
                 type: 'string',
                 description:
-                    'HTML-only email body composed from the latest conversation context. Non-conversational (no follow-up questions); formatted for readability and concise. Include specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be provided as clickable URLs. Always conclude with a small, cute ASCII art at the end of the message.',
+                    'HTML-only email body composed from the latest conversation context. Non-conversational (no follow-up questions); formatted for readability and concise. Include specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. For weather, directions, or any location-based content, include a Google Maps link to the place or route; for weather also include a NOAA forecast link using https://forecast.weather.gov/MapClick.php?lat=<lat>&lon=<lon> when coordinates are available. All links must be provided as clickable URLs. End with a short, witty sign-off related to the email’s topic (do not use “Best regards” or “Your assistant”). Always conclude with a small, cute ASCII art at the end of the message.',
             },
         },
         required: ['subject', 'body_html'],
     },
     description:
-        'Send an HTML email with the latest context. The assistant must supply a subject and a non-conversational, concise HTML body that includes specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. All links must be clickable URLs. Always conclude the email with a small, cute ASCII art at the end.',
+        'Send an HTML email with the latest context. The assistant must supply a subject and a non-conversational, concise HTML body that includes specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. For weather, directions, or any location-based content, include a Google Maps link to the place or route; for weather also include a NOAA forecast link using https://forecast.weather.gov/MapClick.php?lat=<lat>&lon=<lon> when coordinates are available. All links must be clickable URLs. End with a short, witty sign-off related to the email’s topic (do not use “Best regards” or “Your assistant”). Always conclude the email with a small, cute ASCII art at the end.',
 };
 
 /**
