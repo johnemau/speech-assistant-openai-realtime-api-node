@@ -168,6 +168,105 @@ function extractStreet(components) {
 }
 
 /**
+ * @param {any} geocode - Geocode payload.
+ * @returns {boolean} True when geocode has results.
+ */
+function hasGeocodeResults(geocode) {
+    return Array.isArray(geocode?.results) && geocode.results.length > 0;
+}
+
+/**
+ * @param {any} osmJson - OpenStreetMap reverse geocode response.
+ * @returns {GeocodeResponse} Mapped geocode response.
+ */
+function mapOsmToGeocode(osmJson) {
+    const address = osmJson?.address || {};
+    const components = [];
+    if (address.house_number) {
+        components.push({
+            long_name: String(address.house_number),
+            types: ['street_number'],
+        });
+    }
+    if (address.road) {
+        components.push({
+            long_name: String(address.road),
+            types: ['route'],
+        });
+    }
+    const city =
+        address.city ||
+        address.town ||
+        address.village ||
+        address.hamlet ||
+        address.municipality ||
+        address.county;
+    if (city) {
+        components.push({
+            long_name: String(city),
+            types: ['locality'],
+        });
+    }
+    if (address.state) {
+        components.push({
+            long_name: String(address.state),
+            types: ['administrative_area_level_1'],
+        });
+    }
+    if (address.postcode) {
+        components.push({
+            long_name: String(address.postcode),
+            types: ['postal_code'],
+        });
+    }
+    if (address.country) {
+        components.push({
+            long_name: String(address.country),
+            short_name: address.country_code
+                ? String(address.country_code).toUpperCase()
+                : undefined,
+            types: ['country'],
+        });
+    }
+
+    return {
+        results: [
+            {
+                formatted_address: osmJson?.display_name || undefined,
+                address_components: components,
+            },
+        ],
+    };
+}
+
+/**
+ * @param {object} root0 - Reverse geocode options.
+ * @param {number} root0.lat - Latitude in degrees.
+ * @param {number} root0.lng - Longitude in degrees.
+ * @param {string} [root0.language] - Optional locale string.
+ * @param {number} [root0.timeoutMs] - Optional timeout override in ms.
+ * @returns {Promise<GeocodeResponse | null>} Fallback geocode response.
+ */
+async function reverseGeocodeOsm({ lat, lng, language, timeoutMs }) {
+    const url = new URL('https://nominatim.openstreetmap.org/reverse');
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('lat', String(lat));
+    url.searchParams.set('lon', String(lng));
+    url.searchParams.set('zoom', '10');
+    url.searchParams.set('addressdetails', '1');
+
+    const osmJson = await fetchJson(url.toString(), {
+        timeoutMs,
+        headers: {
+            'User-Agent': 'speech-assistant-openai-realtime-api-node',
+            'Accept-Language': language || 'en',
+        },
+    });
+
+    return mapOsmToGeocode(osmJson);
+}
+
+/**
  * @param {GeocodeResponse} geocodeJson - Geocode API response payload.
  * @returns {{ type: 'approximate', country?: string, region?: string, city?: string }} Approximate user location.
  */
@@ -222,6 +321,8 @@ function mapGeocodeToAddress(geocodeJson) {
  * @param {number} root0.lng - Longitude in degrees.
  * @param {string} root0.apiKey - Google Maps API key.
  * @param {string} [root0.language] - Optional locale string.
+ * @param {string} [root0.resultType] - Optional result type filter.
+ * @param {string} [root0.locationType] - Optional location type filter.
  * @param {number} [root0.timestampSeconds] - Optional UNIX timestamp in seconds.
  * @param {number} [root0.timeoutMs] - Optional timeout override in ms.
  * @returns {Promise<GeocodeResponse>} Raw geocode JSON payload.
@@ -232,12 +333,16 @@ export async function reverseGeocode({
     apiKey,
     language,
     timestampSeconds,
+    resultType,
+    locationType,
     timeoutMs,
 }) {
     const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
     url.searchParams.set('latlng', `${lat},${lng}`);
     url.searchParams.set('key', apiKey);
     if (language) url.searchParams.set('language', language);
+    if (resultType) url.searchParams.set('result_type', resultType);
+    if (locationType) url.searchParams.set('location_type', locationType);
     if (timestampSeconds != null) {
         url.searchParams.set('timestamp', String(timestampSeconds));
     }
@@ -332,13 +437,57 @@ export async function locationFromLatLng({
         throw new Error('apiKey is required.');
     }
 
-    const geocode = await reverseGeocode({
+    let geocode = await reverseGeocode({
         lat: resolvedLat,
         lng: resolvedLng,
         apiKey,
         language,
         timeoutMs,
     });
+    if (!hasGeocodeResults(geocode)) {
+        if (IS_DEV) {
+            console.log('locationFromLatLng:geocode-fallback', {
+                lat: resolvedLat,
+                lng: resolvedLng,
+            });
+        }
+        geocode = await reverseGeocode({
+            lat: resolvedLat,
+            lng: resolvedLng,
+            apiKey,
+            language,
+            resultType: 'locality|administrative_area_level_1|country',
+            locationType: 'APPROXIMATE',
+            timeoutMs,
+        });
+    }
+    if (!hasGeocodeResults(geocode)) {
+        if (IS_DEV) {
+            console.log('locationFromLatLng:geocode-osm-fallback', {
+                lat: resolvedLat,
+                lng: resolvedLng,
+            });
+        }
+        try {
+            const osmGeocode = await reverseGeocodeOsm({
+                lat: resolvedLat,
+                lng: resolvedLng,
+                language,
+                timeoutMs,
+            });
+            if (osmGeocode) {
+                geocode = osmGeocode;
+            }
+        } catch (error) {
+            if (IS_DEV) {
+                const err = /** @type {any} */ (error);
+                console.log('locationFromLatLng:osm-fallback-error', {
+                    name: err?.name ?? null,
+                    message: err?.message ?? null,
+                });
+            }
+        }
+    }
     if (IS_DEV) {
         console.log('locationFromLatLng:geocode-received', {
             hasResults: Array.isArray(geocode?.results),
