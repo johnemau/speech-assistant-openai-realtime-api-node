@@ -110,6 +110,7 @@ export function mediaStreamHandler(connection, req) {
     let lastAssistantResponseItemId = null;
     let lastAssistantResponseStartedAt = 0;
     let resumeWaitingMusicAfterInterrupt = false;
+    let isCallerSpeaking = false;
 
     function getWaitingMusicDelayMs() {
         const baseDelay = WAIT_MUSIC_THRESHOLD_MS;
@@ -133,6 +134,7 @@ export function mediaStreamHandler(connection, req) {
 
     function scheduleWaitingMusic(reason = 'unknown') {
         if (isWaitingMusic || waitingMusicStartTimeout) return;
+        if (isCallerSpeaking) return;
         const delayMs = getWaitingMusicDelayMs();
         if (IS_DEV) {
             console.log('wait music schedule requested', {
@@ -149,7 +151,7 @@ export function mediaStreamHandler(connection, req) {
     }
 
     function startWaitingMusic(reason = 'unknown') {
-        if (!streamSid || isWaitingMusic) return;
+        if (!streamSid || isWaitingMusic || isCallerSpeaking) return;
         isWaitingMusic = true;
         if (IS_DEV) {
             console.log('wait music start requested', {
@@ -416,6 +418,7 @@ export function mediaStreamHandler(connection, req) {
 
         // When VAD ends a user turn, we must explicitly create a response (auto-create disabled)
         if (response.type === 'input_audio_buffer.speech_stopped') {
+            isCallerSpeaking = false;
             // During an assistant-initiated hangup, do not request another response
             if (pendingDisconnect) return;
             stopWaitingMusic('speech_stopped');
@@ -441,6 +444,7 @@ export function mediaStreamHandler(connection, req) {
         }
 
         if (response.type === 'input_audio_buffer.speech_started') {
+            isCallerSpeaking = true;
             // Caller barged in; stop waiting music and handle truncation
             stopWaitingMusic('caller_speech');
             if (toolCallInProgress) {
