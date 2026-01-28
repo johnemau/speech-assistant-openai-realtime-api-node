@@ -54,7 +54,7 @@ export function isPrimaryCaller(callerE164) {
 
 // Waiting music configuration (optional)
 export const WAIT_MUSIC_THRESHOLD_MS = Number(
-    process.env.WAIT_MUSIC_THRESHOLD_MS || 500
+    process.env.WAIT_MUSIC_THRESHOLD_MS || 800
 );
 export const WAIT_MUSIC_VOLUME = Number(process.env.WAIT_MUSIC_VOLUME || 0.12); // 0.0 - 1.0
 export const WAIT_MUSIC_FOLDER = process.env.WAIT_MUSIC_FOLDER || 'music';
