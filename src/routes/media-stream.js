@@ -69,6 +69,13 @@ export function mediaStreamHandler(connection, req) {
     // Track whether goodbye playback actually started before closing
     let disconnectAudioStarted = false;
 
+    // Session duration tracking
+    /** @type {NodeJS.Timeout | null} */
+    let fiftyMinuteWarningTimeout = null;
+    /** @type {NodeJS.Timeout | null} */
+    let fiftyFiveMinuteHangupTimeout = null;
+    let fiftyMinuteWarningSent = false;
+
     // Track response lifecycle to avoid overlapping response.create calls
     let responseActive = false;
     let responsePending = false;
@@ -997,6 +1004,96 @@ export function mediaStreamHandler(connection, req) {
                     stopWaitingMusic('new_stream');
                     clearWaitingMusicInterval();
 
+                    // Start session duration tracking and reset warning state
+                    fiftyMinuteWarningSent = false;
+
+                    // Schedule 50-minute warning
+                    fiftyMinuteWarningTimeout = setTimeout(
+                        () => {
+                            if (
+                                !fiftyMinuteWarningSent &&
+                                !pendingDisconnect &&
+                                !postHangupSilentMode
+                            ) {
+                                fiftyMinuteWarningSent = true;
+                                console.log(
+                                    'Session duration: 50 minutes reached, sending time warning'
+                                );
+                                const warningItem = {
+                                    type: 'conversation.item.create',
+                                    item: {
+                                        type: 'message',
+                                        role: 'user',
+                                        content: [
+                                            {
+                                                type: 'input_text',
+                                                text: 'Politely inform the caller that there are only 5 minutes remaining in this call session.',
+                                            },
+                                        ],
+                                    },
+                                };
+                                assistantSession.send(warningItem);
+                                if (!responseActive) {
+                                    requestResponseQueued(
+                                        'fifty_minute_warning'
+                                    );
+                                }
+                            }
+                        },
+                        50 * 60 * 1000
+                    ); // 50 minutes
+
+                    // Schedule 55-minute graceful hangup
+                    fiftyFiveMinuteHangupTimeout = setTimeout(
+                        () => {
+                            if (!pendingDisconnect && !postHangupSilentMode) {
+                                console.log(
+                                    'Session duration: 55 minutes reached, initiating graceful hangup'
+                                );
+                                const hangupItem = {
+                                    type: 'conversation.item.create',
+                                    item: {
+                                        type: 'message',
+                                        role: 'user',
+                                        content: [
+                                            {
+                                                type: 'input_text',
+                                                text: 'The maximum call duration has been reached. Politely inform the caller and end the call gracefully.',
+                                            },
+                                        ],
+                                    },
+                                };
+                                assistantSession.send(hangupItem);
+                                if (!responseActive) {
+                                    requestResponseQueued(
+                                        'fifty_five_minute_hangup'
+                                    );
+                                }
+                                // Trigger end_call after assistant responds
+                                setTimeout(() => {
+                                    if (!pendingDisconnect) {
+                                        pendingDisconnect = true;
+                                        pendingDisconnectResponseReceived = false;
+                                        if (!pendingDisconnectTimeout) {
+                                            pendingDisconnectTimeout =
+                                                setTimeout(() => {
+                                                    attemptPendingDisconnectClose(
+                                                        {
+                                                            force: true,
+                                                        }
+                                                    );
+                                                }, 10_000);
+                                        }
+                                        console.log(
+                                            'Ending call due to 55-minute limit: pending_disconnect set'
+                                        );
+                                    }
+                                }, 3000); // Give assistant 3 seconds to start speaking
+                            }
+                        },
+                        55 * 60 * 1000
+                    ); // 55 minutes
+
                     // Read caller number from custom parameters passed via TwiML Parameter
                     try {
                         const cp =
@@ -1114,6 +1211,15 @@ export function mediaStreamHandler(connection, req) {
         if (pendingDisconnectTimeout) {
             clearTimeout(pendingDisconnectTimeout);
             pendingDisconnectTimeout = null;
+        }
+        // Clear session duration timers
+        if (fiftyMinuteWarningTimeout) {
+            clearTimeout(fiftyMinuteWarningTimeout);
+            fiftyMinuteWarningTimeout = null;
+        }
+        if (fiftyFiveMinuteHangupTimeout) {
+            clearTimeout(fiftyFiveMinuteHangupTimeout);
+            fiftyFiveMinuteHangupTimeout = null;
         }
         responseActive = false;
         responsePending = false;
