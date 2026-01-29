@@ -126,6 +126,7 @@ export function mediaStreamHandler(connection, req) {
     /** @type {NodeJS.Timeout | null} */
     let waitingMusicStartTimeout = null;
     let toolCallInProgress = false;
+    let pendingToolResponse = false;
     const QUICK_RESPONSE_SUPPRESSION_MS = 2000;
     // ffmpeg removed; we only support WAV files; no tone fallback
     /** @type {Buffer | null} */
@@ -607,6 +608,10 @@ export function mediaStreamHandler(connection, req) {
                 ) {
                     scheduleWaitingMusic('tool_call_pending_response_done');
                 }
+                if (pendingToolResponse && !toolCallInProgress) {
+                    pendingToolResponse = false;
+                    requestToolFollowup('tool_call_response_deferred');
+                }
                 drainResponseQueue('response_done');
             }
         }
@@ -633,6 +638,32 @@ export function mediaStreamHandler(connection, req) {
             return;
         }
         drainResponseQueue(reason);
+    };
+
+    /**
+     * Request a response for tool output, deferring until current response finishes if needed.
+     * @param {string} reason - Reason for logging.
+     */
+    const requestToolFollowup = (reason = 'tool_call_response') => {
+        if (responseActive || responsePending || isCallerSpeaking) {
+            pendingToolResponse = true;
+            if (IS_DEV) {
+                console.log(
+                    'tool response deferred (active/pending/speaking)',
+                    {
+                        reason,
+                        responseActive,
+                        responsePending,
+                        isCallerSpeaking,
+                    }
+                );
+            }
+            return;
+        }
+        requestResponseQueued(reason);
+        if (!responseActive && !isCallerSpeaking) {
+            scheduleWaitingMusic(reason);
+        }
     };
 
     /**
@@ -758,10 +789,7 @@ export function mediaStreamHandler(connection, req) {
                 };
                 toolCallInProgress = false;
                 assistantSession.send(toolResultEvent);
-                requestResponseQueued('tool_call_response');
-                if (!responseActive && !isCallerSpeaking) {
-                    scheduleWaitingMusic('tool_call_response');
-                }
+                requestToolFollowup('tool_call_response');
                 if (IS_DEV)
                     console.log(
                         'LLM tool output sent to OpenAI',
@@ -799,10 +827,7 @@ export function mediaStreamHandler(connection, req) {
             // After end_call, only request a single goodbye response
             const shouldRequest = !pendingDisconnect || toolName === 'end_call';
             if (shouldRequest) {
-                requestResponseQueued('tool_call_response');
-                if (!responseActive && !isCallerSpeaking) {
-                    scheduleWaitingMusic('tool_call_response');
-                }
+                requestToolFollowup('tool_call_response');
             }
             if (IS_DEV)
                 console.log('LLM tool output sent to OpenAI', toolResultEvent);
@@ -933,10 +958,7 @@ export function mediaStreamHandler(connection, req) {
             };
             assistantSession.send(toolErrorEvent);
             if (!pendingDisconnect) {
-                requestResponseQueued('tool_call_error');
-                if (!responseActive && !isCallerSpeaking) {
-                    scheduleWaitingMusic('tool_call_error');
-                }
+                requestToolFollowup('tool_call_error');
             }
         } catch (e) {
             console.error('Failed to send tool error to OpenAI WS:', e);
