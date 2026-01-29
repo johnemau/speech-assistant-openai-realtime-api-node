@@ -68,6 +68,10 @@ export function mediaStreamHandler(connection, req) {
     let latestMediaTimestamp = 0;
     /** @type {string | null} */
     let lastAssistantItem = null;
+    let lastAssistantAudioBytes = 0;
+    let lastAssistantAudioMs = 0;
+    /** @type {string | null} */
+    let lastAssistantAudioItemId = null;
     /** @type {string[]} */
     let markQueue = [];
     /** @type {number | null} */
@@ -365,6 +369,14 @@ export function mediaStreamHandler(connection, req) {
      */
     const handleAssistantOutput = (payload) => {
         if (payload?.type !== 'audio' || !payload?.delta) return;
+        if (payload.itemId && payload.itemId !== lastAssistantAudioItemId) {
+            lastAssistantAudioItemId = payload.itemId;
+            lastAssistantAudioBytes = 0;
+            lastAssistantAudioMs = 0;
+        }
+        const deltaBytes = Buffer.from(payload.delta, 'base64').length;
+        lastAssistantAudioBytes += deltaBytes;
+        lastAssistantAudioMs = Math.floor(lastAssistantAudioBytes / 8);
         if (payload.itemId && payload.itemId !== lastAssistantResponseItemId) {
             lastAssistantResponseItemId = payload.itemId;
             lastAssistantResponseStartedAt = Date.now();
@@ -950,18 +962,40 @@ export function mediaStreamHandler(connection, req) {
                 );
 
             if (lastAssistantItem) {
-                const truncateEvent = {
-                    type: 'conversation.item.truncate',
-                    item_id: lastAssistantItem,
-                    content_index: 0,
-                    audio_end_ms: elapsedTime,
-                };
-                if (showTimingMath)
+                let audioEndMs = null;
+                if (
+                    lastAssistantAudioItemId === lastAssistantItem &&
+                    lastAssistantAudioMs > 0
+                ) {
+                    audioEndMs = Math.min(elapsedTime, lastAssistantAudioMs);
+                }
+                if (
+                    audioEndMs != null &&
+                    Number.isFinite(audioEndMs) &&
+                    audioEndMs > 0
+                ) {
+                    const truncateEvent = {
+                        type: 'conversation.item.truncate',
+                        item_id: lastAssistantItem,
+                        content_index: 0,
+                        audio_end_ms: audioEndMs,
+                    };
+                    if (showTimingMath)
+                        console.log(
+                            'Sending truncation event:',
+                            stringifyDeep(truncateEvent)
+                        );
+                    assistantSession.send(truncateEvent);
+                } else if (IS_DEV) {
                     console.log(
-                        'Sending truncation event:',
-                        stringifyDeep(truncateEvent)
+                        'Skipping truncation; invalid audio_end_ms computed.',
+                        {
+                            lastAssistantItem,
+                            lastAssistantAudioMs,
+                            elapsedTime,
+                        }
                     );
-                assistantSession.send(truncateEvent);
+                }
             }
 
             // Send clear event to Twilio to flush its audio buffer
@@ -976,6 +1010,9 @@ export function mediaStreamHandler(connection, req) {
             // Reset
             markQueue = [];
             lastAssistantItem = null;
+            lastAssistantAudioBytes = 0;
+            lastAssistantAudioMs = 0;
+            lastAssistantAudioItemId = null;
             responseStartTimestampTwilio = null;
         }
     };
