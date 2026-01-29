@@ -1055,6 +1055,15 @@ export function mediaStreamHandler(connection, req) {
                     // If a disconnect was requested, attempt closing once marks drain
                     attemptPendingDisconnectClose();
                     break;
+                case 'stop':
+                    console.log('Twilio stream stop event received');
+                    // Twilio is ending the stream; clean up waiting music and prepare for disconnect
+                    stopWaitingMusic('twilio_stop');
+                    clearWaitingMusicInterval();
+                    // Enter silent mode to allow any in-flight tools to complete
+                    postHangupSilentMode = true;
+                    if (toolCallInProgress) hangupDuringTools = true;
+                    break;
                 default:
                     console.log('Received non-media event:', data.event);
                     break;
