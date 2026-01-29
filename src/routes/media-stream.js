@@ -243,6 +243,8 @@ export function mediaStreamHandler(connection, req) {
                 }
                 waitingMusicOffset = end % waitingMusicUlawBuffer.length;
                 const payload = frame.toString('base64');
+                // Send waiting music audio frame to Twilio Media Streams
+                // This streams PCMU-encoded audio to keep the caller engaged during tool execution
                 connection.send(
                     JSON.stringify({
                         event: 'media',
@@ -359,6 +361,8 @@ export function mediaStreamHandler(connection, req) {
                 streamSid: streamSid,
                 media: { payload: payload.delta },
             };
+            // Send assistant audio response chunk to Twilio Media Streams
+            // This streams OpenAI Realtime API audio output back to the caller in real-time
             connection.send(JSON.stringify(audioDelta));
 
             // First delta from a new response starts the elapsed time counter
@@ -922,6 +926,8 @@ export function mediaStreamHandler(connection, req) {
                 assistantSession.send(truncateEvent);
             }
 
+            // Send clear event to Twilio to flush its audio buffer
+            // This prevents overlapping audio when the caller interrupts the assistant mid-response
             connection.send(
                 JSON.stringify({
                     event: 'clear',
@@ -948,6 +954,8 @@ export function mediaStreamHandler(connection, req) {
                 streamSid: streamSid,
                 mark: { name: 'responsePart' },
             };
+            // Send mark event to Twilio to track when audio playback completes
+            // Twilio echoes this back, allowing us to detect when the caller has heard all audio
             connection.send(JSON.stringify(markEvent));
             markQueue.push('responsePart');
         }
