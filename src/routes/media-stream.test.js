@@ -567,8 +567,10 @@ test('user hangup with no active tools closes OpenAI session immediately', async
         sessionState.onAssistantOutput = options.onAssistantOutput;
         sessionState.onToolCall = options.onToolCall;
         return {
-            openAiWs: { readyState: 1 },
-            send: (payload) => sessionState.sendCalls.push(payload),
+            openAiWs: { readyState: 1, close: () => {} },
+            send: (payload) => {
+                sessionState.sendCalls.push(payload);
+            },
             requestResponse: () => {
                 sessionState.requestResponseCalls += 1;
             },
@@ -627,8 +629,10 @@ test('user hangup with active tools keeps session open until tools complete', as
         sessionState.onAssistantOutput = options.onAssistantOutput;
         sessionState.onToolCall = options.onToolCall;
         return {
-            openAiWs: { readyState: 1 },
-            send: (payload) => sessionState.sendCalls.push(payload),
+            openAiWs: { readyState: 1, close: () => {} },
+            send: (payload) => {
+                sessionState.sendCalls.push(payload);
+            },
             requestResponse: () => {
                 sessionState.requestResponseCalls += 1;
             },
