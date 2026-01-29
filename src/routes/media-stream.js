@@ -448,7 +448,11 @@ export function mediaStreamHandler(connection, req) {
             }
             if (!responseActive) {
                 try {
-                    requestResponseQueued('speech_stopped');
+                    if (responseQueue.length > 0) {
+                        drainResponseQueue('speech_stopped');
+                    } else {
+                        requestResponseQueued('speech_stopped');
+                    }
                     scheduleWaitingMusic('speech_stopped');
                 } catch (e) {
                     console.warn(
@@ -589,19 +593,22 @@ export function mediaStreamHandler(connection, req) {
      * @param {string} reason - Reason for logging.
      */
     const requestResponseQueued = (reason = 'unknown') => {
-        if (responseActive || responsePending) {
+        enqueueResponse(reason);
+        if (responseActive || responsePending || isCallerSpeaking) {
             if (IS_DEV) {
-                console.log('response.create queued (active/pending)', {
-                    reason,
-                    responseActive,
-                    responsePending,
-                });
+                console.log(
+                    'response.create queued (active/pending/speaking)',
+                    {
+                        reason,
+                        responseActive,
+                        responsePending,
+                        isCallerSpeaking,
+                    }
+                );
             }
-            enqueueResponse(reason);
             return;
         }
-        responsePending = true;
-        assistantSession.requestResponse();
+        drainResponseQueue(reason);
     };
 
     /**
@@ -618,6 +625,7 @@ export function mediaStreamHandler(connection, req) {
      */
     const drainResponseQueue = (reason = 'unknown') => {
         if (responseActive || responsePending) return;
+        if (isCallerSpeaking) return;
         if (responseQueue.length === 0) return;
         const next = responseQueue.shift();
         if (!next) return;
@@ -725,8 +733,8 @@ export function mediaStreamHandler(connection, req) {
                 };
                 toolCallInProgress = false;
                 assistantSession.send(toolResultEvent);
-                if (!responseActive) {
-                    requestResponseQueued('tool_call_response');
+                requestResponseQueued('tool_call_response');
+                if (!responseActive && !isCallerSpeaking) {
                     scheduleWaitingMusic('tool_call_response');
                 }
                 if (IS_DEV)
@@ -763,12 +771,11 @@ export function mediaStreamHandler(connection, req) {
             // Do not stop waiting music here; keep it playing until
             // assistant audio resumes or the caller speaks.
             assistantSession.send(toolResultEvent);
-            if (!responseActive) {
-                // After end_call, only request a single goodbye response
-                const shouldRequest =
-                    !pendingDisconnect || toolName === 'end_call';
-                if (shouldRequest) {
-                    requestResponseQueued('tool_call_response');
+            // After end_call, only request a single goodbye response
+            const shouldRequest = !pendingDisconnect || toolName === 'end_call';
+            if (shouldRequest) {
+                requestResponseQueued('tool_call_response');
+                if (!responseActive && !isCallerSpeaking) {
                     scheduleWaitingMusic('tool_call_response');
                 }
             }
@@ -900,9 +907,11 @@ export function mediaStreamHandler(connection, req) {
                 },
             };
             assistantSession.send(toolErrorEvent);
-            if (!responseActive && !pendingDisconnect) {
+            if (!pendingDisconnect) {
                 requestResponseQueued('tool_call_error');
-                scheduleWaitingMusic('tool_call_error');
+                if (!responseActive && !isCallerSpeaking) {
+                    scheduleWaitingMusic('tool_call_error');
+                }
             }
         } catch (e) {
             console.error('Failed to send tool error to OpenAI WS:', e);

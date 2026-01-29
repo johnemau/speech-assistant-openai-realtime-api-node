@@ -405,6 +405,92 @@ test('speech_stopped requests a response when not hanging up', async () => {
     }
 });
 
+test('tool completion queues response after assistant finishes speaking', async () => {
+    setExecuteToolCallForTests(async () => ({ status: 'ok' }));
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+
+    try {
+        mediaStreamHandler(connection, {});
+
+        sessionState.onEvent?.({ type: 'response.created' });
+
+        const before = sessionState.requestResponseCalls;
+
+        await sessionState.onToolCall?.(
+            {
+                type: 'function_call',
+                name: 'update_mic_distance',
+                call_id: 'call-tool-queue-1',
+                arguments: JSON.stringify({ mode: 'far_field' }),
+            },
+            {}
+        );
+
+        assert.equal(
+            sessionState.requestResponseCalls,
+            before,
+            'should not request while assistant is speaking'
+        );
+
+        sessionState.onEvent?.({ type: 'response.done', response: {} });
+
+        assert.equal(
+            sessionState.requestResponseCalls,
+            before + 1,
+            'should request after assistant response completes'
+        );
+    } finally {
+        resetExecuteToolCallForTests();
+        connection.close();
+        cleanup();
+    }
+});
+
+test('tool completion waits until caller stops speaking', async () => {
+    setExecuteToolCallForTests(async () => ({ status: 'ok' }));
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+
+    try {
+        mediaStreamHandler(connection, {});
+
+        sessionState.onEvent?.({ type: 'input_audio_buffer.speech_started' });
+
+        const before = sessionState.requestResponseCalls;
+
+        await sessionState.onToolCall?.(
+            {
+                type: 'function_call',
+                name: 'update_mic_distance',
+                call_id: 'call-tool-queue-2',
+                arguments: JSON.stringify({ mode: 'near_field' }),
+            },
+            {}
+        );
+
+        assert.equal(
+            sessionState.requestResponseCalls,
+            before,
+            'should not request while caller is speaking'
+        );
+
+        sessionState.onEvent?.({ type: 'input_audio_buffer.speech_stopped' });
+
+        assert.equal(
+            sessionState.requestResponseCalls,
+            before + 1,
+            'should request after caller stops speaking'
+        );
+    } finally {
+        resetExecuteToolCallForTests();
+        connection.close();
+        cleanup();
+    }
+});
+
 test('waiting music resumes after interrupt while tool is running', async () => {
     const deferred = createDeferred();
     setExecuteToolCallForTests(async () => deferred.promise);
