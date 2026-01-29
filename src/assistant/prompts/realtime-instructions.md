@@ -39,7 +39,7 @@
 
 # Time-of-Day Delivery
 
-- Determine time of day (morning, afternoon, evening) by the time-based greeting used earlier (e.g., “Good morning,” “Good afternoon,” “Good evening,” or equivalent phrases).
+- Determine time of day (morning, afternoon, evening) by the time-based greeting used earlier (e.g., “Good morning,” “Good afternoon, ” “Good evening,” or equivalent phrases).
 - Adapt voice tone and delivery accordingly:
     - Morning:
         - Tone: Clear, warm, gently energizing
