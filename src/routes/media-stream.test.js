@@ -468,3 +468,207 @@ test('waiting music resumes after interrupt while tool is running', async () => 
         cleanup();
     }
 });
+
+test('user hangup with no active tools closes OpenAI session immediately', async () => {
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+    let sessionClosed = false;
+
+    const sessionModule = await import('../assistant/session.js');
+    sessionModule.setCreateAssistantSessionForTests((options) => {
+        sessionState.onEvent = options.onEvent;
+        sessionState.onAssistantOutput = options.onAssistantOutput;
+        sessionState.onToolCall = options.onToolCall;
+        return {
+            openAiWs: { readyState: 1 },
+            send: (payload) => sessionState.sendCalls.push(payload),
+            requestResponse: () => {
+                sessionState.requestResponseCalls += 1;
+            },
+            updateSession: () => {},
+            close: () => {
+                sessionClosed = true;
+            },
+            clearPendingMessages: () => {},
+        };
+    });
+
+    try {
+        mediaStreamHandler(connection, {});
+
+        // Start the stream
+        connection.handlers.message(
+            JSON.stringify({
+                event: 'start',
+                start: {
+                    streamSid: 'SID-HANGUP-NO-TOOLS',
+                    customParameters: { caller_number: '+12065550100' },
+                },
+            })
+        );
+
+        // User hangs up with no tools in progress
+        connection.handlers.close();
+
+        // OpenAI session should be closed immediately
+        assert.equal(
+            sessionClosed,
+            true,
+            'OpenAI session should close immediately when no tools are running'
+        );
+    } finally {
+        sessionModule.resetCreateAssistantSessionForTests();
+        cleanup();
+    }
+});
+
+test('user hangup with active tools keeps session open until tools complete', async () => {
+    const deferred = createDeferred();
+    setExecuteToolCallForTests(async () => {
+        await deferred.promise;
+        return { status: 'ok' };
+    });
+
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+    let sessionClosed = false;
+
+    const sessionModule = await import('../assistant/session.js');
+    sessionModule.setCreateAssistantSessionForTests((options) => {
+        sessionState.onEvent = options.onEvent;
+        sessionState.onAssistantOutput = options.onAssistantOutput;
+        sessionState.onToolCall = options.onToolCall;
+        return {
+            openAiWs: { readyState: 1 },
+            send: (payload) => sessionState.sendCalls.push(payload),
+            requestResponse: () => {
+                sessionState.requestResponseCalls += 1;
+            },
+            updateSession: () => {},
+            close: () => {
+                sessionClosed = true;
+            },
+            clearPendingMessages: () => {},
+        };
+    });
+
+    try {
+        mediaStreamHandler(connection, {});
+
+        // Start the stream
+        connection.handlers.message(
+            JSON.stringify({
+                event: 'start',
+                start: {
+                    streamSid: 'SID-HANGUP-WITH-TOOLS',
+                    customParameters: { caller_number: '+12065550100' },
+                },
+            })
+        );
+
+        // Start a long-running tool
+        const toolPromise = sessionState.onToolCall?.(
+            {
+                type: 'function_call',
+                name: 'update_mic_distance',
+                call_id: 'call-hangup-1',
+                arguments: JSON.stringify({ mode: 'far_field' }),
+            },
+            {}
+        );
+
+        // User hangs up while tool is running
+        connection.handlers.close();
+
+        // OpenAI session should still be open
+        assert.equal(
+            sessionClosed,
+            false,
+            'OpenAI session should remain open while tools are running'
+        );
+
+        // Complete the tool
+        deferred.resolve();
+        await toolPromise;
+
+        // Simulate response.done after tool completes
+        sessionState.onEvent?.({ type: 'response.done', response: {} });
+
+        // Now OpenAI session should be closed
+        assert.equal(
+            sessionClosed,
+            true,
+            'OpenAI session should close after all tools complete'
+        );
+    } finally {
+        resetExecuteToolCallForTests();
+        sessionModule.resetCreateAssistantSessionForTests();
+        cleanup();
+    }
+});
+
+test('post-hangup completion does not send audio to Twilio', async () => {
+    const deferred = createDeferred();
+    setExecuteToolCallForTests(async () => {
+        await deferred.promise;
+        return { status: 'ok' };
+    });
+
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+
+    try {
+        mediaStreamHandler(connection, {});
+
+        // Start the stream
+        connection.handlers.message(
+            JSON.stringify({
+                event: 'start',
+                start: {
+                    streamSid: 'SID-SILENT-MODE',
+                    customParameters: { caller_number: '+12065550100' },
+                },
+            })
+        );
+
+        // Start a tool
+        const toolPromise = sessionState.onToolCall?.(
+            {
+                type: 'function_call',
+                name: 'update_mic_distance',
+                call_id: 'call-silent-1',
+                arguments: JSON.stringify({ mode: 'far_field' }),
+            },
+            {}
+        );
+
+        const sendsBeforeHangup = connection.sends.length;
+
+        // User hangs up
+        connection.handlers.close();
+
+        // Complete the tool
+        deferred.resolve();
+        await toolPromise;
+
+        // Simulate assistant audio after hangup
+        sessionState.onAssistantOutput?.({
+            type: 'audio',
+            delta: 'AUDIO-AFTER-HANGUP',
+            itemId: 'item-silent-1',
+        });
+
+        // No new audio should be sent to Twilio after hangup
+        assert.equal(
+            connection.sends.length,
+            sendsBeforeHangup,
+            'No audio should be sent to Twilio after user hangs up'
+        );
+    } finally {
+        resetExecuteToolCallForTests();
+        cleanup();
+    }
+});

@@ -477,67 +477,76 @@ export function mediaStreamHandler(connection, req) {
                 // If in silent mode and no tool call is active, send a completion SMS and close OpenAI WS
                 if (
                     postHangupSilentMode &&
-                    hangupDuringTools &&
                     !toolCallInProgress &&
                     !postHangupSmsSent
                 ) {
-                    try {
-                        const toNumber = currentCallerE164;
-                        const envFrom = normalizeUSNumberToE164(
-                            env?.TWILIO_SMS_FROM_NUMBER || ''
-                        );
-                        const fromNumber = currentTwilioNumberE164 || envFrom;
-                        if (twilioClient && toNumber && fromNumber) {
-                            const subjectNote = lastEmailSubject
-                                ? ` Email sent: "${lastEmailSubject}".`
-                                : '';
-                            const body = `Your request is complete.${subjectNote}`;
-                            if (IS_DEV)
-                                console.log('Post-hang-up completion SMS:', {
-                                    from: fromNumber,
-                                    to: toNumber,
-                                    body,
-                                });
-                            twilioClient.messages
-                                .create({
-                                    from: fromNumber,
-                                    to: toNumber,
-                                    body,
-                                })
-                                .then((sendRes) => {
-                                    console.info(
-                                        `posthangup SMS sent: sid=${sendRes?.sid || ''} to=${toNumber || ''}`,
+                    // Send SMS only if tools were in progress during hangup
+                    if (hangupDuringTools) {
+                        try {
+                            const toNumber = currentCallerE164;
+                            const envFrom = normalizeUSNumberToE164(
+                                env?.TWILIO_SMS_FROM_NUMBER || ''
+                            );
+                            const fromNumber =
+                                currentTwilioNumberE164 || envFrom;
+                            if (twilioClient && toNumber && fromNumber) {
+                                const subjectNote = lastEmailSubject
+                                    ? ` Email sent: "${lastEmailSubject}".`
+                                    : '';
+                                const body = `Your request is complete.${subjectNote}`;
+                                if (IS_DEV)
+                                    console.log(
+                                        'Post-hang-up completion SMS:',
                                         {
-                                            event: 'posthangup.sms.sent',
-                                            sid: sendRes?.sid,
+                                            from: fromNumber,
                                             to: toNumber,
+                                            body,
                                         }
                                     );
-                                })
-                                .catch((e) => {
-                                    console.warn(
-                                        'Post-hang-up SMS send error:',
-                                        e?.message || e
-                                    );
-                                });
-                            postHangupSmsSent = true;
-                        } else {
+                                twilioClient.messages
+                                    .create({
+                                        from: fromNumber,
+                                        to: toNumber,
+                                        body,
+                                    })
+                                    .then((sendRes) => {
+                                        console.info(
+                                            `posthangup SMS sent: sid=${sendRes?.sid || ''} to=${toNumber || ''}`,
+                                            {
+                                                event: 'posthangup.sms.sent',
+                                                sid: sendRes?.sid,
+                                                to: toNumber,
+                                            }
+                                        );
+                                    })
+                                    .catch((e) => {
+                                        console.warn(
+                                            'Post-hang-up SMS send error:',
+                                            e?.message || e
+                                        );
+                                    });
+                                postHangupSmsSent = true;
+                            } else {
+                                console.warn(
+                                    `posthangup SMS unavailable: to=${toNumber || ''} from=${fromNumber || ''}`,
+                                    {
+                                        event: 'posthangup.sms.unavailable',
+                                        to: toNumber,
+                                        from: fromNumber,
+                                    }
+                                );
+                            }
+                        } catch (e) {
                             console.warn(
-                                `posthangup SMS unavailable: to=${toNumber || ''} from=${fromNumber || ''}`,
-                                {
-                                    event: 'posthangup.sms.unavailable',
-                                    to: toNumber,
-                                    from: fromNumber,
-                                }
+                                'Post-hang-up SMS error:',
+                                e?.message || e
                             );
                         }
-                    } catch (e) {
-                        console.warn(
-                            'Post-hang-up SMS error:',
-                            e?.message || e
-                        );
                     }
-                    // Close OpenAI WS after completion notification
+                    // Close OpenAI WS after all tools complete (with or without SMS)
+                    console.log(
+                        'Closing OpenAI session: all tools completed after hangup'
+                    );
                     try {
                         if (
                             assistantSession.openAiWs?.readyState ===
@@ -1083,7 +1092,25 @@ export function mediaStreamHandler(connection, req) {
     connection.on('close', () => {
         // Enter silent mode and continue tool execution without streaming audio
         postHangupSilentMode = true;
-        if (toolCallInProgress) hangupDuringTools = true;
+        if (toolCallInProgress) {
+            hangupDuringTools = true;
+            console.log(
+                'Client disconnected with tools in progress; silent mode enabled. Will notify via SMS after completion.'
+            );
+        } else {
+            // No tools in progress; close OpenAI session immediately
+            console.log(
+                'Client disconnected with no active tools; closing OpenAI session immediately.'
+            );
+            try {
+                if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) {
+                    assistantSession.close();
+                }
+            } catch {
+                // noop: websocket may already be closed
+                void 0;
+            }
+        }
         if (pendingDisconnectTimeout) {
             clearTimeout(pendingDisconnectTimeout);
             pendingDisconnectTimeout = null;
@@ -1096,9 +1123,6 @@ export function mediaStreamHandler(connection, req) {
         assistantSession.clearPendingMessages?.();
         stopWaitingMusic('disconnect');
         clearWaitingMusicInterval();
-        console.log(
-            'Client disconnected; silent mode enabled. Continuing tools and will notify via SMS.'
-        );
     });
 }
 
