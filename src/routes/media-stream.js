@@ -41,6 +41,16 @@ function toUtf8String(data) {
 }
 
 /**
+ * @param {NodeJS.Timeout | null} timer - Timer handle to unref.
+ * @returns {void}
+ */
+function unrefTimer(timer) {
+    if (timer && typeof timer.unref === 'function') {
+        timer.unref();
+    }
+}
+
+/**
  * @param {import('ws').WebSocket} connection - WebSocket connection for Twilio media stream.
  * @param {import('fastify').FastifyRequest} req - Incoming upgrade request.
  * @returns {void}
@@ -159,6 +169,7 @@ export function mediaStreamHandler(connection, req) {
             waitingMusicStartTimeout = null;
             if (!isWaitingMusic) startWaitingMusic(reason);
         }, delayMs);
+        unrefTimer(waitingMusicStartTimeout);
     }
 
     function startWaitingMusic(reason = 'unknown') {
@@ -260,6 +271,7 @@ export function mediaStreamHandler(connection, req) {
                     })
                 );
             }, 20);
+            unrefTimer(waitingMusicInterval);
         }
 
         // No fallback tone; only raw PCMU or silence is supported for waiting music.
@@ -705,6 +717,7 @@ export function mediaStreamHandler(connection, req) {
                         pendingDisconnectTimeout = setTimeout(() => {
                             attemptPendingDisconnectClose({ force: true });
                         }, 10_000);
+                        unrefTimer(pendingDisconnectTimeout);
                     }
                     return {
                         status: 'ok',
@@ -1051,6 +1064,7 @@ export function mediaStreamHandler(connection, req) {
                         },
                         50 * 60 * 1000
                     ); // 50 minutes
+                    unrefTimer(fiftyMinuteWarningTimeout);
 
                     // Schedule 55-minute graceful hangup
                     fiftyFiveMinuteHangupTimeout = setTimeout(
@@ -1079,7 +1093,7 @@ export function mediaStreamHandler(connection, req) {
                                     );
                                 }
                                 // Trigger end_call after assistant responds
-                                setTimeout(() => {
+                                const hangupGraceTimeout = setTimeout(() => {
                                     if (!pendingDisconnect) {
                                         pendingDisconnect = true;
                                         pendingDisconnectResponseReceived = false;
@@ -1092,16 +1106,19 @@ export function mediaStreamHandler(connection, req) {
                                                         }
                                                     );
                                                 }, 10_000);
+                                            unrefTimer(pendingDisconnectTimeout);
                                         }
                                         console.log(
                                             'Ending call due to 55-minute limit: pending_disconnect set'
                                         );
                                     }
                                 }, 3000); // Give assistant 3 seconds to start speaking
+                                unrefTimer(hangupGraceTimeout);
                             }
                         },
                         55 * 60 * 1000
                     ); // 55 minutes
+                    unrefTimer(fiftyFiveMinuteHangupTimeout);
 
                     // Read caller number from custom parameters passed via TwiML Parameter
                     try {
