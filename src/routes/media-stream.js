@@ -610,7 +610,7 @@ export function mediaStreamHandler(connection, req) {
                 }
                 if (pendingToolResponse && !toolCallInProgress) {
                     pendingToolResponse = false;
-                    requestToolFollowup('tool_call_response_deferred');
+                    drainResponseQueue('tool_call_response_deferred');
                 }
                 drainResponseQueue('response_done');
             }
@@ -645,6 +645,7 @@ export function mediaStreamHandler(connection, req) {
      * @param {string} reason - Reason for logging.
      */
     const requestToolFollowup = (reason = 'tool_call_response') => {
+        enqueueResponse(reason);
         if (responseActive || responsePending || isCallerSpeaking) {
             pendingToolResponse = true;
             if (IS_DEV) {
@@ -660,7 +661,7 @@ export function mediaStreamHandler(connection, req) {
             }
             return;
         }
-        requestResponseQueued(reason);
+        drainResponseQueue(reason);
         if (!responseActive && !isCallerSpeaking) {
             scheduleWaitingMusic(reason);
         }
