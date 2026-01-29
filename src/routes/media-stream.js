@@ -1106,7 +1106,9 @@ export function mediaStreamHandler(connection, req) {
                                                         }
                                                     );
                                                 }, 10_000);
-                                            unrefTimer(pendingDisconnectTimeout);
+                                            unrefTimer(
+                                                pendingDisconnectTimeout
+                                            );
                                         }
                                         console.log(
                                             'Ending call due to 55-minute limit: pending_disconnect set'
