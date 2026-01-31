@@ -1,4 +1,5 @@
 import { twilioClient } from '../init.js';
+import { IS_DEV } from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 
 export const definition = {
@@ -38,9 +39,23 @@ export async function execute({ args, context }) {
     const destination = normalizeUSNumberToE164(rawDest) || rawDest || null;
     if (!destination) throw new Error('Invalid destination_number.');
 
+    if (IS_DEV) {
+        console.log('transfer_call: updating call', {
+            callSid,
+            destination,
+        });
+    }
+
     await twilioClient.calls(callSid).update({
         twiml: `<Response><Dial>${destination}</Dial></Response>`,
     });
+
+    if (IS_DEV) {
+        console.log('transfer_call: update complete', {
+            callSid,
+            destination,
+        });
+    }
 
     return {
         status: 'ok',
