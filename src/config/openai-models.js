@@ -7,6 +7,7 @@ import { REALTIME_INSTRUCTIONS } from '../assistant/prompts.js';
 import { getToolDefinitions } from '../tools/index.js';
 import { definition as sendEmailDefinition } from '../tools/send-email.js';
 import { definition as getCurrentLocationDefinition } from '../tools/get-current-location.js';
+import { definition as getCurrentTimeDefinition } from '../tools/get-current-time.js';
 import { definition as findCurrentlyNearbyPlaceDefinition } from '../tools/find-currently-nearby-place.js';
 import { definition as placesTextSearchDefinition } from '../tools/places-text-search.js';
 import { definition as directionsDefinition } from '../tools/directions.js';
@@ -97,6 +98,9 @@ const SMS_TOOL_DEFINITIONS = [
     ),
     /** @type {import('openai/resources/responses/responses').Tool} */ (
         getCurrentLocationDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        getCurrentTimeDefinition
     ),
     /** @type {import('openai/resources/responses/responses').Tool} */ (
         findCurrentlyNearbyPlaceDefinition

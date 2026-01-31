@@ -27,6 +27,10 @@ import {
     execute as executeGetCurrentLocation,
 } from './get-current-location.js';
 import {
+    definition as getCurrentTimeDefinition,
+    execute as executeGetCurrentTime,
+} from './get-current-time.js';
+import {
     definition as findCurrentlyNearbyPlaceDefinition,
     execute as executeFindCurrentlyNearbyPlace,
 } from './find-currently-nearby-place.js';
@@ -53,6 +57,7 @@ const toolExecutors = new Map(
         ['end_call', executeEndCall],
         ['transfer_call', executeTransferCall],
         ['get_current_location', executeGetCurrentLocation],
+        ['get_current_time', executeGetCurrentTime],
         ['find_currently_nearby_place', executeFindCurrentlyNearbyPlace],
         ['places_text_search', executePlacesTextSearch],
         ['directions', executeDirections],
@@ -74,6 +79,7 @@ export function getToolDefinitions() {
         endCallDefinition,
         transferCallDefinition,
         getCurrentLocationDefinition,
+        getCurrentTimeDefinition,
         findCurrentlyNearbyPlaceDefinition,
         placesTextSearchDefinition,
         directionsDefinition,

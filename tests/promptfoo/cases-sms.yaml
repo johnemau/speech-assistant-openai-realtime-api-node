@@ -30,6 +30,38 @@
             - type: icontains
               value: '"name":"weather"'
 
+- name: sms-current-time-france
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          What time is it in France?
+  assert:
+      - type: assert-set
+        threshold: 0.5
+        assert:
+            - type: llm-rubric
+              value: Returns the current local time for France with a concise reply.
+            - type: icontains
+              value: '"name":"get_current_time"'
+
+- name: sms-current-time-default
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          What time is it right now?
+  assert:
+      - type: assert-set
+        threshold: 0.5
+        assert:
+            - type: llm-rubric
+              value: Returns the current local time in a concise reply.
+            - type: icontains
+              value: '"name":"get_current_time"'
+
 - name: sms-news-quick
   vars:
       user_prompt: |
