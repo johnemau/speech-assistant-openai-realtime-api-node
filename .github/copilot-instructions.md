@@ -25,6 +25,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
     - `npm run lint:eslint` and `npm run lint:eslint:fix` for ESLint-only runs.
     - `npm run format` for Prettier check-only.
     - `npm run format:write` (or `npm run format:fix`) to write formatting.
+    - Transfer call validation tests live in [src/tools/transfer-call.test.js](../src/tools/transfer-call.test.js) and [src/routes/media-stream.test.js](../src/routes/media-stream.test.js).
 - Prompt evaluations:
     - `npm run pf:eval:realtime-web-search`, `npm run pf:eval:sms`, `npm run pf:eval`, and `npm run pf:view` (configs in [tests/promptfoo](../tests/promptfoo)).
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
@@ -67,6 +68,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
     - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
     - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.
     - `send_sms`: Sends a concise SMS from the call’s Twilio number (or fallback) and returns `sid/status/length` as `function_call_output`.
+    - `transfer_call`: Transfers the live call to a destination number. Accepts US 10‑digit or full E.164; invalid numbers should prompt the caller to correct the input.
     - `update_mic_distance`: Toggles input noise reduction between `near_field` and `far_field`.
     - `end_call`: Ends the Twilio stream after a brief farewell.
 - Dedupe: tool executions tracked by `call_id` to prevent duplicates. Always send `function_call_output` followed by `response.create`.
@@ -97,7 +99,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 ## Conventions & Gotchas
 
 - ESM modules (`"type": "module"`). Use `import` syntax throughout.
-- Phone normalization is US‑focused: inputs normalized to E.164 with a leading `+1` when missing.
+- Phone normalization is US‑focused: inputs normalized to E.164 with a leading `+1` when missing; `transfer_call` accepts US 10‑digit or full E.164 numbers.
 - Allowlist empty → all calls rejected.
 - Startup test email: sends a one‑time message to the PRIMARY user if email is configured.
 - Health endpoint: `/healthz` (not `/health`).

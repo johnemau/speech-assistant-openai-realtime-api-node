@@ -355,6 +355,14 @@ The assistant may include one short, relevant follow‑up question in a voice re
 - Examples: “Would you like me to get the hours of operation?”, “Would you like me to text or email you the article?”, “Would you like me to get additional details?”, “Would you like me to find the business’s phone number?”
 - Behavior: The assistant only asks a follow‑up when helpful; otherwise it omits it. Questions remain brief and voice‑friendly.
 
+### Call Transfer (Tool)
+
+Let the assistant connect the call to a new destination number.
+
+- Tool: `transfer_call(destination_number: string, destination_label?: string)`
+- Validation: accepts US 10‑digit numbers (normalized to +1) and full E.164 numbers (e.g., +442079460958). Invalid inputs are rejected and the assistant asks the caller to correct the number.
+- Announcement: the assistant announces the destination label (when provided) and reads back the exact number before connecting.
+
 ### Speakerphone Mic Distance Toggle
 
 Optimize input noise reduction when the caller switches to/from speakerphone.
