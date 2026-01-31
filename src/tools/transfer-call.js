@@ -13,6 +13,11 @@ export const definition = {
                 description:
                     'E.164 phone number to transfer the caller to (e.g., +1-5-5-5-1-2-3-4-5-6-7).',
             },
+            destination_label: {
+                type: 'string',
+                description:
+                    'Optional person or business name to announce before transferring (e.g., "Best Buy Redmond").',
+            },
         },
         required: ['destination_number'],
     },
@@ -24,12 +29,14 @@ export const definition = {
  * Execute transfer_call tool.
  *
  * @param {object} root0 - Tool inputs.
- * @param {{ destination_number?: string }} root0.args - Tool arguments.
- * @param {{ currentCallSid?: string | null }} root0.context - Tool context.
- * @returns {Promise<{ status: string, call_sid?: string, destination_number?: string }>} Transfer result.
+ * @param {{ destination_number?: string, destination_label?: string }} root0.args - Tool arguments.
+ * @param {{ currentCallSid?: string | null, onTransferCall?: (input: { destination_number: string, destination_label?: string }) => any }} root0.context - Tool context.
+ * @returns {Promise<{ status: string, call_sid?: string, destination_number?: string, destination_label?: string }>} Transfer result.
  */
 export async function execute({ args, context }) {
-    if (!twilioClient) throw new Error('Twilio client unavailable.');
+    const onTransferCall = context?.onTransferCall;
+    if (!onTransferCall && !twilioClient)
+        throw new Error('Twilio client unavailable.');
     const callSid = context?.currentCallSid;
     if (!callSid) throw new Error('Missing CallSid for transfer.');
 
@@ -38,6 +45,28 @@ export async function execute({ args, context }) {
 
     const destination = normalizeUSNumberToE164(rawDest) || rawDest || null;
     if (!destination) throw new Error('Invalid destination_number.');
+    const destinationLabelRaw =
+        typeof args?.destination_label === 'string'
+            ? args.destination_label.trim()
+            : '';
+    const destinationLabel = destinationLabelRaw || undefined;
+
+    if (onTransferCall) {
+        if (IS_DEV) {
+            console.log('transfer_call: deferring update', {
+                callSid,
+                destination,
+                destinationLabel,
+            });
+        }
+        return onTransferCall({
+            destination_number: destination,
+            destination_label: destinationLabel,
+        });
+    }
+
+    const client = twilioClient;
+    if (!client) throw new Error('Twilio client unavailable.');
 
     if (IS_DEV) {
         console.log('transfer_call: updating call', {
@@ -46,7 +75,7 @@ export async function execute({ args, context }) {
         });
     }
 
-    await twilioClient.calls(callSid).update({
+    await client.calls(callSid).update({
         twiml: `<Response><Dial>${destination}</Dial></Response>`,
     });
 
@@ -61,5 +90,6 @@ export async function execute({ args, context }) {
         status: 'ok',
         call_sid: callSid,
         destination_number: destination,
+        destination_label: destinationLabel,
     };
 }

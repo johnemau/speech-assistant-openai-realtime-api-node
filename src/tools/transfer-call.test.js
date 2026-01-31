@@ -6,6 +6,32 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 const init = await import('../init.js');
 const { execute } = await import('./transfer-call.js');
 
+test('transfer-call.execute delegates to onTransferCall', async () => {
+    const res = await execute({
+        args: {
+            destination_number: '(206) 555-0100',
+            destination_label: 'Best Buy Redmond',
+        },
+        context: {
+            currentCallSid: 'CA123',
+            /**
+             * @param {{ destination_number: string, destination_label?: string }} input - Transfer inputs.
+             * @returns {{ status: string, call_sid: string, destination_number: string, destination_label?: string }} Transfer result.
+             */
+            onTransferCall: (input) => ({
+                status: 'pending',
+                call_sid: 'CA123',
+                destination_number: input.destination_number,
+                destination_label: input.destination_label,
+            }),
+        },
+    });
+
+    assert.equal(res.status, 'pending');
+    assert.equal(res.destination_number, '+12065550100');
+    assert.equal(res.destination_label, 'Best Buy Redmond');
+});
+
 test('transfer-call.execute errors without Twilio client', async () => {
     const prevClients = { twilioClient: init.twilioClient };
     init.setInitClients({ twilioClient: null });

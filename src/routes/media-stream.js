@@ -84,6 +84,11 @@ export function mediaStreamHandler(connection, req) {
     let pendingDisconnectTimeout = null;
     // Track whether goodbye playback actually started before closing
     let disconnectAudioStarted = false;
+    /** @type {{ callSid: string, destination_number: string, destination_label?: string } | null} */
+    let pendingTransfer = null;
+    let pendingTransferResponseReceived = false;
+    let pendingTransferAudioStarted = false;
+    let pendingTransferInFlight = false;
 
     // Session duration tracking
     /** @type {NodeJS.Timeout | null} */
@@ -367,6 +372,52 @@ export function mediaStreamHandler(connection, req) {
         }
     }
 
+    async function attemptPendingTransferUpdate({ force = false } = {}) {
+        try {
+            if (!pendingTransfer) return;
+            if (pendingTransferInFlight) return;
+            if (postHangupSilentMode) return;
+            if (!force && !pendingTransferResponseReceived) return;
+            if (!force && !pendingTransferAudioStarted) return;
+            if (!force && markQueue.length !== 0) return;
+
+            const transfer = pendingTransfer;
+            pendingTransferInFlight = true;
+            pendingTransfer = null;
+            pendingTransferResponseReceived = false;
+            pendingTransferAudioStarted = false;
+
+            if (!transfer.callSid || !transfer.destination_number) {
+                console.warn('Pending transfer missing callSid/number.');
+                pendingTransferInFlight = false;
+                return;
+            }
+            if (!twilioClient) {
+                console.warn('Twilio client unavailable for transfer_call.');
+                pendingTransferInFlight = false;
+                return;
+            }
+
+            if (IS_DEV) {
+                console.log('transfer_call: updating Twilio call', {
+                    callSid: transfer.callSid,
+                    destination: transfer.destination_number,
+                });
+            }
+
+            await twilioClient.calls(transfer.callSid).update({
+                twiml: `<Response><Dial>${transfer.destination_number}</Dial></Response>`,
+            });
+        } catch (e) {
+            console.warn(
+                'Attempt to update pending transfer failed:',
+                e?.message || e
+            );
+        } finally {
+            pendingTransferInFlight = false;
+        }
+    }
+
     /**
      * @param {{ type?: string, delta?: string, itemId?: string }} payload - Assistant output event payload.
      */
@@ -389,6 +440,10 @@ export function mediaStreamHandler(connection, req) {
         stopWaitingMusic('assistant_audio');
         // Mark that goodbye audio has started when pending disconnect
         if (pendingDisconnect) disconnectAudioStarted = true;
+        if (pendingTransfer) {
+            pendingTransferAudioStarted = true;
+            void attemptPendingTransferUpdate();
+        }
         if (!postHangupSilentMode) {
             const audioDelta = {
                 event: 'media',
@@ -509,6 +564,10 @@ export function mediaStreamHandler(connection, req) {
             if (!functionCall || functionCall?.type !== 'function_call') {
                 if (pendingDisconnect) {
                     pendingDisconnectResponseReceived = true;
+                }
+                if (pendingTransfer) {
+                    pendingTransferResponseReceived = true;
+                    void attemptPendingTransferUpdate();
                 }
                 // Non-function responses: if we were asked to end the call, close after playback finishes
                 attemptPendingDisconnectClose();
@@ -773,6 +832,38 @@ export function mediaStreamHandler(connection, req) {
                         silent: false,
                     };
                 },
+                /**
+                 * @param {{ destination_number: string, destination_label?: string }} root0 - Transfer inputs.
+                 * @returns {{ status: string, call_sid?: string, destination_number?: string, destination_label?: string }} Transfer result.
+                 */
+                onTransferCall: ({ destination_number, destination_label }) => {
+                    if (!currentCallSid) {
+                        return {
+                            status: 'error',
+                            call_sid: currentCallSid || undefined,
+                        };
+                    }
+                    pendingTransfer = {
+                        callSid: currentCallSid,
+                        destination_number,
+                        destination_label,
+                    };
+                    pendingTransferResponseReceived = false;
+                    pendingTransferAudioStarted = false;
+                    if (IS_DEV) {
+                        console.log('transfer_call: pending transfer queued', {
+                            callSid: currentCallSid,
+                            destination_number,
+                            destination_label,
+                        });
+                    }
+                    return {
+                        status: 'pending',
+                        call_sid: currentCallSid,
+                        destination_number,
+                        destination_label,
+                    };
+                },
             };
 
             if (toolName === 'end_call') {
@@ -828,6 +919,39 @@ export function mediaStreamHandler(connection, req) {
             // Do not stop waiting music here; keep it playing until
             // assistant audio resumes or the caller speaks.
             assistantSession.send(toolResultEvent);
+            if (toolName === 'transfer_call') {
+                const transferOutput = /** @type {any} */ (output);
+                const destinationNumber =
+                    typeof transferOutput?.destination_number === 'string'
+                        ? transferOutput.destination_number
+                        : null;
+                const destinationLabel =
+                    typeof transferOutput?.destination_label === 'string'
+                        ? transferOutput.destination_label
+                        : null;
+                if (destinationNumber) {
+                    const announceText = destinationLabel
+                        ? `Tell the caller: "I found ${destinationLabel}. Connecting you now at ${destinationNumber}." Use the exact number string shown.`
+                        : `Tell the caller: "Connecting you now at ${destinationNumber}." Use the exact number string shown.`;
+                    assistantSession.send({
+                        type: 'conversation.item.create',
+                        item: {
+                            type: 'message',
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'input_text',
+                                    text: announceText,
+                                },
+                            ],
+                        },
+                    });
+                } else if (IS_DEV) {
+                    console.warn(
+                        'transfer_call missing destination_number for announcement.'
+                    );
+                }
+            }
             // After end_call, only request a single goodbye response
             const shouldRequest = !pendingDisconnect || toolName === 'end_call';
             if (shouldRequest) {
@@ -1264,6 +1388,7 @@ export function mediaStreamHandler(connection, req) {
                     }
                     // If a disconnect was requested, attempt closing once marks drain
                     attemptPendingDisconnectClose();
+                    void attemptPendingTransferUpdate();
                     break;
                 case 'stop':
                     console.log('Twilio stream stop event received');
@@ -1273,6 +1398,10 @@ export function mediaStreamHandler(connection, req) {
                     // Enter silent mode to allow any in-flight tools to complete
                     postHangupSilentMode = true;
                     if (toolCallInProgress) hangupDuringTools = true;
+                    pendingTransfer = null;
+                    pendingTransferResponseReceived = false;
+                    pendingTransferAudioStarted = false;
+                    pendingTransferInFlight = false;
                     break;
                 default:
                     console.log('Received non-media event:', data.event);
@@ -1329,6 +1458,10 @@ export function mediaStreamHandler(connection, req) {
         responsePending = false;
         responseQueue.length = 0;
         responseQueueSet.clear();
+        pendingTransfer = null;
+        pendingTransferResponseReceived = false;
+        pendingTransferAudioStarted = false;
+        pendingTransferInFlight = false;
         // Clear any queued messages on close
         assistantSession.clearPendingMessages?.();
         stopWaitingMusic('disconnect');
