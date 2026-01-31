@@ -786,14 +786,15 @@ test('transfer_call invalid number prompts for clarification', async () => {
             {}
         );
 
-        const prompt = sessionState.sendCalls.find(
-            (payload) =>
+        const prompt = sessionState.sendCalls.find((payload) => {
+            const text = String(payload?.item?.content?.[0]?.text || '');
+            return (
                 payload?.item?.type === 'message' &&
                 payload?.item?.role === 'user' &&
-                String(payload?.item?.content?.[0]?.text || '').includes(
-                    'number provided does not look valid'
-                )
-        );
+                text.includes('206-8609') &&
+                text.includes('looks invalid')
+            );
+        });
         assert.ok(prompt, 'Expected clarification prompt for invalid number');
 
         const errorOutput = sessionState.sendCalls.find(

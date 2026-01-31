@@ -1054,6 +1054,13 @@ export function mediaStreamHandler(connection, req) {
                     msg.includes('Invalid destination_number') ||
                     msg.includes('Missing destination_number')
                 ) {
+                    const invalidMatch = msg.match(
+                        /Invalid destination_number:\s*"([\s\S]*)"/
+                    );
+                    const invalidValue = invalidMatch?.[1];
+                    const promptText = invalidValue
+                        ? `The number "${invalidValue}" looks invalid. Ask the caller to provide the correct number to call.`
+                        : 'The number provided does not look valid. Ask the caller to confirm or provide the correct number to call.';
                     assistantSession.send({
                         type: 'conversation.item.create',
                         item: {
@@ -1062,7 +1069,7 @@ export function mediaStreamHandler(connection, req) {
                             content: [
                                 {
                                     type: 'input_text',
-                                    text: 'The number provided does not look valid. Ask the caller to confirm or provide the correct number to call.',
+                                    text: promptText,
                                 },
                             ],
                         },

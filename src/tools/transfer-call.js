@@ -1,6 +1,26 @@
 import { twilioClient } from '../init.js';
 import { IS_DEV } from '../env.js';
-import { normalizeUSNumberToE164 } from '../utils/phone.js';
+const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
+
+/**
+ * Normalize transfer destination to E.164.
+ * Accepts US 10-digit or 11-digit with leading 1, and full E.164 input.
+ *
+ * @param {string} input - Raw phone number input.
+ * @returns {string | null} Normalized E.164 number or null.
+ */
+function normalizeTransferDestination(input) {
+    const trimmed = String(input || '').trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith('+')) {
+        const normalized = '+' + trimmed.replace(/[^0-9]/g, '');
+        return E164_PATTERN.test(normalized) ? normalized : null;
+    }
+    const digits = trimmed.replace(/[^0-9]/g, '');
+    if (digits.length === 10) return `+1${digits}`;
+    if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+    return null;
+}
 
 export const definition = {
     type: 'function',
@@ -43,11 +63,9 @@ export async function execute({ args, context }) {
     const rawDest = String(args?.destination_number || '').trim();
     if (!rawDest) throw new Error('Missing destination_number.');
 
-    const destination = normalizeUSNumberToE164(rawDest) || rawDest || null;
-    if (!destination) throw new Error('Invalid destination_number.');
-    const destinationDigits = destination.replace(/\D/g, '');
-    if (destination.startsWith('+1') && destinationDigits.length !== 11) {
-        throw new Error('Invalid destination_number.');
+    const destination = normalizeTransferDestination(rawDest);
+    if (!destination) {
+        throw new Error(`Invalid destination_number: "${rawDest}"`);
     }
     const destinationLabelRaw =
         typeof args?.destination_label === 'string'

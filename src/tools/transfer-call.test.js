@@ -90,6 +90,32 @@ test('transfer-call.execute validates destination_number', async () => {
                 }),
             /Invalid destination_number/
         );
+        await assert.rejects(
+            () =>
+                execute({
+                    args: { destination_number: '+123' },
+                    context: { currentCallSid: 'CA123' },
+                }),
+            /Invalid destination_number/
+        );
+    } finally {
+        init.setInitClients(prevClients);
+    }
+});
+
+test('transfer-call.execute accepts E.164 destination_number', async () => {
+    const twilioClient = {
+        calls: () => ({ update: async () => ({}) }),
+    };
+    const prevClients = { twilioClient: init.twilioClient };
+    init.setInitClients({ twilioClient });
+    try {
+        const res = await execute({
+            args: { destination_number: '+442079460958' },
+            context: { currentCallSid: 'CA123' },
+        });
+
+        assert.equal(res.destination_number, '+442079460958');
     } finally {
         init.setInitClients(prevClients);
     }
