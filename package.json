@@ -20,7 +20,11 @@
         "test:integration": "node --test tests/integration/**/*.test.js",
         "convert:wav": "node scripts/convert-wav.mjs",
         "pf:eval:realtime-web-search": "npx promptfoo eval -c tests/promptfoo/promptfooconfig.realtime-web-search.mjs",
+        "pf:realtime-web-search": "npm run pf:eval:realtime-web-search",
+        "pf:realtime-search": "npm run pf:eval:realtime-web-search",
+        "pf:search": "npm run pf:eval:realtime-web-search",
         "pf:eval:sms": "npx promptfoo eval -c tests/promptfoo/promptfooconfig.sms.mjs",
+        "pf:sms": "npm run pf:eval:sms",
         "pf": "npm run pf:eval",
         "pf:eval": "npm run pf:eval:realtime-web-search && npm run pf:eval:sms",
         "pf:view": "promptfoo view"
