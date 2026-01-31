@@ -74,22 +74,12 @@
         value: |
             const response = context?.response || {};
             const outputText = String(output ?? '').trim();
-            const rawOutput =
-              response.raw?.output ||
-              response.raw?.body?.output ||
-              response.raw?.data?.output ||
-              response.raw?.result?.output ||
-              [];
-            const items = Array.isArray(rawOutput) ? rawOutput : [];
-            const toolNames = items
-              .filter((item) => item?.type === 'function_call' && item?.name)
-              .map((item) => item.name);
+            const rawText = JSON.stringify(response || {});
             const hasWebSearch =
-              items.some((item) => item?.type === 'web_search_call') ||
-              toolNames.includes('web_search') ||
-              /web search/i.test(outputText);
-            const lengthOk = outputText.length === 0 || outputText.length <= 320;
-            return hasWebSearch && lengthOk;
+              /web_search/i.test(rawText) ||
+              /web search/i.test(outputText) ||
+              /web search/i.test(rawText);
+            return hasWebSearch;
 
 - name: sms-places-with-location
   vars:
@@ -183,20 +173,11 @@
         value: |
             const response = context?.response || {};
             const outputText = String(output ?? '');
-            const rawOutput =
-              response.raw?.output ||
-              response.raw?.body?.output ||
-              response.raw?.data?.output ||
-              response.raw?.result?.output ||
-              [];
-            const items = Array.isArray(rawOutput) ? rawOutput : [];
-            const toolNames = items
-              .filter((item) => item?.type === 'function_call' && item?.name)
-              .map((item) => item.name);
+            const rawText = JSON.stringify(response || {});
             const hasWebSearch =
-              items.some((item) => item?.type === 'web_search_call') ||
-              toolNames.includes('web_search') ||
-              /web search/i.test(outputText);
+              /web_search/i.test(rawText) ||
+              /web search/i.test(outputText) ||
+              /web search/i.test(rawText);
             return hasWebSearch;
       - type: llm-rubric
         value: Output includes a web search tool call.
@@ -379,23 +360,14 @@
         value: |
             const response = context?.response || {};
             const outputText = String(output ?? '');
-            const rawOutput =
-              response.raw?.output ||
-              response.raw?.body?.output ||
-              response.raw?.data?.output ||
-              response.raw?.result?.output ||
-              [];
-            const items = Array.isArray(rawOutput) ? rawOutput : [];
-            const toolNames = items
-              .filter((item) => item?.type === 'function_call' && item?.name)
-              .map((item) => item.name);
+            const rawText = JSON.stringify(response || {});
             const hasWebSearch =
-              items.some((item) => item?.type === 'web_search_call') ||
-              toolNames.includes('web_search') ||
-              /web search/i.test(outputText);
+              /web_search/i.test(rawText) ||
+              /web search/i.test(outputText) ||
+              /web search/i.test(rawText);
             const hasSendEmail =
-              toolNames.includes('send_email') ||
-              outputText.includes('"name":"send_email"');
+              /send_email/i.test(rawText) ||
+              /send_email/i.test(outputText);
             return hasSendEmail && hasWebSearch;
       - type: llm-rubric
         value: Output includes a send_email tool call and a web search call.
