@@ -66,14 +66,14 @@ export async function execute({ args, context }) {
  _/[] []\\_\n+|_      _|
   O----O`,
         String.raw`  .-.
- /   \\
-|     |
- \\   /
-  `-'
-  /|\\
- / | \\
-  / \\
- /   \\`,
+     /   \
+    |     |
+     \\   /
+      '-'
+      /|\\
+     / | \\
+      / \\
+     /   \\`,
     ];
 
     const asciiArt =
