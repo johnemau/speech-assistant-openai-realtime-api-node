@@ -133,7 +133,14 @@ test('send-email.execute sends email for primary caller', async () => {
         assert.equal(opts.from, 'from@example.com');
         assert.equal(opts.to, 'to@example.com');
         assert.equal(opts.subject, 'Hello');
-        assert.equal(opts.html, '<p>Body</p>');
+        assert.ok(
+            opts.html.startsWith('<p>Body</p>'),
+            'email body should include original HTML'
+        );
+        assert.ok(
+            opts.html.includes('<pre>'),
+            'email body should include ASCII art'
+        );
         assert.equal(opts.headers['X-From-Ai-Assistant'], 'true');
     } finally {
         envModule.PRIMARY_CALLERS_SET.clear();
