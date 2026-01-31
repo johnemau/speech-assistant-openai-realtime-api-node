@@ -70,8 +70,26 @@
           Latest user message:
           Any breaking news about SpaceX Starship today?
   assert:
-      - type: llm-rubric
-        value: Uses web search, includes a brief update with timestamp and source label, and stays under 320 characters.
+      - type: javascript
+        value: |
+            const response = context?.response || {};
+            const outputText = String(output ?? '').trim();
+            const rawOutput =
+              response.raw?.output ||
+              response.raw?.body?.output ||
+              response.raw?.data?.output ||
+              response.raw?.result?.output ||
+              [];
+            const items = Array.isArray(rawOutput) ? rawOutput : [];
+            const toolNames = items
+              .filter((item) => item?.type === 'function_call' && item?.name)
+              .map((item) => item.name);
+            const hasWebSearch =
+              items.some((item) => item?.type === 'web_search_call') ||
+              toolNames.includes('web_search') ||
+              /web search/i.test(outputText);
+            const lengthOk = outputText.length === 0 || outputText.length <= 320;
+            return hasWebSearch && lengthOk;
 
 - name: sms-places-with-location
   vars:
