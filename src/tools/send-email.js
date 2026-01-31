@@ -3,6 +3,7 @@ import {
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
     ALLOW_SEND_EMAIL,
+    IS_DEV,
 } from '../env.js';
 
 export const definition = {
@@ -135,7 +136,26 @@ export async function execute({ args, context }) {
         },
     };
 
+    if (IS_DEV) {
+        console.log('send_email: senderTransport.sendMail request', {
+            from: mailOptions.from,
+            to: mailOptions.to,
+            subject: mailOptions.subject,
+            htmlLength: String(mailOptions.html || '').length,
+            hasAsciiArt: bodyHtmlWithArt.includes('<pre>'),
+        });
+    }
     const info = await senderTransport.sendMail(mailOptions);
+    if (IS_DEV) {
+        console.log('send_email: senderTransport.sendMail response', {
+            messageId: info?.messageId,
+            accepted: info?.accepted,
+            rejected: info?.rejected,
+            response: info?.response,
+            envelope: info?.envelope,
+            raw: info,
+        });
+    }
     return {
         messageId: info.messageId,
         accepted: info.accepted,
