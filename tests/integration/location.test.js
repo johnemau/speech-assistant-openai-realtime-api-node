@@ -117,6 +117,25 @@ test('locationFromLatLng integration', async () => {
     assert.equal(typeof result.timezoneId, 'string');
 });
 
+test('locationFromLatLng integration returns timezone payload', async () => {
+    const { locationFromLatLng } = await loadLocationModule();
+
+    const result = await locationFromLatLng({
+        lat: 47.6205,
+        lng: -122.3493,
+        includeTimezone: true,
+    });
+
+    assert.ok(result.timezone, 'Expected timezone payload');
+    const timezone = /** @type {any} */ (result.timezone);
+    if (timezone?.status != null) {
+        assert.equal(typeof timezone.status, 'string');
+    }
+    assert.equal(typeof result.timezoneId, 'string');
+    const timezoneId = /** @type {string} */ (result.timezoneId);
+    assert.ok(timezoneId.length > 0);
+});
+
 test('locationFromLatLng integration handles invalid key response', async () => {
     process.env.GOOGLE_MAPS_API_KEY = 'invalid-key-for-integration-test';
     const { locationFromLatLng } = await loadLocationModule();
