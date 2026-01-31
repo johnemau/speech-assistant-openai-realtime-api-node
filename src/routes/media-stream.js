@@ -90,6 +90,8 @@ export function mediaStreamHandler(connection, req) {
     let pendingTransferAudioStarted = false;
     let pendingTransferInFlight = false;
     let pendingTransferAnnouncementRequested = false;
+    /** @type {string | null} */
+    let pendingTransferAnnouncementResponseId = null;
     /** @type {NodeJS.Timeout | null} */
     let pendingTransferTimeout = null;
 
@@ -517,10 +519,42 @@ export function mediaStreamHandler(connection, req) {
         if (response.type === 'response.created') {
             responseActive = true;
             responsePending = false;
+            if (
+                pendingTransfer &&
+                pendingTransferAnnouncementRequested &&
+                !pendingTransferAnnouncementResponseId
+            ) {
+                const createdResponseId =
+                    response?.response?.id || response?.id || null;
+                if (createdResponseId) {
+                    pendingTransferAnnouncementResponseId = createdResponseId;
+                    if (IS_DEV) {
+                        console.log(
+                            'transfer_call: announcement response created',
+                            {
+                                responseId: createdResponseId,
+                            }
+                        );
+                    }
+                }
+            }
         }
         if (response.type === 'response.done') {
             responseActive = false;
             responsePending = false;
+            if (pendingTransferAnnouncementResponseId) {
+                const doneResponseId =
+                    response?.response?.id || response?.id || null;
+                if (
+                    doneResponseId &&
+                    doneResponseId === pendingTransferAnnouncementResponseId
+                ) {
+                    pendingTransferResponseReceived = true;
+                    pendingTransferAnnouncementRequested = false;
+                    pendingTransferAnnouncementResponseId = null;
+                    void attemptPendingTransferUpdate();
+                }
+            }
 
             if (initialGreetingRequested && !initialTurnDetectionUpdated) {
                 initialTurnDetectionUpdated = true;
@@ -598,11 +632,6 @@ export function mediaStreamHandler(connection, req) {
             if (!functionCall || functionCall?.type !== 'function_call') {
                 if (pendingDisconnect) {
                     pendingDisconnectResponseReceived = true;
-                }
-                if (pendingTransfer && pendingTransferAnnouncementRequested) {
-                    pendingTransferResponseReceived = true;
-                    pendingTransferAnnouncementRequested = false;
-                    void attemptPendingTransferUpdate();
                 }
                 // Non-function responses: if we were asked to end the call, close after playback finishes
                 attemptPendingDisconnectClose();
@@ -888,7 +917,7 @@ export function mediaStreamHandler(connection, req) {
                     if (!pendingTransferTimeout) {
                         pendingTransferTimeout = setTimeout(() => {
                             void attemptPendingTransferUpdate({ force: true });
-                        }, 15_000);
+                        }, 5_000);
                         unrefTimer(pendingTransferTimeout);
                     }
                     if (IS_DEV) {
@@ -1447,6 +1476,7 @@ export function mediaStreamHandler(connection, req) {
                     pendingTransferAudioStarted = false;
                     pendingTransferInFlight = false;
                     pendingTransferAnnouncementRequested = false;
+                    pendingTransferAnnouncementResponseId = null;
                     if (pendingTransferTimeout) {
                         clearTimeout(pendingTransferTimeout);
                         pendingTransferTimeout = null;
@@ -1512,6 +1542,7 @@ export function mediaStreamHandler(connection, req) {
         pendingTransferAudioStarted = false;
         pendingTransferInFlight = false;
         pendingTransferAnnouncementRequested = false;
+        pendingTransferAnnouncementResponseId = null;
         if (pendingTransferTimeout) {
             clearTimeout(pendingTransferTimeout);
             pendingTransferTimeout = null;
