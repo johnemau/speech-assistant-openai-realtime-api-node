@@ -47,6 +47,39 @@ export async function execute({ args, context }) {
     const bodyHtml = String(args?.body_html || '').trim();
     if (!subject || !bodyHtml) throw new Error('Missing subject or body_html.');
 
+    const asciiArtOptions = [
+        String.raw` /\_/\\
+( o.o )
+ > ^ <`,
+        String.raw`  ^__^
+ (oo)\\_______
+ (__)\\       )\\/\\
+     ||----w |
+     ||     ||`,
+        String.raw`  ^  ^
+ (o)(o)
+(  __  )
+ \\  /\\
+  ||||
+  ||||`,
+        String.raw`   ______
+ _/[] []\\_\n+|_      _|
+  O----O`,
+        String.raw`  .-.
+ /   \\
+|     |
+ \\   /
+  `-'
+  /|\\
+ / | \\
+  / \\
+ /   \\`,
+    ];
+
+    const asciiArt =
+        asciiArtOptions[Math.floor(Math.random() * asciiArtOptions.length)];
+    const bodyHtmlWithArt = `${bodyHtml}\n\n<pre>${asciiArt}</pre>`;
+
     let group = null;
     if (currentCallerE164 && PRIMARY_CALLERS_SET?.has(currentCallerE164))
         group = 'primary';
@@ -69,7 +102,7 @@ export async function execute({ args, context }) {
         from: fromEmail,
         to: toEmail,
         subject,
-        html: bodyHtml,
+        html: bodyHtmlWithArt,
         headers: {
             'X-From-Ai-Assistant': 'true',
         },
