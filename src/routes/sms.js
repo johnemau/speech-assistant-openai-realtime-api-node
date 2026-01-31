@@ -9,8 +9,7 @@ import {
 } from '../utils/sms.js';
 import { IS_DEV, PRIMARY_CALLERS_SET, SECONDARY_CALLERS_SET } from '../env.js';
 import {
-    buildWebSearchTool,
-    DEFAULT_SMS_USER_LOCATION,
+    buildSmsResponseConfig,
     GPT_5_2_MODEL,
 } from '../config/openai-models.js';
 import { stringifyDeep } from '../utils/format.js';
@@ -18,68 +17,8 @@ import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
 import { safeParseToolArguments } from '../assistant/session.js';
 import { executeToolCall } from '../tools/index.js';
-import { definition as sendEmailDefinition } from '../tools/send-email.js';
-import { definition as getCurrentLocationDefinition } from '../tools/get-current-location.js';
-import { definition as findCurrentlyNearbyPlaceDefinition } from '../tools/find-currently-nearby-place.js';
-import { definition as placesTextSearchDefinition } from '../tools/places-text-search.js';
-import { definition as directionsDefinition } from '../tools/directions.js';
-import { definition as weatherDefinition } from '../tools/weather.js';
-
-/** @type {Array<import('openai/resources/responses/responses').Tool>} */
-const SMS_TOOL_DEFINITIONS = [
-    /** @type {import('openai/resources/responses/responses').Tool} */ (
-        sendEmailDefinition
-    ),
-    /** @type {import('openai/resources/responses/responses').Tool} */ (
-        getCurrentLocationDefinition
-    ),
-    /** @type {import('openai/resources/responses/responses').Tool} */ (
-        findCurrentlyNearbyPlaceDefinition
-    ),
-    /** @type {import('openai/resources/responses/responses').Tool} */ (
-        placesTextSearchDefinition
-    ),
-    /** @type {import('openai/resources/responses/responses').Tool} */ (
-        directionsDefinition
-    ),
-    /** @type {import('openai/resources/responses/responses').Tool} */ (
-        weatherDefinition
-    ),
-];
 
 const MAX_SMS_TOOL_ROUNDS = 6;
-
-/**
- * Build tool config for SMS responses.
- * @returns {{ tools: Array<import('openai/resources/responses/responses').Tool>, tool_choice: 'auto' }} Tool config.
- */
-function buildSmsToolConfig() {
-    /** @type {{ tools: Array<import('openai/resources/responses/responses').Tool>, tool_choice: 'auto' }} */
-    const config = {
-        tools: [
-            /** @type {import('openai/resources/responses/responses').Tool} */ (
-                buildWebSearchTool({
-                    userLocation: DEFAULT_SMS_USER_LOCATION,
-                })
-            ),
-            ...SMS_TOOL_DEFINITIONS,
-        ],
-        tool_choice: 'auto',
-    };
-    if (IS_DEV) {
-        const toolNames = config.tools.map((tool) =>
-            tool?.type === 'function'
-                ? /** @type {any} */ (tool)?.function?.name || ''
-                : tool?.type || ''
-        );
-        console.log('sms tool config built', {
-            toolCount: config.tools.length,
-            toolNames,
-            toolChoice: config.tool_choice,
-        });
-    }
-    return config;
-}
 
 /**
  * Execute a tool call safely for SMS.
@@ -146,13 +85,7 @@ async function executeSmsToolCallSafe({ name, arguments: rawArgs, context }) {
  */
 async function runSmsResponseWithTools({ input, instructions, context }) {
     /** @type {import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming} */
-    const baseConfig = {
-        model: GPT_5_2_MODEL,
-        reasoning: { effort: /** @type {'high'} */ ('high') },
-        truncation: 'auto',
-        instructions,
-        ...buildSmsToolConfig(),
-    };
+    const baseConfig = buildSmsResponseConfig({ instructions });
 
     if (IS_DEV) {
         console.log('sms response: start', {

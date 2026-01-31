@@ -85,3 +85,198 @@
   assert:
       - type: llm-rubric
         value: Provides at least one groomer with contact details and notes price range when available, or asks a brief follow-up if needed.
+
+- name: sms-tool-web-search-fact
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Who won the last Super Bowl and what was the score?
+  assert:
+      - type: javascript
+        value: |
+            const response = context?.response || {};
+            const outputText = String(output ?? '');
+            const responseOutput =
+                response.output ||
+                response.body?.output ||
+                response.data?.output ||
+                response.result?.output ||
+                [];
+            const items = Array.isArray(responseOutput) ? responseOutput : [];
+            const toolNames = items
+                .filter((item) => item?.type === 'function_call' && item?.name)
+                .map((item) => item.name);
+            return toolNames.includes('web_search');
+      - type: llm-rubric
+        value: Uses web search, includes the winner and final score with a source label, and stays under 320 characters.
+
+- name: sms-tool-places-explicit-location
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Find sushi restaurants near Union Square in San Francisco.
+  assert:
+      - type: javascript
+        value: |
+            const response = context?.response || {};
+            const outputText = String(output ?? '');
+            const responseOutput =
+                response.output ||
+                response.body?.output ||
+                response.data?.output ||
+                response.result?.output ||
+                [];
+            const items = Array.isArray(responseOutput) ? responseOutput : [];
+            const toolNames = items
+                .filter((item) => item?.type === 'function_call' && item?.name)
+                .map((item) => item.name);
+            return (
+                toolNames.includes('places_text_search') &&
+                toolNames.includes('web_search')
+            );
+      - type: llm-rubric
+        value: Provides at least one sushi spot near Union Square with name and address; phone if available.
+
+- name: sms-tool-near-me-ambiguity
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Find a nearby urgent care clinic open now.
+  assert:
+      - type: javascript
+        value: |
+            const response = context?.response || {};
+            const outputText = String(output ?? '');
+            const responseOutput =
+                response.output ||
+                response.body?.output ||
+                response.data?.output ||
+                response.result?.output ||
+                [];
+            const items = Array.isArray(responseOutput) ? responseOutput : [];
+            const toolNames = items
+                .filter((item) => item?.type === 'function_call' && item?.name)
+                .map((item) => item.name);
+            const wantsLocation = /where are you|your location|what(?:'s| is) your (?:city|zip|zipcode)|which (?:city|area)|what area|what(?:'s| is) your location/i.test(
+                outputText
+            );
+            const hasLocationTools =
+                toolNames.includes('get_current_location') &&
+                toolNames.includes('places_text_search') &&
+                toolNames.includes('web_search');
+            return hasLocationTools || wantsLocation;
+      - type: llm-rubric
+        value: Asks for the user's location when unclear, or provides a nearby open urgent care with hours and phone if location is known.
+
+- name: sms-tool-nearby-open-now
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Closest gas station open now.
+  assert:
+      - type: javascript
+        value: |
+            const response = context?.response || {};
+            const outputText = String(output ?? '');
+            const responseOutput =
+                response.output ||
+                response.body?.output ||
+                response.data?.output ||
+                response.result?.output ||
+                [];
+            const items = Array.isArray(responseOutput) ? responseOutput : [];
+            const toolNames = items
+                .filter((item) => item?.type === 'function_call' && item?.name)
+                .map((item) => item.name);
+            return toolNames.includes('find_currently_nearby_place');
+      - type: llm-rubric
+        value: Provides the closest open gas station with hours and address; phone if available.
+
+- name: sms-tool-directions-destination
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Directions to the Portland Art Museum.
+  assert:
+      - type: javascript
+        value: |
+            const response = context?.response || {};
+            const outputText = String(output ?? '');
+            const responseOutput =
+                response.output ||
+                response.body?.output ||
+                response.data?.output ||
+                response.result?.output ||
+                [];
+            const items = Array.isArray(responseOutput) ? responseOutput : [];
+            const toolNames = items
+                .filter((item) => item?.type === 'function_call' && item?.name)
+                .map((item) => item.name);
+            return toolNames.includes('directions');
+      - type: llm-rubric
+        value: Provides concise directions or asks for a starting point if missing.
+
+- name: sms-tool-weather-now
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          What's the current weather in Miami Beach?
+  assert:
+      - type: javascript
+        value: |
+            const response = context?.response || {};
+            const outputText = String(output ?? '');
+            const responseOutput =
+                response.output ||
+                response.body?.output ||
+                response.data?.output ||
+                response.result?.output ||
+                [];
+            const items = Array.isArray(responseOutput) ? responseOutput : [];
+            const toolNames = items
+                .filter((item) => item?.type === 'function_call' && item?.name)
+                .map((item) => item.name);
+            return toolNames.includes('weather');
+      - type: llm-rubric
+        value: Uses weather data, includes current conditions with a timestamp and a source label, and no URLs.
+
+- name: sms-tool-send-email-fact
+  vars:
+      user_prompt: |
+          Recent SMS thread (last 12 hours):
+
+          Latest user message:
+          Email me the current price of Bitcoin.
+  assert:
+      - type: javascript
+        value: |
+            const response = context?.response || {};
+            const outputText = String(output ?? '');
+            const responseOutput =
+                response.output ||
+                response.body?.output ||
+                response.data?.output ||
+                response.result?.output ||
+                [];
+            const items = Array.isArray(responseOutput) ? responseOutput : [];
+            const toolNames = items
+                .filter((item) => item?.type === 'function_call' && item?.name)
+                .map((item) => item.name);
+            return (
+                toolNames.includes('send_email') &&
+                toolNames.includes('web_search')
+            );
+      - type: llm-rubric
+        value: Confirms the email will be sent and summarizes the current price with a source label; no URLs.

@@ -5,6 +5,12 @@
 
 import { REALTIME_INSTRUCTIONS } from '../assistant/prompts.js';
 import { getToolDefinitions } from '../tools/index.js';
+import { definition as sendEmailDefinition } from '../tools/send-email.js';
+import { definition as getCurrentLocationDefinition } from '../tools/get-current-location.js';
+import { definition as findCurrentlyNearbyPlaceDefinition } from '../tools/find-currently-nearby-place.js';
+import { definition as placesTextSearchDefinition } from '../tools/places-text-search.js';
+import { definition as directionsDefinition } from '../tools/directions.js';
+import { definition as weatherDefinition } from '../tools/weather.js';
 import {
     GPT_5_2_MODEL,
     DEFAULT_WEB_SEARCH_USER_LOCATION,
@@ -83,3 +89,61 @@ export {
     buildSearchModelConfig,
     buildWebSearchResponseParams,
 };
+
+/** @type {Array<import('openai/resources/responses/responses').Tool>} */
+const SMS_TOOL_DEFINITIONS = [
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        sendEmailDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        getCurrentLocationDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        findCurrentlyNearbyPlaceDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        placesTextSearchDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        directionsDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        weatherDefinition
+    ),
+];
+
+/**
+ * Build tool config for SMS responses.
+ *
+ * @returns {{ tools: Array<import('openai/resources/responses/responses').Tool>, tool_choice: 'auto' }} Tool config.
+ */
+export function buildSmsToolConfig() {
+    return {
+        tools: [
+            /** @type {import('openai/resources/responses/responses').Tool} */ (
+                buildWebSearchTool({
+                    userLocation: DEFAULT_SMS_USER_LOCATION,
+                })
+            ),
+            ...SMS_TOOL_DEFINITIONS,
+        ],
+        tool_choice: 'auto',
+    };
+}
+
+/**
+ * Build shared model config for SMS requests (excluding input).
+ *
+ * @param {object} options - Request inputs.
+ * @param {string} options.instructions - System/tool instructions.
+ * @returns {Omit<import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming, 'input'>} Response API config.
+ */
+export function buildSmsResponseConfig({ instructions }) {
+    return {
+        model: GPT_5_2_MODEL,
+        reasoning: { effort: 'high' },
+        truncation: 'auto',
+        instructions,
+        ...buildSmsToolConfig(),
+    };
+}
