@@ -555,6 +555,69 @@ test('waiting music resumes after interrupt while tool is running', async () => 
     }
 });
 
+test('waiting music stops on silent tool follow-up response.done', async () => {
+    const deferred = createDeferred();
+    setExecuteToolCallForTests(async () => {
+        await deferred.promise;
+        return { status: 'ok' };
+    });
+
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+
+    try {
+        mediaStreamHandler(connection, {});
+        connection.handlers.message(
+            JSON.stringify({
+                event: 'start',
+                start: {
+                    streamSid: 'SID-WAIT-SILENT',
+                    customParameters: { caller_number: '+12065550100' },
+                },
+            })
+        );
+
+        sessionState.onEvent?.({
+            type: 'response.created',
+            response: { id: 'resp-active-1' },
+        });
+
+        const toolPromise = sessionState.onToolCall?.(
+            {
+                type: 'function_call',
+                name: 'update_mic_distance',
+                call_id: 'call-wait-silent-1',
+                arguments: JSON.stringify({ mode: 'far_field' }),
+            },
+            {}
+        );
+
+        const started = await waitForSendIncrease(connection, 0, 2000);
+        assert.ok(
+            started,
+            'waiting music should send media while tool is running'
+        );
+
+        deferred.resolve();
+        await toolPromise;
+
+        const sendsBeforeDone = connection.sends.length;
+        sessionState.onEvent?.({ type: 'response.done', response: {} });
+        await delay(200);
+
+        assert.equal(
+            connection.sends.length,
+            sendsBeforeDone,
+            'waiting music should stop on silent follow-up response.done'
+        );
+    } finally {
+        resetExecuteToolCallForTests();
+        connection.close();
+        cleanup();
+    }
+});
+
 test('user hangup with no active tools closes OpenAI session immediately', async () => {
     const { mediaStreamHandler, sessionState, cleanup } =
         await loadMediaStreamHandler();

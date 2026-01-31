@@ -773,6 +773,7 @@ export function mediaStreamHandler(connection, req) {
                     scheduleWaitingMusic('tool_call_pending_response_done');
                 }
                 if (pendingToolResponse && !isToolCallInProgress()) {
+                    stopWaitingMusic('tool_followup_done');
                     pendingToolResponse = false;
                     drainResponseQueue('tool_call_response_deferred');
                 }
