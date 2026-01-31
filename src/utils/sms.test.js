@@ -5,6 +5,7 @@ import {
     extractSmsRequest,
     mergeAndSortMessages,
     buildSmsThreadText,
+    buildSmsContextSection,
     buildSmsPrompt,
 } from './sms.js';
 
@@ -56,11 +57,20 @@ test('sms.buildSmsThreadText formats labels and limits', () => {
     assert.ok(!text.includes('Hello'));
 });
 
-test('sms.buildSmsPrompt includes thread and latest message', () => {
+test('sms.buildSmsPrompt includes context, thread, and latest message', () => {
     const out = buildSmsPrompt({
         threadText: 'Thread',
         latestMessage: 'Latest',
+        contextSection: 'Current time: Test\nEstimated location: Test',
     });
+    assert.ok(out.includes('Current time:'));
+    assert.ok(out.includes('Estimated location:'));
     assert.ok(out.includes('Thread'));
     assert.ok(out.includes('Latest'));
+});
+
+test('sms.buildSmsContextSection returns labeled context', async () => {
+    const out = await buildSmsContextSection({ callerE164: null });
+    assert.ok(out.includes('Current time:'));
+    assert.ok(out.includes('Estimated location:'));
 });

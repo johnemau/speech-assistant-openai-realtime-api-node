@@ -3,6 +3,7 @@ import { SMS_REPLY_INSTRUCTIONS } from '../assistant/prompts.js';
 import { openaiClient, twilioClient } from '../init.js';
 import {
     buildSmsPrompt,
+    buildSmsContextSection,
     buildSmsThreadText,
     extractSmsRequest,
     mergeAndSortMessages,
@@ -285,9 +286,13 @@ export async function smsHandler(request, reply) {
             fromE164,
             limit: 10,
         });
+        const contextSection = await buildSmsContextSection({
+            callerE164: fromE164,
+        });
         const smsPrompt = buildSmsPrompt({
             threadText,
             latestMessage: bodyRaw,
+            contextSection,
         });
 
         // Dev-only: log the full SMS prompt for debugging

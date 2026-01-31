@@ -1,3 +1,8 @@
+import { isPrimaryCaller } from '../env.js';
+import { formatDateTimeWithTimeZone } from './calls.js';
+import { getLatestTrackLocation } from './spot-location.js';
+import { resolveTimeZoneId } from './time.js';
+
 /**
  * Extract SMS request details from a webhook body.
  *
@@ -74,14 +79,103 @@ export function buildSmsThreadText({ messages = [], fromE164, limit = 10 }) {
 }
 
 /**
+ * Build a short SMS context section with current time and estimated location.
+ *
+ * @param {object} root0 - Context inputs.
+ * @param {string | null} [root0.callerE164] - Caller number in E.164.
+ * @returns {Promise<string>} Context text.
+ */
+export async function buildSmsContextSection({ callerE164 } = {}) {
+    const isPrimary = Boolean(isPrimaryCaller(callerE164));
+
+    /** @type {Awaited<ReturnType<typeof getLatestTrackLocation>> | null} */
+    let latest = null;
+    if (isPrimary) {
+        try {
+            latest = await getLatestTrackLocation();
+        } catch {
+            latest = null;
+        }
+    }
+
+    const location = latest?.location || null;
+    const estimatedLocation = formatEstimatedLocation(location);
+
+    const locationLatLng =
+        location &&
+        Number.isFinite(location.lat) &&
+        Number.isFinite(location.lng)
+            ? { lat: location.lat, lng: location.lng }
+            : undefined;
+
+    let timeZoneId = location?.timezoneId;
+    if (!timeZoneId) {
+        const resolved = await resolveTimeZoneId({
+            callerE164,
+            locationLatLng,
+        });
+        timeZoneId = resolved?.timeZoneId;
+    }
+
+    const safeTimeZone =
+        typeof timeZoneId === 'string' && timeZoneId.trim()
+            ? timeZoneId.trim()
+            : 'America/Los_Angeles';
+
+    let currentTime;
+    try {
+        currentTime = formatDateTimeWithTimeZone({ timeZone: safeTimeZone });
+    } catch {
+        currentTime = formatDateTimeWithTimeZone({
+            timeZone: 'America/Los_Angeles',
+        });
+    }
+
+    return `Current time: ${currentTime}\nEstimated location: ${estimatedLocation}`;
+}
+
+/**
+ * @typedef {object} EstimatedLocation
+ * @property {{ formattedAddress?: string, street?: string, city?: string, region?: string, country?: string }} [address]
+ * @property {{ city?: string, region?: string, country?: string }} [userLocation]
+ */
+
+/**
+ * Format an estimated location string from a location payload.
+ *
+ * @param {EstimatedLocation | null} location - Location payload.
+ * @returns {string} Formatted location string.
+ */
+function formatEstimatedLocation(location) {
+    if (!location) return 'Unavailable';
+
+    const formattedAddress = location?.address?.formattedAddress;
+    if (formattedAddress) return formattedAddress;
+
+    const street = location?.address?.street;
+    const city = location?.address?.city || location?.userLocation?.city;
+    const region = location?.address?.region || location?.userLocation?.region;
+    const country =
+        location?.address?.country || location?.userLocation?.country;
+
+    const parts = [street, city, region, country].filter(Boolean);
+    if (parts.length) return parts.join(', ');
+
+    return 'Unavailable';
+}
+
+/**
  * Build an SMS prompt for the model.
  *
  * @param {object} root0 - Prompt inputs.
  * @param {string} root0.threadText - Thread text.
  * @param {string} root0.latestMessage - Latest inbound message.
+ * @param {string} [root0.contextSection] - Context section.
  * @returns {string} Prompt text.
  */
-export function buildSmsPrompt({ threadText, latestMessage }) {
+export function buildSmsPrompt({ threadText, latestMessage, contextSection }) {
     const latest = String(latestMessage || '').trim();
-    return `Recent SMS thread (last 12 hours):\n${threadText || ''}\n\nLatest user message:\n${latest}`;
+    const context = String(contextSection || '').trim();
+    const contextBlock = context ? `${context}\n\n` : '';
+    return `${contextBlock}Recent SMS thread (last 12 hours):\n${threadText || ''}\n\nLatest user message:\n${latest}`;
 }
