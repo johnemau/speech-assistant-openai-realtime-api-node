@@ -138,7 +138,7 @@ export function mediaStreamHandler(connection, req) {
     let waitingMusicInterval = null;
     /** @type {NodeJS.Timeout | null} */
     let waitingMusicStartTimeout = null;
-    let toolCallInProgress = false;
+    const activeToolCalls = new Set();
     let pendingToolResponse = false;
     const QUICK_RESPONSE_SUPPRESSION_MS = 2000;
     // ffmpeg removed; we only support WAV files; no tone fallback
@@ -151,7 +151,17 @@ export function mediaStreamHandler(connection, req) {
     let resumeWaitingMusicAfterInterrupt = false;
     let isCallerSpeaking = false;
 
-    const hasPendingToolWork = () => toolCallInProgress || pendingToolResponse;
+    const isToolCallInProgress = () => activeToolCalls.size > 0;
+    const hasPendingToolWork = () =>
+        isToolCallInProgress() || pendingToolResponse;
+    /** @param {string} callId */
+    const markToolCallStart = (callId) => {
+        if (callId) activeToolCalls.add(callId);
+    };
+    /** @param {string} callId */
+    const markToolCallEnd = (callId) => {
+        if (callId) activeToolCalls.delete(callId);
+    };
 
     function getWaitingMusicDelayMs() {
         const baseDelay = WAIT_MUSIC_THRESHOLD_MS;
@@ -614,7 +624,7 @@ export function mediaStreamHandler(connection, req) {
                     immediate: true,
                 });
             }
-            if (responseActive && !toolCallInProgress) {
+            if (responseActive && !isToolCallInProgress()) {
                 scheduleWaitingMusic('model_response_pending');
             }
             if (!responseActive) {
@@ -663,7 +673,7 @@ export function mediaStreamHandler(connection, req) {
                 // If in silent mode and no tool call is active, send a completion SMS and close OpenAI WS
                 if (
                     postHangupSilentMode &&
-                    !toolCallInProgress &&
+                    !isToolCallInProgress() &&
                     !postHangupSmsSent
                 ) {
                     // Send SMS only if tools were in progress during hangup
@@ -755,14 +765,14 @@ export function mediaStreamHandler(connection, req) {
             }
             if (!functionCall || functionCall?.type !== 'function_call') {
                 if (
-                    toolCallInProgress &&
+                    isToolCallInProgress() &&
                     !isCallerSpeaking &&
                     !postHangupSilentMode &&
                     !pendingDisconnect
                 ) {
                     scheduleWaitingMusic('tool_call_pending_response_done');
                 }
-                if (pendingToolResponse && !toolCallInProgress) {
+                if (pendingToolResponse && !isToolCallInProgress()) {
                     pendingToolResponse = false;
                     drainResponseQueue('tool_call_response_deferred');
                 }
@@ -863,7 +873,7 @@ export function mediaStreamHandler(connection, req) {
         }
 
         const toolName = functionCall.name;
-        toolCallInProgress = true;
+        markToolCallStart(callId);
         scheduleWaitingMusic(`tool_call:${toolName}`, { immediate: true });
 
         let toolInput = null;
@@ -982,7 +992,7 @@ export function mediaStreamHandler(connection, req) {
                         output: JSON.stringify(output),
                     },
                 };
-                toolCallInProgress = false;
+                markToolCallEnd(callId);
                 assistantSession.send(toolResultEvent);
                 requestToolFollowup('tool_call_response');
                 if (IS_DEV)
@@ -1015,7 +1025,7 @@ export function mediaStreamHandler(connection, req) {
                     output: JSON.stringify(output),
                 },
             };
-            toolCallInProgress = false;
+            markToolCallEnd(callId);
             // Do not stop waiting music here; keep it playing until
             // assistant audio resumes or the caller speaks.
             assistantSession.send(toolResultEvent);
@@ -1064,7 +1074,7 @@ export function mediaStreamHandler(connection, req) {
                 console.log('LLM tool output sent to OpenAI', toolResultEvent);
         } catch (error) {
             console.error('Error handling tool call:', error);
-            toolCallInProgress = false;
+            markToolCallEnd(callId);
             if (toolName === 'transfer_call') {
                 const msg =
                     typeof error === 'string'
@@ -1535,7 +1545,7 @@ export function mediaStreamHandler(connection, req) {
                     clearWaitingMusicInterval();
                     // Enter silent mode to allow any in-flight tools to complete
                     postHangupSilentMode = true;
-                    if (toolCallInProgress) hangupDuringTools = true;
+                    if (isToolCallInProgress()) hangupDuringTools = true;
                     pendingTransfer = null;
                     pendingTransferResponseReceived = false;
                     pendingTransferAudioStarted = false;
@@ -1567,7 +1577,7 @@ export function mediaStreamHandler(connection, req) {
     connection.on('close', () => {
         // Enter silent mode and continue tool execution without streaming audio
         postHangupSilentMode = true;
-        if (toolCallInProgress) {
+        if (isToolCallInProgress()) {
             hangupDuringTools = true;
             console.log(
                 'Client disconnected with tools in progress; silent mode enabled. Will notify via SMS after completion.'
