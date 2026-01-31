@@ -762,3 +762,126 @@ test('post-hangup completion does not send audio to Twilio', async () => {
         cleanup();
     }
 });
+
+test('transfer_call invalid number prompts for clarification', async () => {
+    setExecuteToolCallForTests(async () => {
+        throw new Error('Invalid destination_number.');
+    });
+
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+
+    try {
+        mediaStreamHandler(connection, {});
+        await sessionState.onToolCall?.(
+            {
+                type: 'function_call',
+                name: 'transfer_call',
+                call_id: 'call-transfer-invalid',
+                arguments: JSON.stringify({
+                    destination_number: '206-8609',
+                }),
+            },
+            {}
+        );
+
+        const prompt = sessionState.sendCalls.find(
+            (payload) =>
+                payload?.item?.type === 'message' &&
+                payload?.item?.role === 'user' &&
+                String(payload?.item?.content?.[0]?.text || '').includes(
+                    'number provided does not look valid'
+                )
+        );
+        assert.ok(prompt, 'Expected clarification prompt for invalid number');
+
+        const errorOutput = sessionState.sendCalls.find(
+            (payload) =>
+                payload?.item?.type === 'function_call_output' &&
+                String(payload?.item?.output || '').includes(
+                    'Invalid destination_number'
+                )
+        );
+        assert.ok(errorOutput, 'Expected tool error output to be sent');
+    } finally {
+        resetExecuteToolCallForTests();
+        cleanup();
+    }
+});
+
+test('transfer_call missing number prompts for clarification', async () => {
+    setExecuteToolCallForTests(async () => {
+        throw new Error('Missing destination_number.');
+    });
+
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+
+    try {
+        mediaStreamHandler(connection, {});
+        await sessionState.onToolCall?.(
+            {
+                type: 'function_call',
+                name: 'transfer_call',
+                call_id: 'call-transfer-missing',
+                arguments: JSON.stringify({}),
+            },
+            {}
+        );
+
+        const prompt = sessionState.sendCalls.find(
+            (payload) =>
+                payload?.item?.type === 'message' &&
+                payload?.item?.role === 'user' &&
+                String(payload?.item?.content?.[0]?.text || '').includes(
+                    'number provided does not look valid'
+                )
+        );
+        assert.ok(prompt, 'Expected clarification prompt for missing number');
+    } finally {
+        resetExecuteToolCallForTests();
+        cleanup();
+    }
+});
+
+test('non-transfer tool error does not prompt for number', async () => {
+    setExecuteToolCallForTests(async () => {
+        throw new Error('boom');
+    });
+
+    const { mediaStreamHandler, sessionState, cleanup } =
+        await loadMediaStreamHandler();
+    const connection = createConnection();
+
+    try {
+        mediaStreamHandler(connection, {});
+        await sessionState.onToolCall?.(
+            {
+                type: 'function_call',
+                name: 'update_mic_distance',
+                call_id: 'call-mic-error',
+                arguments: JSON.stringify({ mode: 'far_field' }),
+            },
+            {}
+        );
+
+        const prompt = sessionState.sendCalls.find(
+            (payload) =>
+                payload?.item?.type === 'message' &&
+                payload?.item?.role === 'user' &&
+                String(payload?.item?.content?.[0]?.text || '').includes(
+                    'number provided does not look valid'
+                )
+        );
+        assert.equal(
+            Boolean(prompt),
+            false,
+            'Did not expect transfer clarification prompt'
+        );
+    } finally {
+        resetExecuteToolCallForTests();
+        cleanup();
+    }
+});
