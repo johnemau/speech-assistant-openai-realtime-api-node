@@ -92,6 +92,7 @@ export function mediaStreamHandler(connection, req) {
     let pendingTransferAnnouncementRequested = false;
     /** @type {string | null} */
     let pendingTransferAnnouncementResponseId = null;
+    let pendingTransferAnnouncementAudioStartedAt = 0;
     /** @type {NodeJS.Timeout | null} */
     let pendingTransferTimeout = null;
 
@@ -400,6 +401,11 @@ export function mediaStreamHandler(connection, req) {
             if (postHangupSilentMode) return;
             if (!force && !pendingTransferResponseReceived) return;
             if (!force && !pendingTransferAudioStarted) return;
+            if (!force && pendingTransferAnnouncementAudioStartedAt) {
+                const elapsedMs =
+                    Date.now() - pendingTransferAnnouncementAudioStartedAt;
+                if (elapsedMs < 1200) return;
+            }
             if (!force && markQueue.length !== 0) return;
 
             const transfer = pendingTransfer;
@@ -407,6 +413,7 @@ export function mediaStreamHandler(connection, req) {
             pendingTransfer = null;
             pendingTransferResponseReceived = false;
             pendingTransferAudioStarted = false;
+            pendingTransferAnnouncementAudioStartedAt = 0;
             if (pendingTransferTimeout) {
                 clearTimeout(pendingTransferTimeout);
                 pendingTransferTimeout = null;
@@ -479,6 +486,9 @@ export function mediaStreamHandler(connection, req) {
         if (pendingDisconnect) disconnectAudioStarted = true;
         if (pendingTransfer) {
             pendingTransferAudioStarted = true;
+            if (!pendingTransferAnnouncementAudioStartedAt) {
+                pendingTransferAnnouncementAudioStartedAt = Date.now();
+            }
         }
         if (!postHangupSilentMode) {
             const audioDelta = {
@@ -1035,6 +1045,30 @@ export function mediaStreamHandler(connection, req) {
         } catch (error) {
             console.error('Error handling tool call:', error);
             toolCallInProgress = false;
+            if (toolName === 'transfer_call') {
+                const msg =
+                    typeof error === 'string'
+                        ? error
+                        : /** @type {any} */ (error)?.message || '';
+                if (
+                    msg.includes('Invalid destination_number') ||
+                    msg.includes('Missing destination_number')
+                ) {
+                    assistantSession.send({
+                        type: 'conversation.item.create',
+                        item: {
+                            type: 'message',
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'input_text',
+                                    text: 'The number provided does not look valid. Ask the caller to confirm or provide the correct number to call.',
+                                },
+                            ],
+                        },
+                    });
+                }
+            }
             // Keep waiting music active during error handling until
             // the assistant produces audio or another interrupt occurs.
             sendOpenAiToolError(functionCall.call_id, error);
@@ -1477,6 +1511,7 @@ export function mediaStreamHandler(connection, req) {
                     pendingTransferInFlight = false;
                     pendingTransferAnnouncementRequested = false;
                     pendingTransferAnnouncementResponseId = null;
+                    pendingTransferAnnouncementAudioStartedAt = 0;
                     if (pendingTransferTimeout) {
                         clearTimeout(pendingTransferTimeout);
                         pendingTransferTimeout = null;
@@ -1543,6 +1578,7 @@ export function mediaStreamHandler(connection, req) {
         pendingTransferInFlight = false;
         pendingTransferAnnouncementRequested = false;
         pendingTransferAnnouncementResponseId = null;
+        pendingTransferAnnouncementAudioStartedAt = 0;
         if (pendingTransferTimeout) {
             clearTimeout(pendingTransferTimeout);
             pendingTransferTimeout = null;

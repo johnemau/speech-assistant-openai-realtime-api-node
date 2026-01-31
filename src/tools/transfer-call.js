@@ -45,6 +45,10 @@ export async function execute({ args, context }) {
 
     const destination = normalizeUSNumberToE164(rawDest) || rawDest || null;
     if (!destination) throw new Error('Invalid destination_number.');
+    const destinationDigits = destination.replace(/\D/g, '');
+    if (destination.startsWith('+1') && destinationDigits.length !== 11) {
+        throw new Error('Invalid destination_number.');
+    }
     const destinationLabelRaw =
         typeof args?.destination_label === 'string'
             ? args.destination_label.trim()
