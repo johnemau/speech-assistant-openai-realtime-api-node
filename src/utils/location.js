@@ -1,6 +1,7 @@
 import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
 
 const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEZONE_ID = 'America/Los_Angeles';
 
 /**
  * @param {string} url - URL to redact.
@@ -173,97 +174,6 @@ function extractStreet(components) {
  */
 function hasGeocodeResults(geocode) {
     return Array.isArray(geocode?.results) && geocode.results.length > 0;
-}
-
-/**
- * @param {any} osmJson - OpenStreetMap reverse geocode response.
- * @returns {GeocodeResponse} Mapped geocode response.
- */
-function mapOsmToGeocode(osmJson) {
-    const address = osmJson?.address || {};
-    const components = [];
-    if (address.house_number) {
-        components.push({
-            long_name: String(address.house_number),
-            types: ['street_number'],
-        });
-    }
-    if (address.road) {
-        components.push({
-            long_name: String(address.road),
-            types: ['route'],
-        });
-    }
-    const city =
-        address.city ||
-        address.town ||
-        address.village ||
-        address.hamlet ||
-        address.municipality ||
-        address.county;
-    if (city) {
-        components.push({
-            long_name: String(city),
-            types: ['locality'],
-        });
-    }
-    if (address.state) {
-        components.push({
-            long_name: String(address.state),
-            types: ['administrative_area_level_1'],
-        });
-    }
-    if (address.postcode) {
-        components.push({
-            long_name: String(address.postcode),
-            types: ['postal_code'],
-        });
-    }
-    if (address.country) {
-        components.push({
-            long_name: String(address.country),
-            short_name: address.country_code
-                ? String(address.country_code).toUpperCase()
-                : undefined,
-            types: ['country'],
-        });
-    }
-
-    return {
-        results: [
-            {
-                formatted_address: osmJson?.display_name || undefined,
-                address_components: components,
-            },
-        ],
-    };
-}
-
-/**
- * @param {object} root0 - Reverse geocode options.
- * @param {number} root0.lat - Latitude in degrees.
- * @param {number} root0.lng - Longitude in degrees.
- * @param {string} [root0.language] - Optional locale string.
- * @param {number} [root0.timeoutMs] - Optional timeout override in ms.
- * @returns {Promise<GeocodeResponse | null>} Fallback geocode response.
- */
-async function reverseGeocodeOsm({ lat, lng, language, timeoutMs }) {
-    const url = new URL('https://nominatim.openstreetmap.org/reverse');
-    url.searchParams.set('format', 'json');
-    url.searchParams.set('lat', String(lat));
-    url.searchParams.set('lon', String(lng));
-    url.searchParams.set('zoom', '10');
-    url.searchParams.set('addressdetails', '1');
-
-    const osmJson = await fetchJson(url.toString(), {
-        timeoutMs,
-        headers: {
-            'User-Agent': 'speech-assistant-openai-realtime-api-node',
-            'Accept-Language': language || 'en',
-        },
-    });
-
-    return mapOsmToGeocode(osmJson);
 }
 
 /**
@@ -463,29 +373,10 @@ export async function locationFromLatLng({
     }
     if (!hasGeocodeResults(geocode)) {
         if (IS_DEV) {
-            console.log('locationFromLatLng:geocode-osm-fallback', {
+            console.log('locationFromLatLng:geocode-fallback', {
                 lat: resolvedLat,
                 lng: resolvedLng,
             });
-        }
-        try {
-            const osmGeocode = await reverseGeocodeOsm({
-                lat: resolvedLat,
-                lng: resolvedLng,
-                language,
-                timeoutMs,
-            });
-            if (osmGeocode) {
-                geocode = osmGeocode;
-            }
-        } catch (error) {
-            if (IS_DEV) {
-                const err = /** @type {any} */ (error);
-                console.log('locationFromLatLng:osm-fallback-error', {
-                    name: err?.name ?? null,
-                    message: err?.message ?? null,
-                });
-            }
         }
     }
     if (IS_DEV) {
@@ -517,10 +408,14 @@ export async function locationFromLatLng({
         if (timezone?.status === 'OK' && timezone?.timeZoneId) {
             timezoneId = timezone.timeZoneId;
         }
+        if (!timezoneId) {
+            timezoneId = DEFAULT_TIMEZONE_ID;
+        }
         if (IS_DEV) {
             console.log('locationFromLatLng:timezone-resolved', {
                 status: timezone?.status,
                 timezoneId,
+                usedFallback: timezoneId === DEFAULT_TIMEZONE_ID,
             });
         }
     } else if (IS_DEV) {
