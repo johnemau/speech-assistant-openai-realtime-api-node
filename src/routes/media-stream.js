@@ -1072,7 +1072,7 @@ export function mediaStreamHandler(connection, req) {
                 content: [
                     {
                         type: 'input_text',
-                        text: `Start the greeting with "${timeGreeting}" and politely address the caller as "${callerNameValue}" in a single, concise, butler/service‑worker style line. Keep it light and optionally witty; always include the name and the time greeting.`,
+                        text: `Start the greeting with "${timeGreeting}" and immediately say the caller name "${callerNameValue}" with NO comma or pause between them (e.g., "${timeGreeting} ${callerNameValue}"). Speak slightly faster for THIS initial greeting only. Single concise butler/service‑worker style line; light and optionally witty; always include the name and the time greeting.`,
                     },
                 ],
             },

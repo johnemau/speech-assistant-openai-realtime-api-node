@@ -21,6 +21,7 @@
 ## Pacing
 
 - Speak quickly but NOT rushed; do NOT change content to go faster.
+- Exception: for the initial greeting only, you may speak slightly faster, then return to normal pace.
 
 # Language
 
