@@ -16,6 +16,8 @@ import { getLatestTrackTimezone } from '../utils/spot.js';
 import { executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
+import { buildRealtimeContextSection } from '../utils/realtime-context.js';
+import { REALTIME_INSTRUCTIONS } from '../assistant/prompts.js';
 import {
     IS_DEV,
     PRIMARY_CALLERS_SET,
@@ -1169,6 +1171,28 @@ export function mediaStreamHandler(connection, req) {
         },
     });
 
+    /**
+     * Update realtime instructions with an at-start-of-call context block.
+     * @returns {Promise<void>} Completion promise.
+     */
+    const updateRealtimeInstructionsAtStart = async () => {
+        try {
+            const contextSection = await buildRealtimeContextSection({
+                callerE164: currentCallerE164,
+            });
+            const baseInstructions = String(REALTIME_INSTRUCTIONS || '').trim();
+            const instructions = baseInstructions
+                ? `${baseInstructions}\n\n${contextSection}`
+                : contextSection;
+            assistantSession.updateSession({ instructions });
+        } catch (e) {
+            console.warn(
+                'Failed to update realtime instructions with context:',
+                e?.message || e
+            );
+        }
+    };
+
     // Send initial conversation item using the caller's name once available
     const sendInitialConversationItem = async (callerNameValue = 'legend') => {
         initialGreetingRequested = true;
@@ -1557,6 +1581,7 @@ export function mediaStreamHandler(connection, req) {
                             callerName = secondaryName;
                         }
                         // Send the personalized greeting to OpenAI to speak first
+                        void updateRealtimeInstructionsAtStart();
                         void sendInitialConversationItem(callerName);
                     } catch {
                         // noop: missing custom parameters should not break stream handling
@@ -1565,6 +1590,7 @@ export function mediaStreamHandler(connection, req) {
                             'No custom caller parameter found on start event.'
                         );
                         // Fallback greeting without a personalized name
+                        void updateRealtimeInstructionsAtStart();
                         void sendInitialConversationItem('legend');
                     }
                     break;
