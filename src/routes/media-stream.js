@@ -372,6 +372,22 @@ export function mediaStreamHandler(connection, req) {
         }
     }
 
+    /**
+     * @param {string} number - Destination number to announce.
+     * @returns {string} Number formatted for announcement.
+     */
+    function formatTransferAnnouncementNumber(number) {
+        const trimmed = String(number || '').trim();
+        if (!trimmed) return trimmed;
+        const isUsCaller = Boolean(
+            currentCallerE164 && String(currentCallerE164).startsWith('+1')
+        );
+        if (isUsCaller && trimmed.startsWith('+1')) {
+            return trimmed.replace(/^\+1\s*/, '').trim();
+        }
+        return trimmed;
+    }
+
     async function attemptPendingTransferUpdate({ force = false } = {}) {
         try {
             if (!pendingTransfer) return;
@@ -930,9 +946,11 @@ export function mediaStreamHandler(connection, req) {
                         ? transferOutput.destination_label
                         : null;
                 if (destinationNumber) {
+                    const announceNumber =
+                        formatTransferAnnouncementNumber(destinationNumber);
                     const announceText = destinationLabel
-                        ? `Tell the caller: "I found ${destinationLabel}. Connecting you now at ${destinationNumber}." Use the exact number string shown.`
-                        : `Tell the caller: "Connecting you now at ${destinationNumber}." Use the exact number string shown.`;
+                        ? `Tell the caller: "I found ${destinationLabel}. Connecting you now at ${announceNumber}." Use the exact number string shown.`
+                        : `Tell the caller: "Connecting you now at ${announceNumber}." Use the exact number string shown.`;
                     assistantSession.send({
                         type: 'conversation.item.create',
                         item: {
