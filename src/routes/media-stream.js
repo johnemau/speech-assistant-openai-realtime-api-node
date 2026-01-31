@@ -154,11 +154,11 @@ export function mediaStreamHandler(connection, req) {
     const isToolCallInProgress = () => activeToolCalls.size > 0;
     const hasPendingToolWork = () =>
         isToolCallInProgress() || pendingToolResponse;
-    /** @param {string} callId */
+    /** @param {string} callId - Tool call identifier. */
     const markToolCallStart = (callId) => {
         if (callId) activeToolCalls.add(callId);
     };
-    /** @param {string} callId */
+    /** @param {string} callId - Tool call identifier. */
     const markToolCallEnd = (callId) => {
         if (callId) activeToolCalls.delete(callId);
     };

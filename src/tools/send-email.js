@@ -18,7 +18,12 @@ export const definition = {
             body_html: {
                 type: 'string',
                 description:
-                    'HTML-only email body composed from the latest conversation context. Non-conversational (no follow-up questions); formatted for readability and concise. Include specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. For weather, directions, or any location-based content, include a Google Maps link to the place or route; for weather also include a NOAA forecast link using https://forecast.weather.gov/MapClick.php?lat=<lat>&lon=<lon> when coordinates are available. All links must be provided as clickable URLs. Do not include any follow-up questions. Always include ASCII art in the email body.',
+                    'HTML-only email body composed from the latest conversation context. Non-conversational (no follow-up questions); formatted for readability and concise. Include specific details the caller requested and, when available, links to new articles, official business websites, Google Maps locations, email and phone contact information, addresses, and hours of operation relevant to any business, event, or news the caller requested. For weather, directions, or any location-based content, include a Google Maps link to the place or route; for weather also include a NOAA forecast link using https://forecast.weather.gov/MapClick.php?lat=<lat>&lon=<lon> when coordinates are available. All links must be provided as clickable URLs. Do not include any follow-up questions. Include ASCII art by providing ascii_art when possible, otherwise omit it to use a built-in fallback.',
+            },
+            ascii_art: {
+                type: 'string',
+                description:
+                    'Optional ASCII art (≤6 lines, ≤40 chars per line) tailored to the email context. Omit to use a random fallback.',
             },
         },
         required: ['subject', 'body_html'],
@@ -31,7 +36,7 @@ export const definition = {
  * Execute send_email tool.
  *
  * @param {object} root0 - Tool inputs.
- * @param {{ subject?: string, body_html?: string }} root0.args - Tool arguments.
+ * @param {{ subject?: string, body_html?: string, ascii_art?: string }} root0.args - Tool arguments.
  * @param {{ currentCallerE164?: string | null }} root0.context - Tool context.
  * @returns {Promise<{ messageId: string, accepted: Array<string>, rejected: Array<string> }>} Send result.
  */
@@ -63,22 +68,44 @@ export async function execute({ args, context }) {
   ||||
   ||||`,
         String.raw`   ______
- _/[] []\\_\n+|_      _|
+ _/[] []\\_
+|_      _|
   O----O`,
         String.raw`  .-.
-     /   \
-    |     |
-     \\   /
-      '-'
-      /|\\
-     / | \\
-      / \\
-     /   \\`,
+ /   \
+|     |
+ \   /
+  '-'
+ /|\\`,
+        String.raw` /\_/\\
+(=^.^=)
+(")_(")`,
+        String.raw` / \__
+(    @\\___
+ /         O
+/   (_____/
+/_____/   U`,
+        String.raw` (\\_/)
+ ('.')
+(")_(")`,
+        String.raw`  ,_,
+ (o,o)
+ /)__)
+  " "`,
+        String.raw`  ___
+ /o o\\
+ \\_^_/`,
+        String.raw` ><(((('>`,
     ];
 
-    const asciiArt =
-        asciiArtOptions[Math.floor(Math.random() * asciiArtOptions.length)];
-    const bodyHtmlWithArt = `${bodyHtml}\n\n<pre>${asciiArt}</pre>`;
+    const rawAsciiArt =
+        typeof args?.ascii_art === 'string' ? args.ascii_art : '';
+    const normalizedAsciiArt = normalizeAsciiArt(rawAsciiArt);
+    const selectedAsciiArt = isAsciiArtValid(normalizedAsciiArt)
+        ? normalizedAsciiArt
+        : asciiArtOptions[Math.floor(Math.random() * asciiArtOptions.length)];
+    const safeAsciiArt = escapeAsciiArt(selectedAsciiArt);
+    const bodyHtmlWithArt = `${bodyHtml}\n\n<pre>${safeAsciiArt}</pre>`;
 
     let group = null;
     if (currentCallerE164 && PRIMARY_CALLERS_SET?.has(currentCallerE164))
@@ -114,4 +141,39 @@ export async function execute({ args, context }) {
         accepted: info.accepted,
         rejected: info.rejected,
     };
+}
+
+/**
+ * Normalize ASCII art line breaks.
+ *
+ * @param {string} value - Raw ASCII art.
+ * @returns {string} Normalized ASCII art.
+ */
+function normalizeAsciiArt(value) {
+    return String(value || '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n');
+}
+
+/**
+ * Validate ASCII art size constraints.
+ *
+ * @param {string} value - Normalized ASCII art.
+ * @returns {boolean} Whether the art is within limits.
+ */
+function isAsciiArtValid(value) {
+    if (!value) return false;
+    const lines = value.split('\n');
+    if (lines.length > 6) return false;
+    return lines.every((line) => line.length <= 40);
+}
+
+/**
+ * Escape unsafe HTML characters in ASCII art.
+ *
+ * @param {string} value - ASCII art to escape.
+ * @returns {string} Escaped ASCII art.
+ */
+function escapeAsciiArt(value) {
+    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 }
