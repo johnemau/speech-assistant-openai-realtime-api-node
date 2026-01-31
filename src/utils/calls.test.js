@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resolveCallerName, getTimeGreeting } from './calls.js';
+import {
+    resolveCallerName,
+    getTimeGreeting,
+    getCallerDateTimeString,
+} from './calls.js';
 
 test('calls.resolveCallerName resolves primary, secondary, fallback', () => {
     const primarySet = new Set(['+12065550100']);
@@ -59,4 +63,55 @@ test('calls.getTimeGreeting returns expected greeting by hour', () => {
         getTimeGreeting({ timeZone: 'UTC', now: evening }),
         'Good evening'
     );
+});
+
+test('calls.getCallerDateTimeString uses SPOT timezone for primary', async () => {
+    const now = new Date('2026-01-31T23:04:00Z');
+    const value = await getCallerDateTimeString({
+        callerE164: '+12065550100',
+        now,
+        isPrimaryCallerFn: () => true,
+        getLatestTrackTimezoneFn: async () => ({
+            timezoneId: 'America/New_York',
+        }),
+        getSpotFeedIdFn: () => 'spot-id',
+        getSpotFeedPasswordFn: () => 'spot-pass',
+    });
+
+    assert.ok(value.includes('(America/New_York)'));
+    assert.match(value, /\d{1,2}:\d{2}/);
+});
+
+test('calls.getCallerDateTimeString uses Pacific for non-primary', async () => {
+    const now = new Date('2026-01-31T23:04:00Z');
+    const value = await getCallerDateTimeString({
+        callerE164: '+12065550101',
+        now,
+        isPrimaryCallerFn: () => false,
+        getLatestTrackTimezoneFn: async () => ({
+            timezoneId: 'America/New_York',
+        }),
+        getSpotFeedIdFn: () => 'spot-id',
+        getSpotFeedPasswordFn: () => 'spot-pass',
+    });
+
+    assert.ok(value.includes('(America/Los_Angeles)'));
+    assert.match(value, /\d{1,2}:\d{2}/);
+});
+
+test('calls.getCallerDateTimeString falls back on SPOT failure', async () => {
+    const now = new Date('2026-01-31T23:04:00Z');
+    const value = await getCallerDateTimeString({
+        callerE164: '+12065550100',
+        now,
+        isPrimaryCallerFn: () => true,
+        getLatestTrackTimezoneFn: async () => {
+            throw new Error('lookup failed');
+        },
+        getSpotFeedIdFn: () => 'spot-id',
+        getSpotFeedPasswordFn: () => 'spot-pass',
+    });
+
+    assert.ok(value.includes('(America/Los_Angeles)'));
+    assert.match(value, /\d{1,2}:\d{2}/);
 });

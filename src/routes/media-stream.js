@@ -11,7 +11,7 @@ import {
     SHOW_TIMING_MATH as showTimingMath,
 } from '../init.js';
 import { readPcmuFile } from '../utils/audio.js';
-import { getTimeGreeting } from '../utils/calls.js';
+import { formatDateTimeWithTimeZone, getTimeGreeting } from '../utils/calls.js';
 import { getLatestTrackTimezone } from '../utils/spot.js';
 import { executeToolCall } from '../tools/index.js';
 import { stringifyDeep } from '../utils/format.js';
@@ -1212,10 +1212,12 @@ export function mediaStreamHandler(connection, req) {
             }
         }
         const timeGreeting = getTimeGreeting({ timeZone });
+        const callerDateTimeString = formatDateTimeWithTimeZone({ timeZone });
         if (IS_DEV) {
             console.log('initial greeting: prepared', {
                 timeZone,
                 timeGreeting,
+                callerDateTimeString,
             });
         }
         const initialConversationItem = {
