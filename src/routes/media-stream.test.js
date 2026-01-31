@@ -780,7 +780,7 @@ test('transfer_call invalid number prompts for clarification', async () => {
                 name: 'transfer_call',
                 call_id: 'call-transfer-invalid',
                 arguments: JSON.stringify({
-                    destination_number: '206-8609',
+                    destination_number: '1189',
                 }),
             },
             {}
@@ -791,7 +791,7 @@ test('transfer_call invalid number prompts for clarification', async () => {
             return (
                 payload?.item?.type === 'message' &&
                 payload?.item?.role === 'user' &&
-                text.includes('206-8609') &&
+                text.includes('1189') &&
                 text.includes('looks invalid')
             );
         });

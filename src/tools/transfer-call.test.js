@@ -93,6 +93,14 @@ test('transfer-call.execute validates destination_number', async () => {
         await assert.rejects(
             () =>
                 execute({
+                    args: { destination_number: '1189' },
+                    context: { currentCallSid: 'CA123' },
+                }),
+            /Invalid destination_number/
+        );
+        await assert.rejects(
+            () =>
+                execute({
                     args: { destination_number: '+123' },
                     context: { currentCallSid: 'CA123' },
                 }),
