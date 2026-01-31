@@ -95,6 +95,11 @@ export function mediaStreamHandler(connection, req) {
     let pendingTransferAnnouncementAudioStartedAt = 0;
     /** @type {NodeJS.Timeout | null} */
     let pendingTransferTimeout = null;
+    /** @type {string | null} */
+    let pendingTransferAnnouncementItemId = null;
+    let pendingTransferAnnouncementAudioMs = 0;
+    const TRANSFER_ANNOUNCEMENT_BUFFER_MS = 500;
+    const TRANSFER_FORCE_TIMEOUT_MS = 9_000;
 
     // Session duration tracking
     /** @type {NodeJS.Timeout | null} */
@@ -424,9 +429,26 @@ export function mediaStreamHandler(connection, req) {
             if (!force && pendingTransferAnnouncementAudioStartedAt) {
                 const elapsedMs =
                     Date.now() - pendingTransferAnnouncementAudioStartedAt;
-                if (elapsedMs < 1200) return;
+                const minElapsedMs = pendingTransferAnnouncementAudioMs
+                    ? pendingTransferAnnouncementAudioMs +
+                      TRANSFER_ANNOUNCEMENT_BUFFER_MS
+                    : 2000;
+                if (elapsedMs < minElapsedMs) return;
+                if (markQueue.length !== 0) {
+                    if (IS_DEV) {
+                        console.log(
+                            'transfer_call: marks pending; proceeding after timing fallback',
+                            {
+                                elapsedMs,
+                                minElapsedMs,
+                                markQueueLength: markQueue.length,
+                            }
+                        );
+                    }
+                }
+            } else if (!force && markQueue.length !== 0) {
+                return;
             }
-            if (!force && markQueue.length !== 0) return;
 
             const transfer = pendingTransfer;
             pendingTransferInFlight = true;
@@ -434,6 +456,8 @@ export function mediaStreamHandler(connection, req) {
             pendingTransferResponseReceived = false;
             pendingTransferAudioStarted = false;
             pendingTransferAnnouncementAudioStartedAt = 0;
+            pendingTransferAnnouncementItemId = null;
+            pendingTransferAnnouncementAudioMs = 0;
             if (pendingTransferTimeout) {
                 clearTimeout(pendingTransferTimeout);
                 pendingTransferTimeout = null;
@@ -508,6 +532,14 @@ export function mediaStreamHandler(connection, req) {
             pendingTransferAudioStarted = true;
             if (!pendingTransferAnnouncementAudioStartedAt) {
                 pendingTransferAnnouncementAudioStartedAt = Date.now();
+            }
+            if (payload.itemId) {
+                if (!pendingTransferAnnouncementItemId) {
+                    pendingTransferAnnouncementItemId = payload.itemId;
+                }
+                if (payload.itemId === pendingTransferAnnouncementItemId) {
+                    pendingTransferAnnouncementAudioMs = lastAssistantAudioMs;
+                }
             }
         }
         if (!postHangupSilentMode) {
@@ -955,10 +987,13 @@ export function mediaStreamHandler(connection, req) {
                     };
                     pendingTransferResponseReceived = false;
                     pendingTransferAudioStarted = false;
+                    pendingTransferAnnouncementAudioStartedAt = 0;
+                    pendingTransferAnnouncementItemId = null;
+                    pendingTransferAnnouncementAudioMs = 0;
                     if (!pendingTransferTimeout) {
                         pendingTransferTimeout = setTimeout(() => {
                             void attemptPendingTransferUpdate({ force: true });
-                        }, 5_000);
+                        }, TRANSFER_FORCE_TIMEOUT_MS);
                         unrefTimer(pendingTransferTimeout);
                     }
                     if (IS_DEV) {
@@ -1554,6 +1589,8 @@ export function mediaStreamHandler(connection, req) {
                     pendingTransferAnnouncementRequested = false;
                     pendingTransferAnnouncementResponseId = null;
                     pendingTransferAnnouncementAudioStartedAt = 0;
+                    pendingTransferAnnouncementItemId = null;
+                    pendingTransferAnnouncementAudioMs = 0;
                     if (pendingTransferTimeout) {
                         clearTimeout(pendingTransferTimeout);
                         pendingTransferTimeout = null;
@@ -1621,6 +1658,8 @@ export function mediaStreamHandler(connection, req) {
         pendingTransferAnnouncementRequested = false;
         pendingTransferAnnouncementResponseId = null;
         pendingTransferAnnouncementAudioStartedAt = 0;
+        pendingTransferAnnouncementItemId = null;
+        pendingTransferAnnouncementAudioMs = 0;
         if (pendingTransferTimeout) {
             clearTimeout(pendingTransferTimeout);
             pendingTransferTimeout = null;
