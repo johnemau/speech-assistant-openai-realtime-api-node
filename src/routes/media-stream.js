@@ -65,6 +65,8 @@ export function mediaStreamHandler(connection, req) {
     let currentCallerE164 = null;
     /** @type {string | null} */
     let currentTwilioNumberE164 = null;
+    /** @type {string | null} */
+    let currentCallSid = null;
     let latestMediaTimestamp = 0;
     /** @type {string | null} */
     let lastAssistantItem = null;
@@ -730,6 +732,7 @@ export function mediaStreamHandler(connection, req) {
             const toolContext = {
                 currentCallerE164,
                 currentTwilioNumberE164,
+                currentCallSid,
                 micState,
                 /**
                  * @param {'near_field' | 'far_field'} mode - Noise reduction mode.
@@ -1209,6 +1212,19 @@ export function mediaStreamHandler(connection, req) {
                                 '=>',
                                 currentTwilioNumberE164
                             );
+                        const rawCallSid =
+                            data.start?.callSid ||
+                            data.start?.call_sid ||
+                            cp.call_sid ||
+                            cp.callSid ||
+                            null;
+                        currentCallSid =
+                            typeof rawCallSid === 'string' && rawCallSid.trim()
+                                ? rawCallSid.trim()
+                                : null;
+                        if (currentCallSid && IS_DEV) {
+                            console.log('CallSid captured:', currentCallSid);
+                        }
                         // Compute caller name based on group and send initial greeting
                         const primaryName = String(
                             PRIMARY_USER_FIRST_NAME || ''

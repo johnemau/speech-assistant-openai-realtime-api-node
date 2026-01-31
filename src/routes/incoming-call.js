@@ -15,6 +15,7 @@ export async function incomingCallHandler(request, reply) {
     const fromE164 = normalizeUSNumberToE164(fromRaw);
     const toRaw = body.To || body.to || '';
     const toE164 = normalizeUSNumberToE164(toRaw);
+    const callSid = body.CallSid || body.callSid || '';
     console.log('Incoming call from:', fromRaw, '=>', fromE164);
 
     if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
@@ -39,6 +40,7 @@ export async function incomingCallHandler(request, reply) {
     });
     stream.parameter({ name: 'caller_number', value: fromE164 });
     stream.parameter({ name: 'twilio_number', value: toE164 || '' });
+    stream.parameter({ name: 'call_sid', value: callSid || '' });
 
     if (IS_DEV) {
         console.log('twimlResponse:', twimlResponse.toString());

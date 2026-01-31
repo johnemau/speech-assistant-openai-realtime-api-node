@@ -19,6 +19,10 @@ import {
     execute as executeEndCall,
 } from './end-call.js';
 import {
+    definition as transferCallDefinition,
+    execute as executeTransferCall,
+} from './transfer-call.js';
+import {
     definition as getCurrentLocationDefinition,
     execute as executeGetCurrentLocation,
 } from './get-current-location.js';
@@ -47,6 +51,7 @@ const toolExecutors = new Map(
         ['send_sms', executeSendSms],
         ['update_mic_distance', executeUpdateMicDistance],
         ['end_call', executeEndCall],
+        ['transfer_call', executeTransferCall],
         ['get_current_location', executeGetCurrentLocation],
         ['find_currently_nearby_place', executeFindCurrentlyNearbyPlace],
         ['places_text_search', executePlacesTextSearch],
@@ -67,6 +72,7 @@ export function getToolDefinitions() {
         sendSmsDefinition,
         updateMicDistanceDefinition,
         endCallDefinition,
+        transferCallDefinition,
         getCurrentLocationDefinition,
         findCurrentlyNearbyPlaceDefinition,
         placesTextSearchDefinition,
