@@ -847,8 +847,9 @@ export function mediaStreamHandler(connection, req) {
         toolCallInProgress = true;
         scheduleWaitingMusic(`tool_call:${toolName}`);
 
+        let toolInput = null;
         try {
-            const toolInput = safeParseToolArguments(functionCall.arguments);
+            toolInput = safeParseToolArguments(functionCall.arguments);
             if (postHangupSilentMode) hangupDuringTools = true;
             if (toolName === 'gpt_web_search') {
                 const queryValue =
@@ -1057,7 +1058,11 @@ export function mediaStreamHandler(connection, req) {
                     const invalidMatch = msg.match(
                         /Invalid destination_number:\s*"([\s\S]*)"/
                     );
-                    const invalidValue = invalidMatch?.[1];
+                    const invalidValue =
+                        invalidMatch?.[1] ||
+                        (typeof toolInput?.destination_number === 'string'
+                            ? toolInput.destination_number
+                            : undefined);
                     const promptText = invalidValue
                         ? `The number "${invalidValue}" looks invalid. Ask the caller to provide the correct number to call.`
                         : 'The number provided does not look valid. Ask the caller to confirm or provide the correct number to call.';

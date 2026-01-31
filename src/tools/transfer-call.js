@@ -1,6 +1,6 @@
 import { twilioClient } from '../init.js';
 import { IS_DEV } from '../env.js';
-const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
+const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
 
 /**
  * Normalize transfer destination to E.164.
