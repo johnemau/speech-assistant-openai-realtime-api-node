@@ -89,6 +89,8 @@ export function mediaStreamHandler(connection, req) {
     let pendingTransferResponseReceived = false;
     let pendingTransferAudioStarted = false;
     let pendingTransferInFlight = false;
+    /** @type {NodeJS.Timeout | null} */
+    let pendingTransferTimeout = null;
 
     // Session duration tracking
     /** @type {NodeJS.Timeout | null} */
@@ -402,6 +404,10 @@ export function mediaStreamHandler(connection, req) {
             pendingTransfer = null;
             pendingTransferResponseReceived = false;
             pendingTransferAudioStarted = false;
+            if (pendingTransferTimeout) {
+                clearTimeout(pendingTransferTimeout);
+                pendingTransferTimeout = null;
+            }
 
             if (!transfer.callSid || !transfer.destination_number) {
                 console.warn('Pending transfer missing callSid/number.');
@@ -878,6 +884,12 @@ export function mediaStreamHandler(connection, req) {
                     };
                     pendingTransferResponseReceived = false;
                     pendingTransferAudioStarted = false;
+                    if (!pendingTransferTimeout) {
+                        pendingTransferTimeout = setTimeout(() => {
+                            void attemptPendingTransferUpdate({ force: true });
+                        }, 15_000);
+                        unrefTimer(pendingTransferTimeout);
+                    }
                     if (IS_DEV) {
                         console.log('transfer_call: pending transfer queued', {
                             callSid: currentCallSid,
@@ -976,6 +988,7 @@ export function mediaStreamHandler(connection, req) {
                             ],
                         },
                     });
+                    pendingTransferResponseReceived = true;
                 } else if (IS_DEV) {
                     console.warn(
                         'transfer_call missing destination_number for announcement.'
@@ -1432,6 +1445,10 @@ export function mediaStreamHandler(connection, req) {
                     pendingTransferResponseReceived = false;
                     pendingTransferAudioStarted = false;
                     pendingTransferInFlight = false;
+                    if (pendingTransferTimeout) {
+                        clearTimeout(pendingTransferTimeout);
+                        pendingTransferTimeout = null;
+                    }
                     break;
                 default:
                     console.log('Received non-media event:', data.event);
@@ -1492,6 +1509,10 @@ export function mediaStreamHandler(connection, req) {
         pendingTransferResponseReceived = false;
         pendingTransferAudioStarted = false;
         pendingTransferInFlight = false;
+        if (pendingTransferTimeout) {
+            clearTimeout(pendingTransferTimeout);
+            pendingTransferTimeout = null;
+        }
         // Clear any queued messages on close
         assistantSession.clearPendingMessages?.();
         stopWaitingMusic('disconnect');
