@@ -1,5 +1,6 @@
 import tzLookup from 'tz-lookup';
 import { getSpotFeedId, getSpotFeedPassword, IS_DEV } from '../env.js';
+import { logHttpRequest, logHttpResponse } from './http-log.js';
 
 const SPOT_THROTTLE_MS = 2.5 * 60 * 1000;
 
@@ -55,6 +56,13 @@ async function fetchWithTimeout(url, { timeoutMs = 15000, ...init } = {}) {
     const controller = new AbortController();
     const safeUrl = redactSpotUrl(url);
     const method = init?.method ?? 'GET';
+    logHttpRequest({
+        tag: 'spot',
+        url,
+        method,
+        body: init?.body,
+        timeoutMs,
+    });
     const t = setTimeout(() => controller.abort(), timeoutMs);
     try {
         return await fetch(url, { ...init, signal: controller.signal });
@@ -135,6 +143,7 @@ export async function getLatestTrackLatLng(opts = {}) {
         'https://api.findmespot.com/spot-main-web/consumer/rest-api/2.0/public/feed/' +
         `${encodeURIComponent(feedId)}/latest.json?feedPassword=${encodeURIComponent(feedPassword)}`;
 
+    const requestStart = Date.now();
     const res = await fetchWithTimeout(url, {
         timeoutMs,
         headers: { Accept: 'application/json' },
@@ -182,6 +191,16 @@ export async function getLatestTrackLatLng(opts = {}) {
         }
         return cached?.value ?? null;
     }
+
+    logHttpResponse({
+        tag: 'spot',
+        url,
+        status: res.status,
+        statusText: res.statusText,
+        durationMs: Date.now() - requestStart,
+        contentType: res.headers?.get('content-type') ?? null,
+        body: data,
+    });
 
     // latest.json returns ONE message per device (sometimes wrapped in an array)
     const rawMsg =

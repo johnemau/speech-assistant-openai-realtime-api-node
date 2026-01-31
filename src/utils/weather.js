@@ -1,4 +1,5 @@
 import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
+import { logHttpRequest, logHttpResponse } from './http-log.js';
 
 /**
  * Google Maps Platform Weather API
@@ -192,6 +193,14 @@ export async function get_current_conditions(args, options = {}) {
                 languageCode: args.language_code,
             });
 
+            const requestStart = Date.now();
+            logHttpRequest({
+                tag: 'weather',
+                url,
+                method: 'GET',
+                body: null,
+                timeoutMs: null,
+            });
             const resp = await fetch(url, { method: 'GET' });
 
             if (!resp.ok) {
@@ -220,6 +229,16 @@ export async function get_current_conditions(args, options = {}) {
 
             /** @type {any} */
             const data = await resp.json();
+
+            logHttpResponse({
+                tag: 'weather',
+                url,
+                status: resp.status,
+                statusText: resp.statusText,
+                durationMs: Date.now() - requestStart,
+                contentType: resp.headers?.get('content-type') ?? null,
+                body: data,
+            });
 
             /** @type {NormalizedCurrentConditions} */
             const normalized = {
@@ -353,6 +372,14 @@ export async function get_daily_forecast(args, options = {}) {
                 pageToken: args.page_token,
             });
 
+            const requestStart = Date.now();
+            logHttpRequest({
+                tag: 'weather',
+                url,
+                method: 'GET',
+                body: null,
+                timeoutMs: null,
+            });
             const resp = await fetch(url, { method: 'GET' });
 
             if (!resp.ok) {
@@ -376,6 +403,16 @@ export async function get_daily_forecast(args, options = {}) {
 
             /** @type {any} */
             const data = await resp.json();
+
+            logHttpResponse({
+                tag: 'weather',
+                url,
+                status: resp.status,
+                statusText: resp.statusText,
+                durationMs: Date.now() - requestStart,
+                contentType: resp.headers?.get('content-type') ?? null,
+                body: data,
+            });
 
             /** @type {NormalizedForecastPage} */
             const out = {
@@ -461,6 +498,14 @@ export async function get_hourly_forecast(args, options = {}) {
                 pageToken: args.page_token,
             });
 
+            const requestStart = Date.now();
+            logHttpRequest({
+                tag: 'weather',
+                url,
+                method: 'GET',
+                body: null,
+                timeoutMs: null,
+            });
             const resp = await fetch(url, { method: 'GET' });
 
             if (!resp.ok) {
@@ -484,6 +529,16 @@ export async function get_hourly_forecast(args, options = {}) {
 
             /** @type {any} */
             const data = await resp.json();
+
+            logHttpResponse({
+                tag: 'weather',
+                url,
+                status: resp.status,
+                statusText: resp.statusText,
+                durationMs: Date.now() - requestStart,
+                contentType: resp.headers?.get('content-type') ?? null,
+                body: data,
+            });
 
             /** @type {NormalizedForecastPage} */
             const out = {

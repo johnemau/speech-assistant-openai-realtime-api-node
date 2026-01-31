@@ -1,4 +1,5 @@
 import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
+import { logHttpRequest, logHttpResponse } from './http-log.js';
 
 /**
  * @typedef {{lat:number,lng:number}} LatLng
@@ -406,18 +407,25 @@ export async function computeRoute(args, options = {}) {
         // Only include when provided (lets you bias ambiguous/incomplete addresses)
         if (args.regionCode) body.regionCode = String(args.regionCode).trim();
 
-        const resp = await fetch(
-            'https://routes.googleapis.com/directions/v2:computeRoutes',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Goog-Api-Key': apiKey,
-                    'X-Goog-FieldMask': fieldMask.join(','),
-                },
-                body: JSON.stringify(body),
-            }
-        );
+        const requestUrl =
+            'https://routes.googleapis.com/directions/v2:computeRoutes';
+        const requestStart = Date.now();
+        logHttpRequest({
+            tag: 'routes',
+            url: requestUrl,
+            method: 'POST',
+            body,
+            timeoutMs: null,
+        });
+        const resp = await fetch(requestUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': apiKey,
+                'X-Goog-FieldMask': fieldMask.join(','),
+            },
+            body: JSON.stringify(body),
+        });
 
         if (!resp.ok) {
             if (IS_DEV) {
@@ -454,6 +462,16 @@ export async function computeRoute(args, options = {}) {
 
         /** @type {RoutesApiResponse} */
         const data = /** @type {any} */ (await resp.json());
+
+        logHttpResponse({
+            tag: 'routes',
+            url: requestUrl,
+            status: resp.status,
+            statusText: resp.statusText,
+            durationMs: Date.now() - requestStart,
+            contentType: resp.headers?.get('content-type') ?? null,
+            body: data,
+        });
 
         /** @type {ComputedRoute[]} */
         const routes = (data?.routes || []).map((r) => {

@@ -1,4 +1,5 @@
 import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
+import { logHttpRequest, logHttpResponse } from './http-log.js';
 
 /**
  * @typedef {object} NearbyPlace
@@ -815,18 +816,25 @@ export async function searchPlacesNearby(args, options = {}) {
             regionCode: args.region_code,
         };
 
-        const resp = await fetch(
-            'https://places.googleapis.com/v1/places:searchNearby',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Goog-Api-Key': apiKey,
-                    'X-Goog-FieldMask': fieldMask.join(','),
-                },
-                body: JSON.stringify(body),
-            }
-        );
+        const requestUrl =
+            'https://places.googleapis.com/v1/places:searchNearby';
+        const requestStart = Date.now();
+        logHttpRequest({
+            tag: 'places',
+            url: requestUrl,
+            method: 'POST',
+            body,
+            timeoutMs: null,
+        });
+        const resp = await fetch(requestUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': apiKey,
+                'X-Goog-FieldMask': fieldMask.join(','),
+            },
+            body: JSON.stringify(body),
+        });
 
         if (!resp.ok) {
             if (IS_DEV) {
@@ -863,6 +871,16 @@ export async function searchPlacesNearby(args, options = {}) {
 
         /** @type {{ places?: Array<Record<string, any>> }} */
         const data = /** @type {any} */ (await resp.json());
+
+        logHttpResponse({
+            tag: 'places',
+            url: requestUrl,
+            status: resp.status,
+            statusText: resp.statusText,
+            durationMs: Date.now() - requestStart,
+            contentType: resp.headers?.get('content-type') ?? null,
+            body: data,
+        });
 
         /** @type {NearbyPlace[]} */
         const places = (data?.places || []).map((p) => ({

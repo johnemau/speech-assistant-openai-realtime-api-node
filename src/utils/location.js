@@ -1,4 +1,5 @@
 import { getGoogleMapsApiKey, IS_DEV } from '../env.js';
+import { logHttpRequest, logHttpResponse } from './http-log.js';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 const DEFAULT_TIMEZONE_ID = 'America/Los_Angeles';
@@ -72,6 +73,14 @@ async function fetchJson(url, init = {}) {
     const controller = new AbortController();
     const safeUrl = redactUrl(url);
     const method = requestInit.method ?? 'GET';
+    const requestStart = Date.now();
+    logHttpRequest({
+        tag: 'location',
+        url,
+        method,
+        body: requestInit.body,
+        timeoutMs,
+    });
     const t = setTimeout(() => controller.abort(), timeoutMs);
     try {
         const res = await fetch(url, {
@@ -106,7 +115,17 @@ async function fetchJson(url, init = {}) {
             httpError.name = 'HttpError';
             throw httpError;
         }
-        return await res.json();
+        const data = await res.json();
+        logHttpResponse({
+            tag: 'location',
+            url,
+            status: res.status,
+            statusText: res.statusText,
+            durationMs: Date.now() - requestStart,
+            contentType: res.headers?.get('content-type') ?? null,
+            body: data,
+        });
+        return data;
     } catch (error) {
         if (IS_DEV) {
             const err = /** @type {any} */ (error);
