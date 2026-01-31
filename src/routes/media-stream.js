@@ -424,6 +424,18 @@ export function mediaStreamHandler(connection, req) {
             await twilioClient.calls(transfer.callSid).update({
                 twiml: `<Response><Dial>${transfer.destination_number}</Dial></Response>`,
             });
+
+            try {
+                connection.close(1000, 'Call transferred by assistant');
+            } catch {
+                void 0;
+            }
+            try {
+                if (assistantSession.openAiWs?.readyState === WebSocket.OPEN)
+                    assistantSession.close();
+            } catch {
+                void 0;
+            }
         } catch (e) {
             console.warn(
                 'Attempt to update pending transfer failed:',
