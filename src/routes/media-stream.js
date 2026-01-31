@@ -173,10 +173,18 @@ export function mediaStreamHandler(connection, req) {
         return delay;
     }
 
-    function scheduleWaitingMusic(reason = 'unknown') {
+    function scheduleWaitingMusic(
+        reason = 'unknown',
+        { immediate = false } = {}
+    ) {
         if (isWaitingMusic || waitingMusicStartTimeout) return;
-        if (isCallerSpeaking) return;
-        const delayMs = getWaitingMusicDelayMs();
+        if (isCallerSpeaking) {
+            if (hasPendingToolWork()) {
+                resumeWaitingMusicAfterInterrupt = true;
+            }
+            return;
+        }
+        const delayMs = immediate ? 0 : getWaitingMusicDelayMs();
         if (IS_DEV) {
             console.log('wait music schedule requested', {
                 reason,
@@ -602,7 +610,9 @@ export function mediaStreamHandler(connection, req) {
             if (pendingDisconnect) return;
             stopWaitingMusic('speech_stopped');
             if (hasPendingToolWork()) {
-                scheduleWaitingMusic('caller_done_speaking');
+                scheduleWaitingMusic('caller_done_speaking', {
+                    immediate: true,
+                });
             }
             if (responseActive && !toolCallInProgress) {
                 scheduleWaitingMusic('model_response_pending');
@@ -624,7 +634,9 @@ export function mediaStreamHandler(connection, req) {
             }
             if (resumeWaitingMusicAfterInterrupt) {
                 if (hasPendingToolWork()) {
-                    scheduleWaitingMusic('tool_wait_resume_speech');
+                    scheduleWaitingMusic('tool_wait_resume_speech', {
+                        immediate: true,
+                    });
                 }
                 resumeWaitingMusicAfterInterrupt = false;
             }
@@ -634,7 +646,7 @@ export function mediaStreamHandler(connection, req) {
             isCallerSpeaking = true;
             // Caller barged in; stop waiting music and handle truncation
             stopWaitingMusic('caller_speech');
-            if (toolCallInProgress) {
+            if (hasPendingToolWork()) {
                 resumeWaitingMusicAfterInterrupt = true;
             }
             handleSpeechStartedEvent();
@@ -735,7 +747,9 @@ export function mediaStreamHandler(connection, req) {
             }
             if (resumeWaitingMusicAfterInterrupt) {
                 if (hasPendingToolWork()) {
-                    scheduleWaitingMusic('tool_wait_resume_response');
+                    scheduleWaitingMusic('tool_wait_resume_response', {
+                        immediate: true,
+                    });
                 }
                 resumeWaitingMusicAfterInterrupt = false;
             }
@@ -850,7 +864,7 @@ export function mediaStreamHandler(connection, req) {
 
         const toolName = functionCall.name;
         toolCallInProgress = true;
-        scheduleWaitingMusic(`tool_call:${toolName}`);
+        scheduleWaitingMusic(`tool_call:${toolName}`, { immediate: true });
 
         let toolInput = null;
         try {
