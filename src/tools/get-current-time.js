@@ -42,7 +42,7 @@ export const definition = {
         additionalProperties: false,
     },
     description:
-        'Get the current local time. Accepts an optional IANA time zone, place name, or coordinates. Defaults to America/Los_Angeles (PDT/PST) when no timezone can be resolved.',
+        'Get the current local time for time-sensitive requests. Accepts an optional IANA time zone, place name/business address, or coordinates. Defaults to America/Los_Angeles (PDT/PST) when no timezone can be resolved.',
 };
 
 /**
