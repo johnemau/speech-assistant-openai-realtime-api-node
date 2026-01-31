@@ -85,7 +85,7 @@ test('parseArgs defaults format and directory', () => {
 
     const defaulted = parseArgs([]);
     assert.equal(defaulted.format, 'mulaw');
-    assert.equal(defaulted.dir, '/music');
+    assert.equal(defaulted.dir, 'music');
 
     const aliased = parseArgs(['-f', 'mulaw', '-d', 'assets']);
     assert.equal(aliased.format, 'mulaw');
@@ -123,7 +123,7 @@ test('run exits when directory missing', async () => {
     assert.equal(getMockCallArgsOrThrow(exit.mock.calls[0], 'exit')[0], 1);
     assert.equal(
         getMockCallArgsOrThrow(logger.error.mock.calls[0], 'logger.error')[0],
-        'Directory not found: /music'
+        'Directory not found: /abs/music'
     );
 });
 
@@ -246,6 +246,6 @@ test('run logs when no wav files are present', async () => {
     assert.equal(exit.mock.calls.length, 0);
     assert.equal(
         getMockCallArgsOrThrow(logger.log.mock.calls[0], 'logger.log')[0],
-        'No .wav files to convert in /music'
+        'No .wav files to convert in /abs/music'
     );
 });

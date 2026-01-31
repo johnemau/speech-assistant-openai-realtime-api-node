@@ -308,7 +308,7 @@ Enable via environment flags in `.env`:
 ```
 WAIT_MUSIC_THRESHOLD_MS=700
 WAIT_MUSIC_VOLUME=0.12
-WAIT_MUSIC_FOLDER=music/waiting
+WAIT_MUSIC_FOLDER=music
 ```
 
 Notes:
@@ -318,7 +318,7 @@ Notes:
 - Use the conversion script to generate a compatible file (requires `ffmpeg` on your PATH):
 
 ```
-npm run convert:wav -- input.wav output.pcmu --format=mulaw
+npm run convert:wav -- --dir=music --format=mulaw
 ```
 
 - `--format=mulaw` generates µ-law audio (recommended for waiting music). Use `--format=pcm` for linear PCM.
