@@ -151,6 +151,8 @@ export function mediaStreamHandler(connection, req) {
     let resumeWaitingMusicAfterInterrupt = false;
     let isCallerSpeaking = false;
 
+    const hasPendingToolWork = () => toolCallInProgress || pendingToolResponse;
+
     function getWaitingMusicDelayMs() {
         const baseDelay = WAIT_MUSIC_THRESHOLD_MS;
         if (!lastAssistantResponseStartedAt) return baseDelay;
@@ -301,7 +303,7 @@ export function mediaStreamHandler(connection, req) {
             waitingMusicStartTimeout = null;
         }
         if (
-            toolCallInProgress &&
+            hasPendingToolWork() &&
             (reason === 'assistant_audio' || reason === 'caller_speech')
         ) {
             resumeWaitingMusicAfterInterrupt = true;
@@ -599,9 +601,8 @@ export function mediaStreamHandler(connection, req) {
             // During an assistant-initiated hangup, do not request another response
             if (pendingDisconnect) return;
             stopWaitingMusic('speech_stopped');
-            if (toolCallInProgress) {
+            if (hasPendingToolWork()) {
                 scheduleWaitingMusic('caller_done_speaking');
-                resumeWaitingMusicAfterInterrupt = false;
             }
             if (responseActive && !toolCallInProgress) {
                 scheduleWaitingMusic('model_response_pending');
@@ -621,8 +622,10 @@ export function mediaStreamHandler(connection, req) {
                     );
                 }
             }
-            if (resumeWaitingMusicAfterInterrupt && toolCallInProgress) {
-                scheduleWaitingMusic('tool_wait_resume_speech');
+            if (resumeWaitingMusicAfterInterrupt) {
+                if (hasPendingToolWork()) {
+                    scheduleWaitingMusic('tool_wait_resume_speech');
+                }
                 resumeWaitingMusicAfterInterrupt = false;
             }
         }
@@ -730,8 +733,10 @@ export function mediaStreamHandler(connection, req) {
                     }
                 }
             }
-            if (resumeWaitingMusicAfterInterrupt && toolCallInProgress) {
-                scheduleWaitingMusic('tool_wait_resume_response');
+            if (resumeWaitingMusicAfterInterrupt) {
+                if (hasPendingToolWork()) {
+                    scheduleWaitingMusic('tool_wait_resume_response');
+                }
                 resumeWaitingMusicAfterInterrupt = false;
             }
             if (!functionCall || functionCall?.type !== 'function_call') {
