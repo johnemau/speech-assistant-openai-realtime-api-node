@@ -1,6 +1,6 @@
 import { twilioClient, env } from '../init.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
-import { ALLOW_SEND_SMS } from '../env.js';
+import { ALLOW_SEND_SMS, IS_DEV } from '../env.js';
 
 export const definition = {
     type: 'function',
@@ -50,11 +50,31 @@ export async function execute({ args, context }) {
             'SMS is not configured: missing caller or from number.'
         );
 
+    if (IS_DEV) {
+        console.log('send_sms: twilio messages.create request', {
+            from: fromNumber,
+            to: toNumber,
+            length: bodyText.length,
+            preview: bodyText.slice(0, 440),
+        });
+    }
     const sendRes = await twilioClient.messages.create({
         from: fromNumber,
         to: toNumber,
         body: bodyText,
     });
+    if (IS_DEV) {
+        console.log('send_sms: twilio messages.create response', {
+            sid: sendRes?.sid,
+            status: sendRes?.status,
+            errorCode: sendRes?.errorCode,
+            errorMessage: sendRes?.errorMessage,
+            from: sendRes?.from,
+            to: sendRes?.to,
+            body: sendRes?.body,
+            raw: sendRes,
+        });
+    }
     return {
         sid: sendRes?.sid,
         status: sendRes?.status,
