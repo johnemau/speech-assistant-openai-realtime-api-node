@@ -293,20 +293,37 @@ export async function smsHandler(request, reply) {
             return reply.type('text/xml').send(twiml.toString());
         }
 
-        const consentRecordsPath =
-            process.env.SMS_CONSENT_RECORDS_FILE_PATH || undefined;
+        // Use env var if set, otherwise let the consent functions use their defaults
+        const consentRecordsPath = process.env.SMS_CONSENT_RECORDS_FILE_PATH;
         const nowIso = new Date().toISOString();
 
+        if (IS_DEV && consentRecordsPath) {
+            console.log('sms handler: using custom consent records path', {
+                event: 'sms.handler.consent_records_path',
+                filePath: consentRecordsPath,
+            });
+        }
+
         if (isStopKeyword(keyword)) {
-            await appendSmsConsentRecord(
-                {
+            try {
+                await appendSmsConsentRecord(
+                    {
+                        phoneNumber: fromE164,
+                        keyword,
+                        status: 'opted_out',
+                        timestamp: nowIso,
+                    },
+                    consentRecordsPath
+                );
+            } catch (err) {
+                console.error('sms: error recording STOP consent', {
+                    event: 'sms.consent.stop_error',
                     phoneNumber: fromE164,
-                    keyword,
-                    status: 'opted_out',
-                    timestamp: nowIso,
-                },
-                consentRecordsPath
-            );
+                    errorMessage: err?.message,
+                    errorCode: err?.code,
+                });
+                throw err;
+            }
             twiml.message(
                 'You are now opted out and will not receive messages. Reply START to opt in again.'
             );
@@ -314,15 +331,25 @@ export async function smsHandler(request, reply) {
         }
 
         if (isStartKeyword(keyword)) {
-            await appendSmsConsentRecord(
-                {
+            try {
+                await appendSmsConsentRecord(
+                    {
+                        phoneNumber: fromE164,
+                        keyword,
+                        status: 'pending',
+                        timestamp: nowIso,
+                    },
+                    consentRecordsPath
+                );
+            } catch (err) {
+                console.error('sms: error recording START consent', {
+                    event: 'sms.consent.start_error',
                     phoneNumber: fromE164,
-                    keyword,
-                    status: 'pending',
-                    timestamp: nowIso,
-                },
-                consentRecordsPath
-            );
+                    errorMessage: err?.message,
+                    errorCode: err?.code,
+                });
+                throw err;
+            }
             twiml.message(
                 'To confirm enrollment, reply YES. Message frequency varies. Msg and data rates may apply. Reply STOP to opt out.'
             );
@@ -336,15 +363,25 @@ export async function smsHandler(request, reply) {
 
         if (isYesKeyword(keyword)) {
             if (consentStatus === 'pending') {
-                await appendSmsConsentRecord(
-                    {
+                try {
+                    await appendSmsConsentRecord(
+                        {
+                            phoneNumber: fromE164,
+                            keyword,
+                            status: 'confirmed',
+                            timestamp: nowIso,
+                        },
+                        consentRecordsPath
+                    );
+                } catch (err) {
+                    console.error('sms: error recording YES confirmation', {
+                        event: 'sms.consent.yes_error',
                         phoneNumber: fromE164,
-                        keyword,
-                        status: 'confirmed',
-                        timestamp: nowIso,
-                    },
-                    consentRecordsPath
-                );
+                        errorMessage: err?.message,
+                        errorCode: err?.code,
+                    });
+                    throw err;
+                }
                 twiml.message(
                     'You are enrolled. Message frequency varies. Msg and data rates may apply. Reply STOP to opt out.'
                 );
