@@ -13,5 +13,5 @@ After you text `START`, we will send a confirmation message. Reply `YES` to comp
 Reply `STOP` at any time to opt out.
 
 - Privacy Policy: `/privacy-policy`
-- Terms & Conditions: `/terms`
+- Terms of Service: `/tos`
 - How to Opt In: `/how-to-opt-in`
