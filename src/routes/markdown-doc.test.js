@@ -66,6 +66,10 @@ test('markdown-doc renders markdown file as html', async () => {
             String(reply.payload),
             /<title>Terms and Conditions<\/title>/
         );
+        assert.match(
+            String(reply.payload),
+            /@media \(prefers-color-scheme: dark\)/
+        );
     } finally {
         await rm(tmpDir, { recursive: true, force: true });
     }
