@@ -2,6 +2,9 @@ import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { marked } from 'marked';
 
+// Tagged template for HTML authoring with editor tooling support.
+const html = String.raw;
+
 /**
  * @param {string} value - Raw title value.
  * @returns {string} Escaped HTML-safe title.
@@ -41,9 +44,79 @@ export function createMarkdownDocHandler({ filePath, title }) {
             const markdown = await readFile(absolutePath, 'utf8');
             const renderedBody = marked.parse(markdown);
             const pageTitle = escapeHtml(title || path.basename(absolutePath));
-            const html = `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="color-scheme" content="light dark">\n<title>${pageTitle}</title>\n<style>\n:root {\n  color-scheme: light dark;\n  --bg: #ffffff;\n  --text: #1f2937;\n  --muted: #4b5563;\n  --link: #0a5bc4;\n  --border: #e5e7eb;\n}\n@media (prefers-color-scheme: dark) {\n  :root {\n    --bg: #0f172a;\n    --text: #e5e7eb;\n    --muted: #cbd5e1;\n    --link: #7dd3fc;\n    --border: #334155;\n  }\n}\n* { box-sizing: border-box; }\nbody {\n  margin: 0 auto;\n  max-width: 78ch;\n  padding: 2rem 1.25rem 3rem;\n  background: var(--bg);\n  color: var(--text);\n  font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;\n}\na { color: var(--link); }\np, li { color: var(--muted); }\nhr { border: 0; border-top: 1px solid var(--border); }\nimg { max-width: 100%; height: auto; }\npre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }\n</style>\n</head>\n<body>\n${renderedBody}\n</body>\n</html>`;
+            const renderedHtml = html`<!doctype html>
+                <html lang="en">
+                    <head>
+                        <meta charset="utf-8" />
+                        <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1"
+                        />
+                        <meta name="color-scheme" content="light dark" />
+                        <title>${pageTitle}</title>
+                        <style>
+                            :root {
+                                color-scheme: light dark;
+                                --bg: #ffffff;
+                                --text: #1f2937;
+                                --muted: #4b5563;
+                                --link: #0a5bc4;
+                                --border: #e5e7eb;
+                            }
+                            @media (prefers-color-scheme: dark) {
+                                :root {
+                                    --bg: #0f172a;
+                                    --text: #e5e7eb;
+                                    --muted: #cbd5e1;
+                                    --link: #7dd3fc;
+                                    --border: #334155;
+                                }
+                            }
+                            * {
+                                box-sizing: border-box;
+                            }
+                            body {
+                                margin: 0 auto;
+                                max-width: 78ch;
+                                padding: 2rem 1.25rem 3rem;
+                                background: var(--bg);
+                                color: var(--text);
+                                font:
+                                    16px/1.6 ui-sans-serif,
+                                    system-ui,
+                                    -apple-system,
+                                    Segoe UI,
+                                    sans-serif;
+                            }
+                            a {
+                                color: var(--link);
+                            }
+                            p,
+                            li {
+                                color: var(--muted);
+                            }
+                            hr {
+                                border: 0;
+                                border-top: 1px solid var(--border);
+                            }
+                            img {
+                                max-width: 100%;
+                                height: auto;
+                            }
+                            pre,
+                            code {
+                                font-family:
+                                    ui-monospace, SFMono-Regular, Menlo, Monaco,
+                                    Consolas, monospace;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${renderedBody}
+                    </body>
+                </html>`;
 
-            reply.type('text/html; charset=utf-8').send(html);
+            reply.type('text/html; charset=utf-8').send(renderedHtml);
         } catch {
             reply
                 .code(500)
