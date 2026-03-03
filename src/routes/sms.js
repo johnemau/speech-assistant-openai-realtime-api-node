@@ -27,7 +27,7 @@ import {
     normalizeSmsKeyword,
 } from '../utils/sms-consent.js';
 
-const MAX_SMS_TOOL_ROUNDS = 6;
+const MAX_SMS_TOOL_ROUNDS = 9;
 
 /**
  * Execute a tool call safely for SMS.
