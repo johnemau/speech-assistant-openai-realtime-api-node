@@ -19,6 +19,8 @@
         "test:unit": "node --test src/**/*.test.js scripts/**/*.test.js",
         "test:integration": "node --test tests/integration/**/*.test.js",
         "test:pf": "npm run pf",
+        "test:pf:sms": "npm run pf:sms",
+        "test:pf:search": "npm run pf:search",
         "convert:wav": "node scripts/convert-wav.mjs",
         "pf:eval:realtime-web-search": "npx promptfoo eval -c tests/promptfoo/promptfooconfig.realtime-web-search.mjs",
         "pf:realtime-web-search": "npm run pf:eval:realtime-web-search",
