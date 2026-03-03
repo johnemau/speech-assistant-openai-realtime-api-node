@@ -234,12 +234,18 @@ export async function getSmsConsentStatus(
             });
         }
     } catch (err) {
-        if (IS_DEV) {
+        // File not existing yet is expected (no enrollments yet), so only log non-ENOENT errors
+        if (IS_DEV && err?.code !== 'ENOENT') {
             console.log('sms-consent: error reading records file', {
                 event: 'sms-consent.records_file.read_error',
                 absolutePath,
                 errorMessage: err?.message || String(err),
                 errorCode: err?.code,
+            });
+        } else if (IS_DEV && err?.code === 'ENOENT') {
+            console.log('sms-consent: records file not found (no enrollments yet)', {
+                event: 'sms-consent.records_file.not_found',
+                absolutePath,
             });
         }
         return null;
