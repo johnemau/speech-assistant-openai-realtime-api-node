@@ -5,10 +5,10 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 ## Big Picture
 
 - Twilio inbound call → TwiML webhook → Media Stream WebSocket → OpenAI Realtime WebSocket → audio round‑trip.
-- Core entry point: [index.js](../index.js). Reference [README.md](../README.md) for setup and behavior.
+- Core entry point: [index.js](index.js). Reference [README.md](README.md) for setup and behavior.
 - Fastify HTTP server exposes: `/` (root), `/healthz` (uptime), `/incoming-call` (TwiML), `/media-stream` (WebSocket for Twilio audio), `/sms` (Twilio Messaging webhook for auto‑replies), and markdown document routes (`/tos`, `/privacy-policy`, `/how-to-opt-in`).
 - Audio from Twilio is forwarded to OpenAI via `input_audio_buffer.append`; assistant audio returns via `response.output_audio.delta` and is streamed back to Twilio.
-- Realtime session + prompts live under [src/assistant](../src/assistant) (see [src/assistant/session.js](../src/assistant/session.js) and [src/assistant/prompts.js](../src/assistant/prompts.js)).
+- Realtime session + prompts live under [src/assistant](src/assistant) (see [src/assistant/session.js](src/assistant/session.js) and [src/assistant/prompts.js](src/assistant/prompts.js)).
 
 ## Developer Workflow
 
@@ -25,9 +25,9 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
     - `npm run lint:eslint` and `npm run lint:eslint:fix` for ESLint-only runs.
     - `npm run format` for Prettier check-only.
     - `npm run format:write` (or `npm run format:fix`) to write formatting.
-    - Transfer call validation tests live in [src/tools/transfer-call.test.js](../src/tools/transfer-call.test.js) and [src/routes/media-stream.test.js](../src/routes/media-stream.test.js).
+    - Transfer call validation tests live in [src/tools/transfer-call.test.js](src/tools/transfer-call.test.js) and [src/routes/media-stream.test.js](src/routes/media-stream.test.js).
 - Prompt evaluations:
-    - `npm run pf:eval:realtime-web-search`, `npm run pf:eval:sms`, `npm run pf:eval`, and `npm run pf:view` (configs in [tests/promptfoo](../tests/promptfoo)).
+    - `npm run pf:eval:realtime-web-search`, `npm run pf:eval:sms`, `npm run pf:eval`, and `npm run pf:view` (configs in [tests/promptfoo](tests/promptfoo)).
 - Port: `PORT` env var controls Fastify; default in code is `10000`.
 - Public ingress: bind ngrok domain via `NGROK_DOMAIN` and optional `NGROK_AUTHTOKEN`. The server also runs locally without ngrok.
 - Minimal health checks: GET `/` and `/healthz`.
@@ -70,7 +70,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 ## OpenAI Session & Tools
 
 - Session initialization sets `type: realtime`, `model: gpt-realtime`, audio I/O formats (`audio/pcmu`), `voice: cedar`, and concatenated `REALTIME_INSTRUCTIONS` policy.
-- Tools declared in session (implementations in [src/tools](../src/tools)):
+- Tools declared in session (implementations in [src/tools](src/tools)):
     - `directions`: Uses Google Routes API to fetch turn-by-turn steps. Accepts address/place or lat/lng for origin/destination; origin can fall back to latest SPOT track when omitted. Requires `GOOGLE_MAPS_API_KEY`.
     - `gpt_web_search`: Implemented by calling the SDK `responses.create` with `tools: [{ type: 'web_search', user_location: ... }]` and `tool_choice: 'required'`. Result is sent back as a `function_call_output` and triggers `response.create`.
     - `send_email`: Uses Nodemailer single sender; selects `to` via caller group. Sends HTML‑only body; returns `messageId/accepted/rejected` as `function_call_output` and then `response.create`. Adds header `X-From-Ai-Assistant: true`.
