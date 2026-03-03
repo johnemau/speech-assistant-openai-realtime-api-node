@@ -44,6 +44,7 @@
         "dotenv": "^16.4.5",
         "fastify": "^5.0.0",
         "json5": "^2.2.3",
+        "marked": "^15.0.12",
         "minimist": "^1.2.8",
         "nodemailer": "^7.0.12",
         "openai": "^6.16.0",

@@ -5,6 +5,7 @@ import fastifyWs from '@fastify/websocket';
 import { smsHandler } from './src/routes/sms.js';
 import { incomingCallHandler } from './src/routes/incoming-call.js';
 import { mediaStreamHandler } from './src/routes/media-stream.js';
+import { createMarkdownDocHandler } from './src/routes/markdown-doc.js';
 import { NGROK_DOMAIN, PORT } from './src/init.js';
 
 // Initialize Fastify
@@ -38,6 +39,14 @@ fastify.get('/', rootHandler);
 fastify.get('/healthz', healthzHandler);
 
 fastify.post('/sms', smsHandler);
+
+fastify.get(
+    '/terms.md',
+    createMarkdownDocHandler({
+        filePath: process.env.TERMS_AND_CONDITIONS_FILE_PATH || 'terms.md',
+        title: 'Terms and Conditions',
+    })
+);
 
 fastify.all('/incoming-call', incomingCallHandler);
 
