@@ -57,6 +57,34 @@ test('sms.buildSmsThreadText formats labels and limits', () => {
     assert.ok(!text.includes('Hello'));
 });
 
+test('sms.buildSmsThreadText puts assistant second when timestamps are equal', () => {
+    const messages = [
+        {
+            dateSent: '2020-01-02T00:00:00Z',
+            from: '+12065550199',
+            body: 'Assistant reply',
+        },
+        {
+            dateSent: '2020-01-02T00:00:00Z',
+            from: '+12065550100',
+            body: 'User message',
+        },
+    ];
+
+    const text = buildSmsThreadText({
+        messages,
+        fromE164: '+12065550100',
+        limit: 10,
+    });
+
+    const lines = text.split('\n');
+    assert.equal(lines.length, 2);
+    assert.ok(lines[0].startsWith('User'));
+    assert.ok(lines[0].includes('User message'));
+    assert.ok(lines[1].startsWith('Assistant'));
+    assert.ok(lines[1].includes('Assistant reply'));
+});
+
 test('sms.buildSmsPrompt includes context, thread, and latest message', () => {
     const out = buildSmsPrompt({
         threadText: 'Thread',
