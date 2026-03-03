@@ -244,7 +244,7 @@ test('sms HELP and INFO send help message', async () => {
         await smsHandler(helpRequest, helpReply);
         assert.equal(helpReply.headers.type, 'text/xml');
         assert.ok(String(helpReply.payload).includes('Reply STOP'));
-        assert.ok(String(helpReply.payload).includes('Msg&Data Rates'));
+        assert.ok(String(helpReply.payload).includes('May Apply'));
 
         // Test INFO keyword
         const infoRequest = {
@@ -255,7 +255,7 @@ test('sms HELP and INFO send help message', async () => {
         await smsHandler(infoRequest, infoReply);
         assert.equal(infoReply.headers.type, 'text/xml');
         assert.ok(String(infoReply.payload).includes('Reply STOP'));
-        assert.ok(String(infoReply.payload).includes('Msg&Data Rates'));
+        assert.ok(String(infoReply.payload).includes('May Apply'));
     } finally {
         cleanup();
     }
