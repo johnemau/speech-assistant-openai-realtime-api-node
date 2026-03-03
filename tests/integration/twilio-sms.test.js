@@ -179,6 +179,90 @@ test('user who does not agree to SMS consent', async () => {
     await rm(tmpDir, { recursive: true, force: true });
 });
 
+test('user with consent but not on allowlist is rejected', async () => {
+    const tmpDir = await mkdtemp(
+        path.join(os.tmpdir(), 'sms-consent-allowlist-test-')
+    );
+    const recordsPath = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
+
+    const env = await import('../../src/env.js');
+    const prev = {
+        primary: new Set(env.PRIMARY_CALLERS_SET),
+        secondary: new Set(env.SECONDARY_CALLERS_SET),
+    };
+
+    // Create a number that is NOT in the allowlist
+    const notAllowlistedNumber = '+19999999999';
+    env.PRIMARY_CALLERS_SET.clear();
+    env.SECONDARY_CALLERS_SET.clear();
+
+    // Add SMS consent for the non-allowlisted number
+    await appendSmsConsentRecord(
+        {
+            phoneNumber: notAllowlistedNumber,
+            keyword: 'YES',
+            status: 'confirmed',
+            timestamp: new Date().toISOString(),
+        },
+        recordsPath
+    );
+
+    const init = await import('../../src/init.js');
+    const prevClients = {
+        openaiClient: init.openaiClient,
+        twilioClient: init.twilioClient,
+    };
+    init.setInitClients({
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'ok' }) },
+        },
+        twilioClient: null,
+    });
+
+    const moduleUrl =
+        new URL('../../src/routes/sms.js', import.meta.url).href +
+        `?test=allowlist-${Math.random()}`;
+    const { smsHandler } = await import(moduleUrl);
+
+    // Step 1: User with consent but not on allowlist sends a message
+    let request = {
+        body: {
+            Body: 'Hello, is anyone there?',
+            From: notAllowlistedNumber,
+            To: smsFromNumber,
+        },
+    };
+    let reply = createReply();
+    await smsHandler(request, reply);
+
+    // Step 2: Verify the message is rejected (user not on allowlist)
+    assert.ok(
+        String(reply.payload).includes('not on our list'),
+        'Expected handler to indicate user is not on the allowlist'
+    );
+
+    // Step 3: Verify consent status exists but user is still rejected
+    let status = await getSmsConsentStatus(
+        notAllowlistedNumber,
+        recordsPath
+    );
+    assert.equal(
+        status,
+        'confirmed',
+        'Expected confirmed consent status for non-allowlisted user'
+    );
+
+    // Cleanup
+    env.PRIMARY_CALLERS_SET.clear();
+    env.SECONDARY_CALLERS_SET.clear();
+    prev.primary.forEach((value) => env.PRIMARY_CALLERS_SET.add(value));
+    prev.secondary.forEach((value) => env.SECONDARY_CALLERS_SET.add(value));
+    init.setInitClients(prevClients);
+    delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+    await rm(tmpDir, { recursive: true, force: true });
+});
+
 /**
  * @returns {{
  *  headers: Record<string, string>,
