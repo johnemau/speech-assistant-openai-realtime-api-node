@@ -7,7 +7,6 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import {
     normalizeSmsKeyword,
     isStartKeyword,
-    isYesKeyword,
     isStopKeyword,
     isHelpKeyword,
     appendSmsConsentRecord,
@@ -20,12 +19,28 @@ test('normalizeSmsKeyword normalizes case and spacing', () => {
 });
 
 test('keyword helpers match supported commands', () => {
+    // Opt-in keywords
     assert.equal(isStartKeyword('START'), true);
-    assert.equal(isYesKeyword('YES'), true);
+    assert.equal(isStartKeyword('UNSTOP'), true);
+    assert.equal(isStartKeyword('YES'), true);
+
+    // Opt-out keywords
     assert.equal(isStopKeyword('STOP'), true);
+    assert.equal(isStopKeyword('CANCEL'), true);
+    assert.equal(isStopKeyword('END'), true);
+    assert.equal(isStopKeyword('OPTOUT'), true);
+    assert.equal(isStopKeyword('QUIT'), true);
+    assert.equal(isStopKeyword('REVOKE'), true);
+    assert.equal(isStopKeyword('STOPALL'), true);
+    assert.equal(isStopKeyword('UNSUBSCRIBE'), true);
+
+    // Help keywords
     assert.equal(isHelpKeyword('HELP'), true);
     assert.equal(isHelpKeyword('INFO'), true);
+
+    // Non-keywords
     assert.equal(isStartKeyword('HELLO'), false);
+    assert.equal(isStopKeyword('HELLO'), false);
     assert.equal(isHelpKeyword('HELLO'), false);
 });
 

@@ -40,10 +40,20 @@ export function normalizeSmsKeyword(value) {
 
 /**
  * @param {string} keyword - Normalized keyword.
- * @returns {boolean} True when keyword is STOP.
+ * @returns {boolean} True when keyword is an opt-out keyword.
  */
 export function isStopKeyword(keyword) {
-    const result = keyword === 'STOP';
+    const optOutKeywords = [
+        'CANCEL',
+        'END',
+        'OPTOUT',
+        'QUIT',
+        'REVOKE',
+        'STOP',
+        'STOPALL',
+        'UNSUBSCRIBE',
+    ];
+    const result = optOutKeywords.includes(keyword);
     if (IS_DEV) {
         console.log('sms-consent: stop keyword check', {
             event: 'sms-consent.keyword.check_stop',
@@ -56,10 +66,11 @@ export function isStopKeyword(keyword) {
 
 /**
  * @param {string} keyword - Normalized keyword.
- * @returns {boolean} True when keyword is START.
+ * @returns {boolean} True when keyword is an opt-in keyword.
  */
 export function isStartKeyword(keyword) {
-    const result = keyword === 'START';
+    const optInKeywords = ['START', 'UNSTOP', 'YES'];
+    const result = optInKeywords.includes(keyword);
     if (IS_DEV) {
         console.log('sms-consent: start keyword check', {
             event: 'sms-consent.keyword.check_start',
@@ -73,6 +84,7 @@ export function isStartKeyword(keyword) {
 /**
  * @param {string} keyword - Normalized keyword.
  * @returns {boolean} True when keyword is YES.
+ * @deprecated YES is now handled by isStartKeyword(). This function is kept for backwards compatibility.
  */
 export function isYesKeyword(keyword) {
     const result = keyword === 'YES';

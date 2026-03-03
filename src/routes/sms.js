@@ -23,7 +23,6 @@ import {
     getSmsConsentStatus,
     isStartKeyword,
     isStopKeyword,
-    isYesKeyword,
     isHelpKeyword,
     normalizeSmsKeyword,
 } from '../utils/sms-consent.js';
@@ -333,7 +332,7 @@ export async function smsHandler(request, reply) {
                 throw err;
             }
             twiml.message(
-                'You are now opted out and will not receive messages. Reply START to opt in again.'
+                'You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.'
             );
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -344,7 +343,7 @@ export async function smsHandler(request, reply) {
                     {
                         phoneNumber: fromE164,
                         keyword,
-                        status: 'pending',
+                        status: 'confirmed',
                         timestamp: nowIso,
                     },
                     consentRecordsPath
@@ -359,7 +358,7 @@ export async function smsHandler(request, reply) {
                 throw err;
             }
             twiml.message(
-                'To confirm enrollment, reply YES. Message frequency varies. Msg and data rates may apply. Reply STOP to opt out.'
+                'You have successfully been re-subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.'
             );
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -369,47 +368,9 @@ export async function smsHandler(request, reply) {
             consentRecordsPath
         );
 
-        if (isYesKeyword(keyword)) {
-            if (consentStatus === 'pending') {
-                try {
-                    await appendSmsConsentRecord(
-                        {
-                            phoneNumber: fromE164,
-                            keyword,
-                            status: 'confirmed',
-                            timestamp: nowIso,
-                        },
-                        consentRecordsPath
-                    );
-                } catch (err) {
-                    console.error('sms: error recording YES confirmation', {
-                        event: 'sms.consent.yes_error',
-                        phoneNumber: fromE164,
-                        errorMessage: err?.message,
-                        errorCode: err?.code,
-                    });
-                    throw err;
-                }
-                twiml.message(
-                    'You are enrolled. Message frequency varies. Msg and data rates may apply. Reply STOP to opt out.'
-                );
-                return reply.type('text/xml').send(twiml.toString());
-            }
-
-            if (consentStatus === 'confirmed') {
-                twiml.message(
-                    'You are already enrolled. Reply STOP to opt out at any time.'
-                );
-                return reply.type('text/xml').send(twiml.toString());
-            }
-
-            twiml.message('Please text START first, then reply YES to enroll.');
-            return reply.type('text/xml').send(twiml.toString());
-        }
-
         if (consentStatus !== 'confirmed') {
             twiml.message(
-                'You are not enrolled yet. Text START to begin, then reply YES to confirm.'
+                'You are not enrolled yet. Reply START to subscribe. Reply HELP for help.'
             );
             return reply.type('text/xml').send(twiml.toString());
         }

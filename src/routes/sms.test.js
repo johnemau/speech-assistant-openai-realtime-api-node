@@ -122,13 +122,13 @@ test('sms replies with restricted message for non-allowlisted sender', async () 
         await smsHandler(request, reply);
 
         assert.equal(reply.headers.type, 'text/xml');
-        assert.ok(String(reply.payload).includes('Text START'));
+        assert.ok(String(reply.payload).includes('Reply START'));
     } finally {
         cleanup();
     }
 });
 
-test('sms START sends confirmation prompt and records pending consent', async () => {
+test('sms START immediately subscribes with confirmed status', async () => {
     const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
     process.env.SMS_CONSENT_RECORDS_FILE_PATH = path.join(
         tmpDir,
@@ -150,7 +150,10 @@ test('sms START sends confirmation prompt and records pending consent', async ()
     try {
         await smsHandler(request, reply);
         assert.equal(reply.headers.type, 'text/xml');
-        assert.ok(String(reply.payload).includes('reply YES'));
+        assert.ok(
+            String(reply.payload).includes('successfully been re-subscribed')
+        );
+        assert.ok(String(reply.payload).includes('Reply HELP'));
     } finally {
         cleanup();
         delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
@@ -158,45 +161,7 @@ test('sms START sends confirmation prompt and records pending consent', async ()
     }
 });
 
-test('sms YES confirms enrollment when pending', async () => {
-    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
-    const recordsPath = path.join(tmpDir, 'consent.jsonl');
-    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
-
-    await appendSmsConsentRecord(
-        {
-            phoneNumber: '+12065550100',
-            keyword: 'START',
-            status: 'pending',
-            timestamp: new Date().toISOString(),
-        },
-        recordsPath
-    );
-
-    const { smsHandler, cleanup } = await loadSmsHandler({
-        twilioClient: null,
-        openaiClient: {
-            responses: { create: async () => ({ output_text: 'ok' }) },
-        },
-    });
-
-    const request = {
-        body: { Body: 'YES', From: '+12065550100', To: '+12065550101' },
-    };
-    const reply = createReply();
-
-    try {
-        await smsHandler(request, reply);
-        assert.equal(reply.headers.type, 'text/xml');
-        assert.ok(String(reply.payload).includes('You are enrolled'));
-    } finally {
-        cleanup();
-        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
-        await rm(tmpDir, { recursive: true, force: true });
-    }
-});
-
-test('sms STOP opts out immediately', async () => {
+test('sms YES, UNSTOP, and other opt-in keywords immediately subscribe', async () => {
     const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
     process.env.SMS_CONSENT_RECORDS_FILE_PATH = path.join(
         tmpDir,
@@ -210,15 +175,90 @@ test('sms STOP opts out immediately', async () => {
         },
     });
 
-    const request = {
-        body: { Body: 'STOP', From: '+12065550100', To: '+12065550101' },
-    };
-    const reply = createReply();
+    try {
+        // Test YES
+        const yesRequest = {
+            body: { Body: 'YES', From: '+12065550100', To: '+12065550101' },
+        };
+        const yesReply = createReply();
+        await smsHandler(yesRequest, yesReply);
+        assert.equal(yesReply.headers.type, 'text/xml');
+        assert.ok(
+            String(yesReply.payload).includes('successfully been re-subscribed')
+        );
+
+        // Test UNSTOP
+        const unstopRequest = {
+            body: { Body: 'UNSTOP', From: '+14255550101', To: '+12065550101' },
+        };
+        const unstopReply = createReply();
+        await smsHandler(unstopRequest, unstopReply);
+        assert.equal(unstopReply.headers.type, 'text/xml');
+        assert.ok(
+            String(unstopReply.payload).includes(
+                'successfully been re-subscribed'
+            )
+        );
+    } finally {
+        cleanup();
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
+    }
+});
+
+test('sms STOP and other opt-out keywords unsubscribe immediately', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = path.join(
+        tmpDir,
+        'consent.jsonl'
+    );
+
+    const { smsHandler, cleanup } = await loadSmsHandler({
+        twilioClient: null,
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'ok' }) },
+        },
+    });
 
     try {
-        await smsHandler(request, reply);
-        assert.equal(reply.headers.type, 'text/xml');
-        assert.ok(String(reply.payload).includes('opted out'));
+        // Test STOP
+        const stopRequest = {
+            body: { Body: 'STOP', From: '+12065550100', To: '+12065550101' },
+        };
+        const stopReply = createReply();
+        await smsHandler(stopRequest, stopReply);
+        assert.equal(stopReply.headers.type, 'text/xml');
+        assert.ok(
+            String(stopReply.payload).includes('successfully been unsubscribed')
+        );
+
+        // Test UNSUBSCRIBE
+        const unsubRequest = {
+            body: {
+                Body: 'UNSUBSCRIBE',
+                From: '+14255550101',
+                To: '+12065550101',
+            },
+        };
+        const unsubReply = createReply();
+        await smsHandler(unsubRequest, unsubReply);
+        assert.equal(unsubReply.headers.type, 'text/xml');
+        assert.ok(
+            String(unsubReply.payload).includes(
+                'successfully been unsubscribed'
+            )
+        );
+
+        // Test QUIT
+        const quitRequest = {
+            body: { Body: 'quit', From: '+12065550100', To: '+12065550101' },
+        };
+        const quitReply = createReply();
+        await smsHandler(quitRequest, quitReply);
+        assert.equal(quitReply.headers.type, 'text/xml');
+        assert.ok(
+            String(quitReply.payload).includes('successfully been unsubscribed')
+        );
     } finally {
         cleanup();
         delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
