@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { appendSmsConsentRecord } from '../utils/sms-consent.js';
 
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
@@ -118,13 +122,124 @@ test('sms replies with restricted message for non-allowlisted sender', async () 
         await smsHandler(request, reply);
 
         assert.equal(reply.headers.type, 'text/xml');
-        assert.ok(String(reply.payload).includes('restricted'));
+        assert.ok(String(reply.payload).includes('Text START'));
     } finally {
         cleanup();
     }
 });
 
+test('sms START sends confirmation prompt and records pending consent', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = path.join(
+        tmpDir,
+        'consent.jsonl'
+    );
+
+    const { smsHandler, cleanup } = await loadSmsHandler({
+        twilioClient: null,
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'ok' }) },
+        },
+    });
+
+    const request = {
+        body: { Body: 'START', From: '+12065550100', To: '+12065550101' },
+    };
+    const reply = createReply();
+
+    try {
+        await smsHandler(request, reply);
+        assert.equal(reply.headers.type, 'text/xml');
+        assert.ok(String(reply.payload).includes('reply YES'));
+    } finally {
+        cleanup();
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
+    }
+});
+
+test('sms YES confirms enrollment when pending', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
+    const recordsPath = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
+
+    await appendSmsConsentRecord(
+        {
+            phoneNumber: '+12065550100',
+            keyword: 'START',
+            status: 'pending',
+            timestamp: new Date().toISOString(),
+        },
+        recordsPath
+    );
+
+    const { smsHandler, cleanup } = await loadSmsHandler({
+        twilioClient: null,
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'ok' }) },
+        },
+    });
+
+    const request = {
+        body: { Body: 'YES', From: '+12065550100', To: '+12065550101' },
+    };
+    const reply = createReply();
+
+    try {
+        await smsHandler(request, reply);
+        assert.equal(reply.headers.type, 'text/xml');
+        assert.ok(String(reply.payload).includes('You are enrolled'));
+    } finally {
+        cleanup();
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
+    }
+});
+
+test('sms STOP opts out immediately', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = path.join(
+        tmpDir,
+        'consent.jsonl'
+    );
+
+    const { smsHandler, cleanup } = await loadSmsHandler({
+        twilioClient: null,
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'ok' }) },
+        },
+    });
+
+    const request = {
+        body: { Body: 'STOP', From: '+12065550100', To: '+12065550101' },
+    };
+    const reply = createReply();
+
+    try {
+        await smsHandler(request, reply);
+        assert.equal(reply.headers.type, 'text/xml');
+        assert.ok(String(reply.payload).includes('opted out'));
+    } finally {
+        cleanup();
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
+    }
+});
+
 test('sms replies with unconfigured message when Twilio client missing', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
+    const recordsPath = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
+    await appendSmsConsentRecord(
+        {
+            phoneNumber: '+12065550100',
+            keyword: 'YES',
+            status: 'confirmed',
+            timestamp: new Date().toISOString(),
+        },
+        recordsPath
+    );
+
     const { smsHandler, cleanup } = await loadSmsHandler({
         allowlist: new Set(['+12065550100']),
         secondaryAllowlist: new Set(),
@@ -146,10 +261,25 @@ test('sms replies with unconfigured message when Twilio client missing', async (
         assert.ok(String(reply.payload).includes('not configured'));
     } finally {
         cleanup();
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
     }
 });
 
 test('sms sends AI reply via Twilio', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
+    const recordsPath = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
+    await appendSmsConsentRecord(
+        {
+            phoneNumber: '+12065550100',
+            keyword: 'YES',
+            status: 'confirmed',
+            timestamp: new Date().toISOString(),
+        },
+        recordsPath
+    );
+
     /** @type {{ list: any[], create: any[], ai?: any }} */
     const calls = { list: [], create: [] };
     const twilioClient = {
@@ -214,10 +344,25 @@ test('sms sends AI reply via Twilio', async () => {
         assert.equal(reply.headers.type, 'text/xml');
     } finally {
         cleanup();
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
     }
 });
 
 test('sms uses AI error fallback text when OpenAI fails', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
+    const recordsPath = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
+    await appendSmsConsentRecord(
+        {
+            phoneNumber: '+12065550100',
+            keyword: 'YES',
+            status: 'confirmed',
+            timestamp: new Date().toISOString(),
+        },
+        recordsPath
+    );
+
     /** @type {{ create: any[] }} */
     const calls = { create: [] };
     const twilioClient = {
@@ -260,10 +405,25 @@ test('sms uses AI error fallback text when OpenAI fails', async () => {
         assert.equal(reply.headers.type, 'text/xml');
     } finally {
         cleanup();
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
     }
 });
 
 test('sms replies with TwiML when Twilio send fails', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
+    const recordsPath = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
+    await appendSmsConsentRecord(
+        {
+            phoneNumber: '+12065550100',
+            keyword: 'YES',
+            status: 'confirmed',
+            timestamp: new Date().toISOString(),
+        },
+        recordsPath
+    );
+
     const twilioClient = {
         messages: {
             list: async () => [],
@@ -296,5 +456,7 @@ test('sms replies with TwiML when Twilio send fails', async () => {
         assert.ok(String(reply.payload).includes('SMS send error'));
     } finally {
         cleanup();
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
     }
 });

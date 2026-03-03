@@ -215,7 +215,9 @@ Set `NODE_ENV=development` to enable verbose diagnostic logs across routes, tool
 Let the assistant auto‑reply to SMS using GPT‑5.2 with the `web_search` tool.
 
 - Webhook: `/sms` (configure in Twilio Console under Messaging → “A message comes in”)
-- Allowlist: only numbers listed in `PRIMARY_USER_PHONE_NUMBERS` or `SECONDARY_USER_PHONE_NUMBERS` are allowed.
+- Enrollment flow: users text `START`, then must reply `YES` to confirm enrollment. No AI SMS replies are sent until enrollment is confirmed.
+- Opt-out: users can reply `STOP` at any time to opt out immediately.
+- Consent records: the app stores `{ phoneNumber, keyword, timestamp, status }` records in `SMS_CONSENT_RECORDS_FILE_PATH` (default: `data/sms-consent-records.jsonl`) for audit purposes.
 - Thread context: the app fetches up to the last 10 messages exchanged with the caller in the past 12 hours (both inbound and outbound), merges them, and includes this thread in the prompt.
 - Model and tools: calls OpenAI `responses.create` with `model: gpt-5.2` and `tools: [{ type: 'web_search' }]` (tool_choice=`required`).
 - Reply style: concise, friendly SMS (≤320 chars). When citing sources, include a URL for each cited source if one is available.

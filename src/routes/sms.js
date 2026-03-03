@@ -8,7 +8,7 @@ import {
     extractSmsRequest,
     mergeAndSortMessages,
 } from '../utils/sms.js';
-import { IS_DEV, PRIMARY_CALLERS_SET, SECONDARY_CALLERS_SET } from '../env.js';
+import { IS_DEV } from '../env.js';
 import {
     buildSmsResponseConfig,
     GPT_5_2_MODEL,
@@ -18,6 +18,14 @@ import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
 import { safeParseToolArguments } from '../assistant/session.js';
 import { executeToolCall } from '../tools/index.js';
+import {
+    appendSmsConsentRecord,
+    getSmsConsentStatus,
+    isStartKeyword,
+    isStopKeyword,
+    isYesKeyword,
+    normalizeSmsKeyword,
+} from '../utils/sms-consent.js';
 
 const MAX_SMS_TOOL_ROUNDS = 6;
 
@@ -164,6 +172,7 @@ export async function smsHandler(request, reply) {
                 normalizeUSNumberToE164,
             }
         );
+        const keyword = normalizeSmsKeyword(bodyRaw);
 
         // Concise incoming log
         console.info(
@@ -177,27 +186,84 @@ export async function smsHandler(request, reply) {
             }
         );
 
-        // Allowlist check: only PRIMARY or SECONDARY callers may use SMS auto-reply
-        const isAllowed =
-            !!fromE164 &&
-            (PRIMARY_CALLERS_SET.has(fromE164) ||
-                SECONDARY_CALLERS_SET.has(fromE164));
-        if (!isAllowed) {
-            // Concise log for restricted access
-            console.warn(
-                `sms reply restricted (twiml): from=${fromE164 || ''} to=${toE164 || ''}`,
-                {
-                    event: 'sms.reply.restricted_twiml',
-                    from: fromE164,
-                    to: toE164,
-                }
-            );
+        if (!fromE164) {
             twiml.message('Sorry, this SMS line is restricted.');
             return reply.type('text/xml').send(twiml.toString());
         }
 
-        if (!fromE164) {
-            twiml.message('Sorry, this SMS line is restricted.');
+        const consentRecordsPath =
+            process.env.SMS_CONSENT_RECORDS_FILE_PATH || undefined;
+        const nowIso = new Date().toISOString();
+
+        if (isStopKeyword(keyword)) {
+            await appendSmsConsentRecord(
+                {
+                    phoneNumber: fromE164,
+                    keyword,
+                    status: 'opted_out',
+                    timestamp: nowIso,
+                },
+                consentRecordsPath
+            );
+            twiml.message(
+                'You are now opted out and will not receive messages. Reply START to opt in again.'
+            );
+            return reply.type('text/xml').send(twiml.toString());
+        }
+
+        if (isStartKeyword(keyword)) {
+            await appendSmsConsentRecord(
+                {
+                    phoneNumber: fromE164,
+                    keyword,
+                    status: 'pending',
+                    timestamp: nowIso,
+                },
+                consentRecordsPath
+            );
+            twiml.message(
+                'To confirm enrollment, reply YES. Message frequency varies. Msg and data rates may apply. Reply STOP to opt out.'
+            );
+            return reply.type('text/xml').send(twiml.toString());
+        }
+
+        const consentStatus = await getSmsConsentStatus(
+            fromE164,
+            consentRecordsPath
+        );
+
+        if (isYesKeyword(keyword)) {
+            if (consentStatus === 'pending') {
+                await appendSmsConsentRecord(
+                    {
+                        phoneNumber: fromE164,
+                        keyword,
+                        status: 'confirmed',
+                        timestamp: nowIso,
+                    },
+                    consentRecordsPath
+                );
+                twiml.message(
+                    'You are enrolled. Message frequency varies. Msg and data rates may apply. Reply STOP to opt out.'
+                );
+                return reply.type('text/xml').send(twiml.toString());
+            }
+
+            if (consentStatus === 'confirmed') {
+                twiml.message(
+                    'You are already enrolled. Reply STOP to opt out at any time.'
+                );
+                return reply.type('text/xml').send(twiml.toString());
+            }
+
+            twiml.message('Please text START first, then reply YES to enroll.');
+            return reply.type('text/xml').send(twiml.toString());
+        }
+
+        if (consentStatus !== 'confirmed') {
+            twiml.message(
+                'You are not enrolled yet. Text START to begin, then reply YES to confirm.'
+            );
             return reply.type('text/xml').send(twiml.toString());
         }
 

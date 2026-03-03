@@ -56,6 +56,14 @@ fastify.get(
     })
 );
 
+fastify.get(
+    '/how-to-opt-in',
+    createMarkdownDocHandler({
+        filePath: process.env.HOW_TO_OPT_IN_FILE_PATH || 'how-to-opt-in.md',
+        title: 'How to Opt In',
+    })
+);
+
 fastify.all('/incoming-call', incomingCallHandler);
 
 // For some reason registering is required for websocket route.
