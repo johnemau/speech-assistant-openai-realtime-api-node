@@ -1,4 +1,4 @@
-# Call to Action
+# How to join
 
 Want AI assistant updates by text?
 
