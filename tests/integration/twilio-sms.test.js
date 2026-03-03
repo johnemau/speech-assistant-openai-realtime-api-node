@@ -5,6 +5,7 @@ import path from 'node:path';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { config as loadEnv } from 'dotenv';
 import { appendSmsConsentRecord } from '../../src/utils/sms-consent.js';
+import { getSmsConsentStatus } from '../../src/utils/sms-consent.js';
 
 loadEnv({ path: '.env' });
 
@@ -113,3 +114,129 @@ test('send_sms integration', async () => {
         await rm(tmpDir, { recursive: true, force: true });
     }
 });
+
+test('user who does not agree to SMS consent', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-test-'));
+    const recordsPath = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
+
+    const env = await import('../../src/env.js');
+    const prev = {
+        primary: new Set(env.PRIMARY_CALLERS_SET),
+        secondary: new Set(env.SECONDARY_CALLERS_SET),
+    };
+
+    const toNumber = requireRecipientNumber();
+    env.PRIMARY_CALLERS_SET.clear();
+    env.SECONDARY_CALLERS_SET.clear();
+    env.PRIMARY_CALLERS_SET.add(toNumber);
+
+    const init = await import('../../src/init.js');
+    const prevClients = {
+        openaiClient: init.openaiClient,
+        twilioClient: init.twilioClient,
+    };
+    init.setInitClients({
+        openaiClient: { responses: { create: async () => ({ output_text: 'ok' }) } },
+        twilioClient: null,
+    });
+
+    const moduleUrl =
+        new URL('../../src/routes/sms.js', import.meta.url).href +
+        `?test=no-consent-${Math.random()}`;
+    const { smsHandler } = await import(moduleUrl);
+
+    // Step 1: User initiates consent with START
+    let request = {
+        body: { Body: 'START', From: toNumber, To: smsFromNumber },
+    };
+    let reply = createReply();
+    await smsHandler(request, reply);
+    assert.ok(String(reply.payload).includes('reply YES'), 'Expected START confirmation prompt');
+
+    // Step 2: Verify pending consent was recorded
+    let status = await getSmsConsentStatus(toNumber, recordsPath);
+    assert.equal(status, 'pending', 'Expected pending consent status after START');
+
+    // Step 3: User replies with NO instead of YES (refuses consent)
+    request = {
+        body: { Body: 'NO', From: toNumber, To: smsFromNumber },
+    };
+    reply = createReply();
+    await smsHandler(request, reply);
+    assert.ok(
+        String(reply.payload).includes('reply YES'),
+        'Expected handler to prompt for YES confirmation when user replies NO'
+    );
+
+    // Step 4: Verify user is still not confirmed
+    status = await getSmsConsentStatus(toNumber, recordsPath);
+    assert.notEqual(status, 'confirmed', 'Expected user to remain unconfirmed after replying NO');
+
+    // Step 5: User sends random message without enrolling
+    request = {
+        body: { Body: 'Random question', From: toNumber, To: smsFromNumber },
+    };
+    reply = createReply();
+    await smsHandler(request, reply);
+    assert.ok(
+        String(reply.payload).includes('not enrolled'),
+        'Expected handler to indicate user is not enrolled'
+    );
+
+    try {
+        // Verify enrollment remains unconfirmed
+        status = await getSmsConsentStatus(toNumber, recordsPath);
+        assert.notEqual(status, 'confirmed', 'Expected user to remain unconfirmed');
+    } finally {
+        env.PRIMARY_CALLERS_SET.clear();
+        env.SECONDARY_CALLERS_SET.clear();
+        prev.primary.forEach((value) => env.PRIMARY_CALLERS_SET.add(value));
+        prev.secondary.forEach((value) => env.SECONDARY_CALLERS_SET.add(value));
+        init.setInitClients(prevClients);
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
+    }
+});
+
+/**
+ * @returns {{
+ *  headers: Record<string, string>,
+ *  statusCode: number | null,
+ *  payload: unknown,
+ *  type: (contentType: string) => any,
+ *  code: (status: number) => any,
+ *  send: (payload: unknown) => any,
+ * }} Reply mock for tests.
+ */
+function createReply() {
+    return {
+        headers: {},
+        statusCode: null,
+        payload: null,
+        /**
+         * @param {string} contentType - Response content type.
+         * @returns {any} Reply for chaining.
+         */
+        type(contentType) {
+            this.headers.type = contentType;
+            return this;
+        },
+        /**
+         * @param {number} status - HTTP status code.
+         * @returns {any} Reply for chaining.
+         */
+        code(status) {
+            this.statusCode = status;
+            return this;
+        },
+        /**
+         * @param {unknown} payload - Reply payload.
+         * @returns {any} Reply for chaining.
+         */
+        send(payload) {
+            this.payload = payload;
+            return this;
+        },
+    };
+}
