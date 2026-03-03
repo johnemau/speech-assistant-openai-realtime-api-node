@@ -631,7 +631,12 @@ test('sms remembers unanswered question when user has no consent, then answers a
             body: { Body: 'YES', From: '+12065550100', To: '+12065550101' },
         };
         const confirmReply = createReply();
-        await smsHandler(confirmRequest, confirmReply);
+        try {
+            await smsHandler(confirmRequest, confirmReply);
+        } catch (e) {
+            console.error('Handler error on YES/confirm message:', e);
+            throw e;
+        }
 
         // System should now treat this like a confirmation and should have
         // called AI with the remembered question and sent an AI-generated reply
