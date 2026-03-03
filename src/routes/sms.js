@@ -8,7 +8,7 @@ import {
     extractSmsRequest,
     mergeAndSortMessages,
 } from '../utils/sms.js';
-import { IS_DEV } from '../env.js';
+import { IS_DEV, ALL_ALLOWED_CALLERS_SET } from '../env.js';
 import {
     buildSmsResponseConfig,
     GPT_5_2_MODEL,
@@ -344,11 +344,14 @@ export async function smsHandler(request, reply) {
                     consentRecordsPath
                 );
                 if (IS_DEV) {
-                    console.log('sms handler: STOP consent recorded successfully', {
-                        event: 'sms.handler.stop_consent_recorded',
-                        phoneNumber: fromE164,
-                        status: 'opted_out',
-                    });
+                    console.log(
+                        'sms handler: STOP consent recorded successfully',
+                        {
+                            event: 'sms.handler.stop_consent_recorded',
+                            phoneNumber: fromE164,
+                            status: 'opted_out',
+                        }
+                    );
                 }
             } catch (err) {
                 console.error('sms: error recording STOP consent', {
@@ -358,11 +361,14 @@ export async function smsHandler(request, reply) {
                     errorCode: err?.code,
                 });
                 if (IS_DEV) {
-                    console.log('sms handler: STOP consent error - re-throwing', {
-                        event: 'sms.handler.stop_consent_error_throw',
-                        phoneNumber: fromE164,
-                        errorMessage: err?.message,
-                    });
+                    console.log(
+                        'sms handler: STOP consent error - re-throwing',
+                        {
+                            event: 'sms.handler.stop_consent_error_throw',
+                            phoneNumber: fromE164,
+                            errorMessage: err?.message,
+                        }
+                    );
                 }
                 throw err;
             }
@@ -397,11 +403,14 @@ export async function smsHandler(request, reply) {
                     consentRecordsPath
                 );
                 if (IS_DEV) {
-                    console.log('sms handler: START consent recorded successfully', {
-                        event: 'sms.handler.start_consent_recorded',
-                        phoneNumber: fromE164,
-                        status: 'confirmed',
-                    });
+                    console.log(
+                        'sms handler: START consent recorded successfully',
+                        {
+                            event: 'sms.handler.start_consent_recorded',
+                            phoneNumber: fromE164,
+                            status: 'confirmed',
+                        }
+                    );
                 }
             } catch (err) {
                 console.error('sms: error recording START consent', {
@@ -411,11 +420,14 @@ export async function smsHandler(request, reply) {
                     errorCode: err?.code,
                 });
                 if (IS_DEV) {
-                    console.log('sms handler: START consent error - re-throwing', {
-                        event: 'sms.handler.start_consent_error_throw',
-                        phoneNumber: fromE164,
-                        errorMessage: err?.message,
-                    });
+                    console.log(
+                        'sms handler: START consent error - re-throwing',
+                        {
+                            event: 'sms.handler.start_consent_error_throw',
+                            phoneNumber: fromE164,
+                            errorMessage: err?.message,
+                        }
+                    );
                 }
                 throw err;
             }
@@ -458,6 +470,24 @@ export async function smsHandler(request, reply) {
             return reply.type('text/xml').send(twiml.toString());
         }
 
+        // Check if caller is on allowlist
+        if (!ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
+            if (IS_DEV) {
+                console.log(
+                    'sms handler: early return - caller not allowlisted',
+                    {
+                        event: 'sms.handler.return_caller_not_allowlisted',
+                        from: fromE164,
+                        allowlistSize: ALL_ALLOWED_CALLERS_SET.size,
+                    }
+                );
+            }
+            twiml.message(
+                'Sorry, this SMS line is restricted to approved users. Contact support for access.'
+            );
+            return reply.type('text/xml').send(twiml.toString());
+        }
+
         const toNumber = toE164 || toRaw || '';
         if (!toNumber) {
             if (IS_DEV) {
@@ -482,11 +512,14 @@ export async function smsHandler(request, reply) {
                 }
             );
             if (IS_DEV) {
-                console.log('sms handler: early return - missing twilioClient', {
-                    event: 'sms.handler.return_missing_twilio_client',
-                    from: toE164,
-                    to: fromE164,
-                });
+                console.log(
+                    'sms handler: early return - missing twilioClient',
+                    {
+                        event: 'sms.handler.return_missing_twilio_client',
+                        from: toE164,
+                        to: fromE164,
+                    }
+                );
             }
             twiml.message('SMS auto-reply is not configured.');
             return reply.type('text/xml').send(twiml.toString());

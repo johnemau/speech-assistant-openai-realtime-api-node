@@ -238,15 +238,13 @@ test('user with consent but not on allowlist is rejected', async () => {
 
     // Step 2: Verify the message is rejected (user not on allowlist)
     assert.ok(
-        String(reply.payload).includes('not on our list'),
-        'Expected handler to indicate user is not on the allowlist'
+        String(reply.payload).includes('restricted') ||
+            String(reply.payload).includes('approved users'),
+        'Expected handler to reject non-allowlisted user with restricted message'
     );
 
     // Step 3: Verify consent status exists but user is still rejected
-    let status = await getSmsConsentStatus(
-        notAllowlistedNumber,
-        recordsPath
-    );
+    let status = await getSmsConsentStatus(notAllowlistedNumber, recordsPath);
     assert.equal(
         status,
         'confirmed',
