@@ -8,7 +8,7 @@ import {
     extractSmsRequest,
     mergeAndSortMessages,
 } from '../utils/sms.js';
-import { IS_DEV, ALL_ALLOWED_CALLERS_SET } from '../env.js';
+import { IS_DEV, PRIMARY_CALLERS_SET, SECONDARY_CALLERS_SET } from '../env.js';
 import {
     buildSmsResponseConfig,
     GPT_5_2_MODEL,
@@ -471,14 +471,18 @@ export async function smsHandler(request, reply) {
         }
 
         // Check if caller is on allowlist
-        if (!ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
+        if (
+            !PRIMARY_CALLERS_SET.has(fromE164) &&
+            !SECONDARY_CALLERS_SET.has(fromE164)
+        ) {
             if (IS_DEV) {
                 console.log(
                     'sms handler: early return - caller not allowlisted',
                     {
                         event: 'sms.handler.return_caller_not_allowlisted',
                         from: fromE164,
-                        allowlistSize: ALL_ALLOWED_CALLERS_SET.size,
+                        primaryAllowlistSize: PRIMARY_CALLERS_SET.size,
+                        secondaryAllowlistSize: SECONDARY_CALLERS_SET.size,
                     }
                 );
             }
