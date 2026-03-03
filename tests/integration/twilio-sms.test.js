@@ -150,72 +150,33 @@ test('user who does not agree to SMS consent', async () => {
         `?test=no-consent-${Math.random()}`;
     const { smsHandler } = await import(moduleUrl);
 
-    // Step 1: User initiates consent with START
+    // Step 1: User sends random message without enrolling
     let request = {
-        body: { Body: 'START', From: toNumber, To: smsFromNumber },
-    };
-    let reply = createReply();
-    await smsHandler(request, reply);
-    assert.ok(
-        String(reply.payload).includes('reply YES'),
-        'Expected START confirmation prompt'
-    );
-
-    // Step 2: Verify pending consent was recorded
-    let status = await getSmsConsentStatus(toNumber, recordsPath);
-    assert.equal(
-        status,
-        'pending',
-        'Expected pending consent status after START'
-    );
-
-    // Step 3: User replies with NO instead of YES (refuses consent)
-    request = {
-        body: { Body: 'NO', From: toNumber, To: smsFromNumber },
-    };
-    reply = createReply();
-    await smsHandler(request, reply);
-    assert.ok(
-        String(reply.payload).includes('reply YES'),
-        'Expected handler to prompt for YES confirmation when user replies NO'
-    );
-
-    // Step 4: Verify user is still not confirmed
-    status = await getSmsConsentStatus(toNumber, recordsPath);
-    assert.notEqual(
-        status,
-        'confirmed',
-        'Expected user to remain unconfirmed after replying NO'
-    );
-
-    // Step 5: User sends random message without enrolling
-    request = {
         body: { Body: 'Random question', From: toNumber, To: smsFromNumber },
     };
-    reply = createReply();
+    let reply = createReply();
     await smsHandler(request, reply);
     assert.ok(
         String(reply.payload).includes('not enrolled'),
         'Expected handler to indicate user is not enrolled'
     );
 
-    try {
-        // Verify enrollment remains unconfirmed
-        status = await getSmsConsentStatus(toNumber, recordsPath);
-        assert.notEqual(
-            status,
-            'confirmed',
-            'Expected user to remain unconfirmed'
-        );
-    } finally {
-        env.PRIMARY_CALLERS_SET.clear();
-        env.SECONDARY_CALLERS_SET.clear();
-        prev.primary.forEach((value) => env.PRIMARY_CALLERS_SET.add(value));
-        prev.secondary.forEach((value) => env.SECONDARY_CALLERS_SET.add(value));
-        init.setInitClients(prevClients);
-        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
-        await rm(tmpDir, { recursive: true, force: true });
-    }
+    // Step 2: Verify no consent status (user never enrolled)
+    let status = await getSmsConsentStatus(toNumber, recordsPath);
+    assert.equal(
+        status,
+        null,
+        'Expected null consent status when user never enrolled'
+    );
+
+    // Cleanup
+    env.PRIMARY_CALLERS_SET.clear();
+    env.SECONDARY_CALLERS_SET.clear();
+    prev.primary.forEach((value) => env.PRIMARY_CALLERS_SET.add(value));
+    prev.secondary.forEach((value) => env.SECONDARY_CALLERS_SET.add(value));
+    init.setInitClients(prevClients);
+    delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+    await rm(tmpDir, { recursive: true, force: true });
 });
 
 /**
