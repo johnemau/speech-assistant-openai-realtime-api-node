@@ -13,11 +13,11 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
 /**
- * @param {import('fastify').FastifyRequest} request - Incoming HTTP request.
+ * @param {import('fastify').FastifyRequest} _request - Incoming HTTP request.
  * @param {import('fastify').FastifyReply} reply - Fastify reply interface.
  * @returns {Promise<void>}
  */
-async function rootHandler(request, reply) {
+async function rootHandler(_request, reply) {
     reply.send({ message: 'Twilio Media Stream Server is running!' });
 }
 
