@@ -30,7 +30,8 @@ import {
     clearPendingQuestion,
 } from '../utils/sms-consent.js';
 
-const MAX_SMS_TOOL_ROUNDS = 99; // Safety cap to prevent infinite loops in tool calling
+/** fib inspo */
+const MAX_SMS_TOOL_ROUNDS = 143; // Safety cap to prevent infinite loops in tool calling
 
 /**
  * Execute a tool call safely for SMS.
