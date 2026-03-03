@@ -289,6 +289,13 @@ export async function smsHandler(request, reply) {
         );
 
         if (!fromE164) {
+            if (IS_DEV) {
+                console.log('sms handler: early return - missing fromE164', {
+                    event: 'sms.handler.return_missing_from',
+                    fromRaw,
+                    fromE164,
+                });
+            }
             twiml.message('Sorry, this SMS line is restricted.');
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -305,6 +312,13 @@ export async function smsHandler(request, reply) {
         }
 
         if (isHelpKeyword(keyword)) {
+            if (IS_DEV) {
+                console.log('sms handler: early return - help keyword', {
+                    event: 'sms.handler.return_help_keyword',
+                    keyword,
+                    from: fromE164,
+                });
+            }
             twiml.message(
                 'Reply STOP to unsubscribe. Msg&Data Rates May Apply.'
             );
@@ -312,6 +326,13 @@ export async function smsHandler(request, reply) {
         }
 
         if (isStopKeyword(keyword)) {
+            if (IS_DEV) {
+                console.log('sms handler: processing STOP keyword', {
+                    event: 'sms.handler.stop_keyword_start',
+                    keyword,
+                    from: fromE164,
+                });
+            }
             try {
                 await appendSmsConsentRecord(
                     {
@@ -322,6 +343,13 @@ export async function smsHandler(request, reply) {
                     },
                     consentRecordsPath
                 );
+                if (IS_DEV) {
+                    console.log('sms handler: STOP consent recorded successfully', {
+                        event: 'sms.handler.stop_consent_recorded',
+                        phoneNumber: fromE164,
+                        status: 'opted_out',
+                    });
+                }
             } catch (err) {
                 console.error('sms: error recording STOP consent', {
                     event: 'sms.consent.stop_error',
@@ -329,7 +357,20 @@ export async function smsHandler(request, reply) {
                     errorMessage: err?.message,
                     errorCode: err?.code,
                 });
+                if (IS_DEV) {
+                    console.log('sms handler: STOP consent error - re-throwing', {
+                        event: 'sms.handler.stop_consent_error_throw',
+                        phoneNumber: fromE164,
+                        errorMessage: err?.message,
+                    });
+                }
                 throw err;
+            }
+            if (IS_DEV) {
+                console.log('sms handler: returning STOP confirmation', {
+                    event: 'sms.handler.return_stop_confirmation',
+                    from: fromE164,
+                });
             }
             twiml.message(
                 'You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.'
@@ -338,6 +379,13 @@ export async function smsHandler(request, reply) {
         }
 
         if (isStartKeyword(keyword)) {
+            if (IS_DEV) {
+                console.log('sms handler: processing START keyword', {
+                    event: 'sms.handler.start_keyword_start',
+                    keyword,
+                    from: fromE164,
+                });
+            }
             try {
                 await appendSmsConsentRecord(
                     {
@@ -348,6 +396,13 @@ export async function smsHandler(request, reply) {
                     },
                     consentRecordsPath
                 );
+                if (IS_DEV) {
+                    console.log('sms handler: START consent recorded successfully', {
+                        event: 'sms.handler.start_consent_recorded',
+                        phoneNumber: fromE164,
+                        status: 'confirmed',
+                    });
+                }
             } catch (err) {
                 console.error('sms: error recording START consent', {
                     event: 'sms.consent.start_error',
@@ -355,7 +410,20 @@ export async function smsHandler(request, reply) {
                     errorMessage: err?.message,
                     errorCode: err?.code,
                 });
+                if (IS_DEV) {
+                    console.log('sms handler: START consent error - re-throwing', {
+                        event: 'sms.handler.start_consent_error_throw',
+                        phoneNumber: fromE164,
+                        errorMessage: err?.message,
+                    });
+                }
                 throw err;
+            }
+            if (IS_DEV) {
+                console.log('sms handler: returning START confirmation', {
+                    event: 'sms.handler.return_start_confirmation',
+                    from: fromE164,
+                });
             }
             twiml.message(
                 'You have successfully been re-subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.'
@@ -368,7 +436,22 @@ export async function smsHandler(request, reply) {
             consentRecordsPath
         );
 
+        if (IS_DEV) {
+            console.log('sms handler: consent status checked', {
+                event: 'sms.handler.consent_status_checked',
+                from: fromE164,
+                consentStatus,
+            });
+        }
+
         if (consentStatus !== 'confirmed') {
+            if (IS_DEV) {
+                console.log('sms handler: early return - not enrolled', {
+                    event: 'sms.handler.return_not_enrolled',
+                    from: fromE164,
+                    consentStatus,
+                });
+            }
             twiml.message(
                 'You are not enrolled yet. Reply START to subscribe. Reply HELP for help.'
             );
@@ -377,6 +460,13 @@ export async function smsHandler(request, reply) {
 
         const toNumber = toE164 || toRaw || '';
         if (!toNumber) {
+            if (IS_DEV) {
+                console.log('sms handler: early return - missing toNumber', {
+                    event: 'sms.handler.return_missing_to',
+                    toE164,
+                    toRaw,
+                });
+            }
             twiml.message('SMS auto-reply is not configured.');
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -391,6 +481,13 @@ export async function smsHandler(request, reply) {
                     to: fromE164,
                 }
             );
+            if (IS_DEV) {
+                console.log('sms handler: early return - missing twilioClient', {
+                    event: 'sms.handler.return_missing_twilio_client',
+                    from: toE164,
+                    to: fromE164,
+                });
+            }
             twiml.message('SMS auto-reply is not configured.');
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -498,14 +595,38 @@ export async function smsHandler(request, reply) {
 
         let aiText = '';
         try {
+            if (IS_DEV) {
+                console.log('sms handler: calling AI response with tools', {
+                    event: 'sms.handler.ai_call_start',
+                    from: fromE164,
+                    promptLen: String(smsPrompt || '').length,
+                });
+            }
             const aiResult = await runSmsResponseWithTools({
                 input: smsPrompt,
                 instructions: SMS_REPLY_INSTRUCTIONS,
                 context: { currentCallerE164: fromE164 },
             });
             aiText = String(aiResult?.output_text || '').trim();
+            if (IS_DEV) {
+                console.log('sms handler: AI response received', {
+                    event: 'sms.handler.ai_response_success',
+                    from: fromE164,
+                    aiTextLen: String(aiText).length,
+                    aiPreview: String(aiText).slice(0, 160),
+                });
+            }
         } catch (e) {
             console.error('OpenAI SMS reply error:', e?.message || e);
+            if (IS_DEV) {
+                console.log('sms handler: AI response error caught', {
+                    event: 'sms.handler.ai_response_error',
+                    from: fromE164,
+                    errorType: e?.constructor?.name,
+                    errorMessage: e?.message,
+                    errorStack: e?.stack,
+                });
+            }
             let detail = e?.message || stringifyDeep(e);
             if (!IS_DEV) {
                 detail = redactErrorDetail({
@@ -530,6 +651,15 @@ export async function smsHandler(request, reply) {
 
         // Send the reply via Twilio API (from the same Twilio number the webhook hit)
         try {
+            if (IS_DEV) {
+                console.log('sms handler: sending Twilio SMS', {
+                    event: 'sms.handler.twilio_send_start',
+                    from: toNumber,
+                    to: fromE164,
+                    aiTextLen: String(aiText || '').length,
+                    aiPreview: String(aiText || '').slice(0, 160),
+                });
+            }
             // Log Twilio API request details for SMS send
             console.info(
                 `twilio messages create request: from=${toE164 || ''} to=${fromE164 || ''} length=${String(aiText || '').length}`,
@@ -548,6 +678,14 @@ export async function smsHandler(request, reply) {
                 to: fromE164,
                 body: aiText,
             });
+            if (IS_DEV) {
+                console.log('sms handler: Twilio SMS sent successfully', {
+                    event: 'sms.handler.twilio_send_success',
+                    sid: sendRes?.sid,
+                    from: toNumber,
+                    to: fromE164,
+                });
+            }
             // Always log SMS sends (with redaction unless development)
             const preview = String(aiText || '').slice(0, 160);
             console.info(
@@ -563,6 +701,16 @@ export async function smsHandler(request, reply) {
             );
         } catch (e) {
             console.error('Failed to send Twilio SMS:', e?.message || e);
+            if (IS_DEV) {
+                console.log('sms handler: Twilio SMS send error caught', {
+                    event: 'sms.handler.twilio_send_error',
+                    from: toNumber,
+                    to: fromE164,
+                    errorType: e?.constructor?.name,
+                    errorMessage: e?.message,
+                    errorStack: e?.stack,
+                });
+            }
             // Fallback: reply via TwiML with redacted error details to ensure the user gets context
             let detail = e?.message || stringifyDeep(e);
             if (!IS_DEV) {
@@ -594,11 +742,27 @@ export async function smsHandler(request, reply) {
                     preview: String(fallbackMsg).slice(0, 160),
                 }
             );
+            if (IS_DEV) {
+                console.log('sms handler: returning fallback TwiML error', {
+                    event: 'sms.handler.return_fallback_twiml',
+                    from: toE164,
+                    to: fromE164,
+                    fallbackPreview: String(fallbackMsg).slice(0, 160),
+                });
+            }
             twiml.message(fallbackMsg);
             return reply.type('text/xml').send(twiml.toString());
         }
 
         // Return empty TwiML to avoid duplicate auto-replies
+        if (IS_DEV) {
+            console.log('sms handler: successful completion', {
+                event: 'sms.handler.return_success',
+                from: toE164,
+                to: fromE164,
+                aiTextLen: String(aiText || '').length,
+            });
+        }
         console.info(
             `sms webhook completed: from=${toE164 || ''} to=${fromE164 || ''}`,
             { event: 'sms.webhook.completed', from: toE164, to: fromE164 }
@@ -613,6 +777,14 @@ export async function smsHandler(request, reply) {
                 error: (e?.message || String(e || '')).slice(0, 220),
             }
         );
+        if (IS_DEV) {
+            console.log('sms handler: unhandled error caught at top level', {
+                event: 'sms.handler.unhandled_error',
+                errorType: e?.constructor?.name,
+                errorMessage: e?.message,
+                errorStack: e?.stack,
+            });
+        }
         return reply.code(500).send('');
     }
 }
