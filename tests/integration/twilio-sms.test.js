@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { config as loadEnv } from 'dotenv';
+import { appendSmsConsentRecord } from '../../src/utils/sms-consent.js';
 
 loadEnv({ path: '.env' });
 
@@ -69,12 +73,27 @@ test('twilio messages list integration', async () => {
 });
 
 test('send_sms integration', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-integration-'));
+    const recordsPath = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
+
     const env = await import('../../src/env.js');
     const previousAllow = env.ALLOW_SEND_SMS;
     env.setAllowSendSms(true);
 
     const { execute } = await loadSendSmsModule();
     const toNumber = requireRecipientNumber();
+
+    // Set up SMS consent for the test number
+    await appendSmsConsentRecord(
+        {
+            phoneNumber: toNumber,
+            keyword: 'YES',
+            status: 'confirmed',
+            timestamp: new Date().toISOString(),
+        },
+        recordsPath
+    );
 
     try {
         const result = await execute({
@@ -90,5 +109,7 @@ test('send_sms integration', async () => {
         assert.equal(typeof result.length, 'number');
     } finally {
         env.setAllowSendSms(previousAllow);
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
     }
 });
