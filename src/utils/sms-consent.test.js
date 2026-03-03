@@ -138,4 +138,3 @@ test('pending questions are separate for different phone numbers', () => {
     assert.equal(getPendingQuestion(phone1), undefined);
     assert.equal(getPendingQuestion(phone2), question2);
 });
-

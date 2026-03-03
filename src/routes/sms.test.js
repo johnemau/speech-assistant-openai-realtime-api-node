@@ -646,10 +646,21 @@ test('sms remembers unanswered question when user has no consent, then answers a
 
         // System should now treat this like a confirmation and should have
         // called AI with the remembered question and sent an AI-generated reply
-        assert.equal(confirmReply.headers.type, 'text/xml', `Reply type should be text/xml but got ${confirmReply.headers.type}`);
+        assert.equal(
+            confirmReply.headers.type,
+            'text/xml',
+            `Reply type should be text/xml but got ${confirmReply.headers.type}`
+        );
         // Should send a reply via Twilio after YES/confirmation
-        assert.equal(calls.create.length, 1, `Expected 1 Twilio SMS send, got ${calls.create.length}`);
-        assert.ok(String(calls.create[0].body).includes('weather'), `Expected 'weather' in SMS body, got: ${calls.create[0]?.body || 'NO MESSAGE SENT'}`);
+        assert.equal(
+            calls.create.length,
+            1,
+            `Expected 1 Twilio SMS send, got ${calls.create.length}`
+        );
+        assert.ok(
+            String(calls.create[0].body).includes('weather'),
+            `Expected 'weather' in SMS body, got: ${calls.create[0]?.body || 'NO MESSAGE SENT'}`
+        );
     } finally {
         cleanup();
         delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;

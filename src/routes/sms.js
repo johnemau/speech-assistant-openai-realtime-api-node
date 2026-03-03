@@ -30,7 +30,7 @@ import {
     clearPendingQuestion,
 } from '../utils/sms-consent.js';
 
-const MAX_SMS_TOOL_ROUNDS = 9;
+const MAX_SMS_TOOL_ROUNDS = 99; // Safety cap to prevent infinite loops in tool calling
 
 /**
  * Execute a tool call safely for SMS.
@@ -271,12 +271,10 @@ export async function smsHandler(request, reply) {
         const { MessagingResponse } = twilio.twiml;
         const twiml = new MessagingResponse();
 
-        let { bodyRaw, fromRaw, toRaw, fromE164, toE164 } = extractSmsRequest(
-            {
-                body,
-                normalizeUSNumberToE164,
-            }
-        );
+        let { bodyRaw, fromRaw, toRaw, fromE164, toE164 } = extractSmsRequest({
+            body,
+            normalizeUSNumberToE164,
+        });
         const keyword = normalizeSmsKeyword(bodyRaw);
 
         // Concise incoming log
