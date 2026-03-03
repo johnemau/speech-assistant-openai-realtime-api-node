@@ -48,6 +48,14 @@ fastify.get(
     })
 );
 
+fastify.get(
+    '/privacy-policy',
+    createMarkdownDocHandler({
+        filePath: process.env.PRIVACY_POLICY_FILE_PATH || 'privacy-policy.md',
+        title: 'Privacy Policy',
+    })
+);
+
 fastify.all('/incoming-call', incomingCallHandler);
 
 // For some reason registering is required for websocket route.
