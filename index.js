@@ -22,11 +22,11 @@ async function rootHandler(request, reply) {
 }
 
 /**
- * @param {import('fastify').FastifyRequest} request - Incoming HTTP request.
+ * @param {import('fastify').FastifyRequest} _request - Incoming HTTP request.
  * @param {import('fastify').FastifyReply} reply - Fastify reply interface.
  * @returns {Promise<void>}
  */
-async function healthzHandler(request, reply) {
+async function healthzHandler(_request, reply) {
     // Respond quickly with a 2xx to indicate instance is healthy
     reply.code(200).send({ status: 'ok' });
 }
