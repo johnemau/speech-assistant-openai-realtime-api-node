@@ -633,10 +633,11 @@ test('sms remembers unanswered question when user has no consent, then answers a
         const confirmReply = createReply();
         try {
             await smsHandler(confirmRequest, confirmReply);
-            console.info('Handler completed, reply state:', {
-                type: confirmReply.headers?.type,
-                payloadLength: String(confirmReply.payload || '').length,
-                hasPayload: !!confirmReply.payload,
+            console.info('Handler completed on YES message', {
+                replyType: confirmReply.headers?.type,
+                replyPayloadExists: !!confirmReply.payload,
+                twilioCallCount: calls.create.length,
+                aiCallCount: calls.ai.length,
             });
         } catch (e) {
             console.error('Handler error on YES/confirm message:', e);
@@ -645,10 +646,10 @@ test('sms remembers unanswered question when user has no consent, then answers a
 
         // System should now treat this like a confirmation and should have
         // called AI with the remembered question and sent an AI-generated reply
-        assert.equal(confirmReply.headers.type, 'text/xml', 'confirmReply.headers.type should be text/xml, but got ' + confirmReply.headers.type);
+        assert.equal(confirmReply.headers.type, 'text/xml', `Reply type should be text/xml but got ${confirmReply.headers.type}`);
         // Should send a reply via Twilio after YES/confirmation
         assert.equal(calls.create.length, 1, `Expected 1 Twilio SMS send, got ${calls.create.length}`);
-        assert.ok(String(calls.create[0].body).includes('weather'), `Expected 'weather' in SMS body, got: ${calls.create[0].body}`);
+        assert.ok(String(calls.create[0].body).includes('weather'), `Expected 'weather' in SMS body, got: ${calls.create[0]?.body || 'NO MESSAGE SENT'}`);
     } finally {
         cleanup();
         delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
