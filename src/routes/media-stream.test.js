@@ -11,7 +11,7 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 process.env.WAIT_MUSIC_THRESHOLD_MS =
     process.env.WAIT_MUSIC_THRESHOLD_MS || '20';
 process.env.WAIT_MUSIC_FOLDER =
-    process.env.WAIT_MUSIC_FOLDER || path.join(process.cwd(), 'music');
+    process.env.WAIT_MUSIC_FOLDER || path.join(process.cwd(), 'data/music');
 
 /**
  * @returns {{ promise: Promise<unknown>, resolve: (value?: unknown) => void, reject: (error: Error) => void }} Deferred promise handle.

@@ -310,7 +310,7 @@ Enable via environment flags in `.env`:
 ```
 WAIT_MUSIC_THRESHOLD_MS=700
 WAIT_MUSIC_VOLUME=0.12
-WAIT_MUSIC_FOLDER=music
+WAIT_MUSIC_FOLDER=data/music
 ```
 
 Notes:
