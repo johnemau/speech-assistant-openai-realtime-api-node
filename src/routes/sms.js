@@ -271,7 +271,7 @@ export async function smsHandler(request, reply) {
         const { MessagingResponse } = twilio.twiml;
         const twiml = new MessagingResponse();
 
-        const { bodyRaw, fromRaw, toRaw, fromE164, toE164 } = extractSmsRequest(
+        let { bodyRaw, fromRaw, toRaw, fromE164, toE164 } = extractSmsRequest(
             {
                 body,
                 normalizeUSNumberToE164,
