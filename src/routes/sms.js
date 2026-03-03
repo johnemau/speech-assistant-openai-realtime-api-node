@@ -25,6 +25,9 @@ import {
     isStopKeyword,
     isHelpKeyword,
     normalizeSmsKeyword,
+    getPendingQuestion,
+    setPendingQuestion,
+    clearPendingQuestion,
 } from '../utils/sms-consent.js';
 
 const MAX_SMS_TOOL_ROUNDS = 9;
@@ -393,11 +396,37 @@ export async function smsHandler(request, reply) {
                 });
             }
             try {
+                // Check current consent status to determine if this is first-time enrollment
+                const currentStatus = await getSmsConsentStatus(
+                    fromE164,
+                    consentRecordsPath
+                );
+                const hasPendingQuestion = !!getPendingQuestion(fromE164);
+
+                // If user is pending and texting YES/UNSTOP to confirm, upgrade to confirmed
+                const shouldUpgradeToPending = currentStatus !== 'confirmed';
+                const targetStatus = shouldUpgradeToPending
+                    ? 'pending'
+                    : 'confirmed';
+                if (IS_DEV) {
+                    console.log(
+                        'sms handler: determining target consent status',
+                        {
+                            event: 'sms.handler.start_keyword_status_check',
+                            fromE164,
+                            currentStatus,
+                            hasPendingQuestion,
+                            shouldUpgradeToPending,
+                            targetStatus,
+                        }
+                    );
+                }
+
                 await appendSmsConsentRecord(
                     {
                         phoneNumber: fromE164,
                         keyword,
-                        status: 'confirmed',
+                        status: targetStatus,
                         timestamp: nowIso,
                     },
                     consentRecordsPath
@@ -408,7 +437,7 @@ export async function smsHandler(request, reply) {
                         {
                             event: 'sms.handler.start_consent_recorded',
                             phoneNumber: fromE164,
-                            status: 'confirmed',
+                            status: targetStatus,
                         }
                     );
                 }
@@ -431,16 +460,36 @@ export async function smsHandler(request, reply) {
                 }
                 throw err;
             }
-            if (IS_DEV) {
-                console.log('sms handler: returning START confirmation', {
-                    event: 'sms.handler.return_start_confirmation',
-                    from: fromE164,
-                });
+
+            // Check if there's a pending question to answer
+            const pendingQuestion = getPendingQuestion(fromE164);
+            if (pendingQuestion) {
+                if (IS_DEV) {
+                    console.log(
+                        'sms handler: found pending question on START/YES confirmation',
+                        {
+                            event: 'sms.handler.pending_question_found',
+                            fromE164,
+                            pendingQuestion,
+                        }
+                    );
+                }
+                // Override bodyRaw for processing, but dont clear yet (will clear after processing)
+                bodyRaw = pendingQuestion;
+            } else {
+                // No pending question, return enrollment confirmation
+                if (IS_DEV) {
+                    console.log('sms handler: returning START confirmation', {
+                        event: 'sms.handler.return_start_confirmation',
+                        from: fromE164,
+                    });
+                }
+                twiml.message(
+                    'You have successfully been re-subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.'
+                );
+                return reply.type('text/xml').send(twiml.toString());
             }
-            twiml.message(
-                'You have successfully been re-subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.'
-            );
-            return reply.type('text/xml').send(twiml.toString());
+            // If we reach here, we have a pending question to answer, so continue to AI processing
         }
 
         const consentStatus = await getSmsConsentStatus(
@@ -457,11 +506,36 @@ export async function smsHandler(request, reply) {
         }
 
         if (consentStatus !== 'confirmed') {
+            // Check if caller is on allowlist before storing pending question
+            const isAllowlisted =
+                PRIMARY_CALLERS_SET.has(fromE164) ||
+                SECONDARY_CALLERS_SET.has(fromE164);
+
+            if (
+                isAllowlisted &&
+                bodyRaw &&
+                !keyword.match(/^(START|YES|UNSTOP)$/)
+            ) {
+                // Store this question in memory for later if they confirm enrollment
+                setPendingQuestion(fromE164, bodyRaw);
+                if (IS_DEV) {
+                    console.log(
+                        'sms handler: stored pending question for allowlisted user without consent',
+                        {
+                            event: 'sms.handler.pending_question_stored',
+                            from: fromE164,
+                            question: bodyRaw,
+                        }
+                    );
+                }
+            }
+
             if (IS_DEV) {
                 console.log('sms handler: early return - not enrolled', {
                     event: 'sms.handler.return_not_enrolled',
                     from: fromE164,
                     consentStatus,
+                    isAllowlisted,
                 });
             }
             twiml.message(
@@ -736,6 +810,8 @@ export async function smsHandler(request, reply) {
                     preview,
                 }
             );
+            // Clear any pending question after successfully sending the reply
+            clearPendingQuestion(fromE164);
         } catch (e) {
             console.error('Failed to send Twilio SMS:', e?.message || e);
             if (IS_DEV) {

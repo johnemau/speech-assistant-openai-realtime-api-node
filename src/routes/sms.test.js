@@ -535,3 +535,113 @@ test('sms replies with TwiML when Twilio send fails', async () => {
         await rm(tmpDir, { recursive: true, force: true });
     }
 });
+
+test('sms remembers unanswered question when user has no consent, then answers after START and YES', async () => {
+    const tmpDir = await mkdtemp(
+        path.join(os.tmpdir(), 'sms-pending-question-')
+    );
+    const recordsPath = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
+
+    /** @type {{ list: any[], create: any[], ai: any[] }} */
+    const calls = { list: [], create: [], ai: [] };
+    const twilioClient = {
+        messages: {
+            /**
+             * @param {any} params - Message list params.
+             * @returns {Promise<any[]>} Listed messages.
+             */
+            list: async (params) => {
+                calls.list.push(params);
+                return [];
+            },
+            /**
+             * @param {any} params - Message create params.
+             * @returns {Promise<{ sid: string }>} Create result.
+             */
+            create: async (params) => {
+                calls.create.push(params);
+                return { sid: `SM${calls.create.length}` };
+            },
+        },
+    };
+    const openaiClient = {
+        responses: {
+            /**
+             * @param {any} payload - OpenAI request payload.
+             * @returns {Promise<{ output_text: string }>} OpenAI response.
+             */
+            create: async (payload) => {
+                calls.ai.push(payload);
+                // Simulate AI response - return a relevant answer if input contains original question
+                const inputText = String(payload?.input || '');
+                if (
+                    inputText.includes('What is the weather') ||
+                    inputText.includes('weather')
+                ) {
+                    return { output_text: 'The weather is sunny and 72°F.' };
+                }
+                return { output_text: 'Got it!' };
+            },
+        },
+    };
+    const { smsHandler, cleanup } = await loadSmsHandler({
+        allowlist: new Set(['+12065550100']),
+        secondaryAllowlist: new Set(),
+        twilioClient,
+        openaiClient,
+    });
+
+    try {
+        // Step 1: Allowlisted user without consent asks a question
+        const questRequest = {
+            body: {
+                Body: 'What is the weather?',
+                From: '+12065550100',
+                To: '+12065550101',
+            },
+        };
+        const questReply = createReply();
+        await smsHandler(questRequest, questReply);
+
+        // System should ask them to START (no consent)
+        assert.equal(questReply.headers.type, 'text/xml');
+        assert.ok(String(questReply.payload).includes('Reply START'));
+        // AI should not have been called yet
+        assert.equal(calls.ai.length, 0);
+        // No SMS reply sent yet
+        assert.equal(calls.create.length, 0);
+
+        // Step 2: User sends START to enroll
+        const startRequest = {
+            body: { Body: 'START', From: '+12065550100', To: '+12065550101' },
+        };
+        const startReply = createReply();
+        await smsHandler(startRequest, startReply);
+
+        // System should acknowledge enrollment
+        assert.equal(startReply.headers.type, 'text/xml');
+        assert.ok(String(startReply.payload).includes('successfully been'));
+        // Still no AI call or SMS yet
+        assert.equal(calls.ai.length, 0);
+        assert.equal(calls.create.length, 0);
+
+        // Step 3: User sends YES to confirm
+        const confirmRequest = {
+            body: { Body: 'YES', From: '+12065550100', To: '+12065550101' },
+        };
+        const confirmReply = createReply();
+        await smsHandler(confirmRequest, confirmReply);
+
+        // System should now treat this like a confirmation and should have
+        // called AI with the remembered question and sent an AI-generated reply
+        assert.equal(confirmReply.headers.type, 'text/xml');
+        // Should send a reply via Twilio after YES/confirmation
+        assert.equal(calls.create.length, 1);
+        assert.ok(String(calls.create[0].body).includes('weather'));
+    } finally {
+        cleanup();
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
+    }
+});

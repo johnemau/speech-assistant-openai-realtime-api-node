@@ -19,6 +19,75 @@ const DEFAULT_CONSENT_RECORDS_PATH =
  */
 
 /**
+ * In-memory store for pending SMS questions from users without consent.
+ * Maps phone number to their unanswered question.
+ * @type {Map<string, string>}
+ */
+const pendingQuestions = new Map();
+
+/**
+ * Store a question from a user in pending state (no consent yet).
+ * Only stored in-memory; deleted after answered.
+ *
+ * @param {string} phoneNumber - E.164 phone number.
+ * @param {string} question - The question text.
+ * @returns {void}
+ */
+export function setPendingQuestion(phoneNumber, question) {
+    if (!phoneNumber || !question) return;
+
+    pendingQuestions.set(phoneNumber, question);
+    if (IS_DEV) {
+        console.log('sms-consent: pending question set', {
+            event: 'sms-consent.pending_question.set',
+            phoneNumber,
+            question,
+            mapSize: pendingQuestions.size,
+        });
+    }
+}
+
+/**
+ * Retrieve a pending question for a user.
+ *
+ * @param {string} phoneNumber - E.164 phone number.
+ * @returns {string | undefined} The stored question, or undefined.
+ */
+export function getPendingQuestion(phoneNumber) {
+    const question = pendingQuestions.get(phoneNumber);
+    if (IS_DEV) {
+        console.log('sms-consent: pending question retrieved', {
+            event: 'sms-consent.pending_question.get',
+            phoneNumber,
+            found: Boolean(question),
+            mapSize: pendingQuestions.size,
+        });
+    }
+    return question;
+}
+
+/**
+ * Clear a pending question for a user (typically after it's answered).
+ *
+ * @param {string} phoneNumber - E.164 phone number.
+ * @returns {boolean} True if question was cleared, false if not found.
+ */
+export function clearPendingQuestion(phoneNumber) {
+    const hadQuestion = pendingQuestions.has(phoneNumber);
+    if (hadQuestion) {
+        pendingQuestions.delete(phoneNumber);
+        if (IS_DEV) {
+            console.log('sms-consent: pending question cleared', {
+                event: 'sms-consent.pending_question.cleared',
+                phoneNumber,
+                mapSize: pendingQuestions.size,
+            });
+        }
+    }
+    return hadQuestion;
+}
+
+/**
  * @param {string} value - Keyword-like input.
  * @returns {string} Normalized uppercase keyword.
  */
