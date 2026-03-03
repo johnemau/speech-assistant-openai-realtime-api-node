@@ -74,7 +74,9 @@ test('twilio messages list integration', async () => {
 });
 
 test('send_sms integration', async () => {
-    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-integration-'));
+    const tmpDir = await mkdtemp(
+        path.join(os.tmpdir(), 'sms-consent-integration-')
+    );
     const recordsPath = path.join(tmpDir, 'consent.jsonl');
     process.env.SMS_CONSENT_RECORDS_FILE_PATH = recordsPath;
 
@@ -137,7 +139,9 @@ test('user who does not agree to SMS consent', async () => {
         twilioClient: init.twilioClient,
     };
     init.setInitClients({
-        openaiClient: { responses: { create: async () => ({ output_text: 'ok' }) } },
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'ok' }) },
+        },
         twilioClient: null,
     });
 
@@ -152,11 +156,18 @@ test('user who does not agree to SMS consent', async () => {
     };
     let reply = createReply();
     await smsHandler(request, reply);
-    assert.ok(String(reply.payload).includes('reply YES'), 'Expected START confirmation prompt');
+    assert.ok(
+        String(reply.payload).includes('reply YES'),
+        'Expected START confirmation prompt'
+    );
 
     // Step 2: Verify pending consent was recorded
     let status = await getSmsConsentStatus(toNumber, recordsPath);
-    assert.equal(status, 'pending', 'Expected pending consent status after START');
+    assert.equal(
+        status,
+        'pending',
+        'Expected pending consent status after START'
+    );
 
     // Step 3: User replies with NO instead of YES (refuses consent)
     request = {
@@ -171,7 +182,11 @@ test('user who does not agree to SMS consent', async () => {
 
     // Step 4: Verify user is still not confirmed
     status = await getSmsConsentStatus(toNumber, recordsPath);
-    assert.notEqual(status, 'confirmed', 'Expected user to remain unconfirmed after replying NO');
+    assert.notEqual(
+        status,
+        'confirmed',
+        'Expected user to remain unconfirmed after replying NO'
+    );
 
     // Step 5: User sends random message without enrolling
     request = {
@@ -187,7 +202,11 @@ test('user who does not agree to SMS consent', async () => {
     try {
         // Verify enrollment remains unconfirmed
         status = await getSmsConsentStatus(toNumber, recordsPath);
-        assert.notEqual(status, 'confirmed', 'Expected user to remain unconfirmed');
+        assert.notEqual(
+            status,
+            'confirmed',
+            'Expected user to remain unconfirmed'
+        );
     } finally {
         env.PRIMARY_CALLERS_SET.clear();
         env.SECONDARY_CALLERS_SET.clear();

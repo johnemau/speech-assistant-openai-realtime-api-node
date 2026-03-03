@@ -83,10 +83,10 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 ## SMS Auto‑Reply
 
 - Webhook: `/sms` — configure in Twilio Console under Messaging → “A message comes in”.- **Consent enrollment:** users must explicitly enroll before receiving AI replies:
-  - `START` → records "pending" status and prompts for `YES` confirmation.
-  - `YES` → records "confirmed" status and enables AI SMS replies (when status was previously "pending").
-  - `STOP` → records "opted_out" status and stops all AI replies; user can text `START` to re-enroll.
-  - All consent events persisted to `SMS_CONSENT_RECORDS_FILE_PATH` for audit/compliance.- Allowlist: only numbers listed in `PRIMARY_USER_PHONE_NUMBERS` or `SECONDARY_USER_PHONE_NUMBERS` are allowed.
+    - `START` → records "pending" status and prompts for `YES` confirmation.
+    - `YES` → records "confirmed" status and enables AI SMS replies (when status was previously "pending").
+    - `STOP` → records "opted_out" status and stops all AI replies; user can text `START` to re-enroll.
+    - All consent events persisted to `SMS_CONSENT_RECORDS_FILE_PATH` for audit/compliance.- Allowlist: only numbers listed in `PRIMARY_USER_PHONE_NUMBERS` or `SECONDARY_USER_PHONE_NUMBERS` are allowed.
 - Context: fetches last 12 hours of messages (inbound/outbound), merges and includes up to 10 in the prompt.
 - Model & tools: OpenAI `responses.create` with `model: gpt-5.2` and `tools: [{ type: 'web_search' }]` (`tool_choice: 'required'`).
 - Style: reply ≤320 chars, friendly and actionable; at most one short source label; URLs only when directly helpful.
