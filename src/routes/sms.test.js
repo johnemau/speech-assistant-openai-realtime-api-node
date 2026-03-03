@@ -574,10 +574,10 @@ test('sms remembers unanswered question when user has no consent, then answers a
             create: async (payload) => {
                 calls.ai.push(payload);
                 // Simulate AI response - return a relevant answer if input contains original question
-                const inputText = String(payload?.input || '');
+                const inputStr = JSON.stringify(payload?.input || '');
                 if (
-                    inputText.includes('What is the weather') ||
-                    inputText.includes('weather')
+                    inputStr.includes('What is the weather') ||
+                    inputStr.includes('weather')
                 ) {
                     return { output_text: 'The weather is sunny and 72°F.' };
                 }

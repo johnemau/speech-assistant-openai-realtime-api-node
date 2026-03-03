@@ -11,6 +11,9 @@ import {
     isHelpKeyword,
     appendSmsConsentRecord,
     getSmsConsentStatus,
+    getPendingQuestion,
+    setPendingQuestion,
+    clearPendingQuestion,
 } from './sms-consent.js';
 
 test('normalizeSmsKeyword normalizes case and spacing', () => {
@@ -97,3 +100,42 @@ test('getSmsConsentStatus returns latest status for a phone number', async () =>
         await rm(tmpDir, { recursive: true, force: true });
     }
 });
+
+test('pending questions are stored and retrieved in-memory', () => {
+    const phone = '+12065550100';
+    const question = 'What is the weather today?';
+
+    // Initially no question
+    assert.equal(getPendingQuestion(phone), undefined);
+
+    // Set a question
+    setPendingQuestion(phone, question);
+    assert.equal(getPendingQuestion(phone), question);
+
+    // Clear the question
+    const wasCleared = clearPendingQuestion(phone);
+    assert.equal(wasCleared, true);
+    assert.equal(getPendingQuestion(phone), undefined);
+
+    // Clearing again returns false
+    const wasNotCleared = clearPendingQuestion(phone);
+    assert.equal(wasNotCleared, false);
+});
+
+test('pending questions are separate for different phone numbers', () => {
+    const phone1 = '+12065550100';
+    const phone2 = '+14255550101';
+    const question1 = 'Question 1';
+    const question2 = 'Question 2';
+
+    setPendingQuestion(phone1, question1);
+    setPendingQuestion(phone2, question2);
+
+    assert.equal(getPendingQuestion(phone1), question1);
+    assert.equal(getPendingQuestion(phone2), question2);
+
+    clearPendingQuestion(phone1);
+    assert.equal(getPendingQuestion(phone1), undefined);
+    assert.equal(getPendingQuestion(phone2), question2);
+});
+
