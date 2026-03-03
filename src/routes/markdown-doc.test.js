@@ -43,7 +43,7 @@ function createReply() {
 
 test('markdown-doc renders markdown file as html', async () => {
     const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'markdown-doc-'));
-    const mdPath = path.join(tmpDir, 'terms.md');
+    const mdPath = path.join(tmpDir, 'tos.md');
     await writeFile(
         mdPath,
         '# Terms\n\nUse this service responsibly.\n',
@@ -52,7 +52,7 @@ test('markdown-doc renders markdown file as html', async () => {
 
     const handler = createMarkdownDocHandler({
         filePath: mdPath,
-        title: 'Terms and Conditions',
+        title: 'Terms of Service',
     });
     const reply = createReply();
 
@@ -62,10 +62,7 @@ test('markdown-doc renders markdown file as html', async () => {
         assert.equal(reply.statusCode, null);
         assert.equal(reply.headers.type, 'text/html; charset=utf-8');
         assert.match(String(reply.payload), /<h1>Terms<\/h1>/);
-        assert.match(
-            String(reply.payload),
-            /<title>Terms and Conditions<\/title>/
-        );
+        assert.match(String(reply.payload), /<title>Terms of Service<\/title>/);
         assert.match(
             String(reply.payload),
             /@media \(prefers-color-scheme: dark\)/
@@ -77,7 +74,7 @@ test('markdown-doc renders markdown file as html', async () => {
 
 test('markdown-doc returns 500 when file is missing', async () => {
     const handler = createMarkdownDocHandler({
-        filePath: 'does-not-exist/terms.md',
+        filePath: 'does-not-exist/tos.md',
     });
     const reply = createReply();
 

@@ -43,8 +43,8 @@ fastify.post('/sms', smsHandler);
 fastify.get(
     '/terms',
     createMarkdownDocHandler({
-        filePath: process.env.TERMS_AND_CONDITIONS_FILE_PATH || 'terms.md',
-        title: 'Terms and Conditions',
+        filePath: process.env.TERMS_AND_CONDITIONS_FILE_PATH || 'tos.md',
+        title: 'Terms of Service',
     })
 );
 

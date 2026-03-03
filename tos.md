@@ -1,6 +1,6 @@
-# Terms and Conditions
+# Terms of Service
 
-These terms and conditions govern the use of this service.
+These terms of service govern the use of this service.
 
 1. Calls and messages may be processed by automated systems.
 2. Tool responses may rely on third-party providers.
