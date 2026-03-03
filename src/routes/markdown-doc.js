@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { marked } from 'marked';
+import { IS_DEV } from '../env.js';
 
 // Tagged template for HTML authoring with editor tooling support.
 const html = String.raw;
@@ -26,9 +27,23 @@ function escapeHtml(value) {
  */
 export function createMarkdownDocHandler({ filePath, title }) {
     return async function markdownDocHandler(_request, reply) {
+        if (IS_DEV) {
+            console.log('markdown-doc: handler invoked', {
+                event: 'markdown-doc.handler.start',
+                configuredFilePath: filePath,
+                configuredTitle: title,
+            });
+        }
+
         const configuredPath = String(filePath || '').trim();
 
         if (!configuredPath) {
+            if (IS_DEV) {
+                console.log('markdown-doc: missing file path', {
+                    event: 'markdown-doc.error.missing_path',
+                    configuredPath,
+                });
+            }
             reply
                 .code(500)
                 .type('text/plain; charset=utf-8')
@@ -40,10 +55,41 @@ export function createMarkdownDocHandler({ filePath, title }) {
             ? configuredPath
             : path.resolve(process.cwd(), configuredPath);
 
+        if (IS_DEV) {
+            console.log('markdown-doc: resolved file path', {
+                event: 'markdown-doc.path.resolved',
+                configuredPath,
+                absolutePath,
+            });
+        }
+
         try {
             const markdown = await readFile(absolutePath, 'utf8');
+            if (IS_DEV) {
+                console.log('markdown-doc: file read successfully', {
+                    event: 'markdown-doc.file.read',
+                    filePath: absolutePath,
+                    contentLength: markdown.length,
+                    contentPreview: markdown.slice(0, 200),
+                });
+            }
+
             const renderedBody = marked.parse(markdown);
+            if (IS_DEV) {
+                console.log('markdown-doc: markdown parsed', {
+                    event: 'markdown-doc.markdown.parsed',
+                    sourceLength: markdown.length,
+                    renderedLength: String(renderedBody).length,
+                });
+            }
+
             const pageTitle = escapeHtml(title || path.basename(absolutePath));
+            if (IS_DEV) {
+                console.log('markdown-doc: page title computed', {
+                    event: 'markdown-doc.title.computed',
+                    pageTitle,
+                });
+            }
             const renderedHtml = html`<!doctype html>
                 <html lang="en">
                     <head>
@@ -116,8 +162,30 @@ export function createMarkdownDocHandler({ filePath, title }) {
                     </body>
                 </html>`;
 
+            if (IS_DEV) {
+                console.log('markdown-doc: html generated successfully', {
+                    event: 'markdown-doc.html.generated',
+                    htmlLength: String(renderedHtml).length,
+                });
+            }
+
             reply.type('text/html; charset=utf-8').send(renderedHtml);
-        } catch {
+
+            if (IS_DEV) {
+                console.log('markdown-doc: handler completed successfully', {
+                    event: 'markdown-doc.handler.success',
+                    filePath: absolutePath,
+                });
+            }
+        } catch (err) {
+            if (IS_DEV) {
+                console.log('markdown-doc: error during processing', {
+                    event: 'markdown-doc.error.processing',
+                    filePath: absolutePath,
+                    errorMessage: err?.message || String(err),
+                    errorStack: err?.stack,
+                });
+            }
             reply
                 .code(500)
                 .type('text/plain; charset=utf-8')

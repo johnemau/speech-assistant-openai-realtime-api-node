@@ -45,18 +45,33 @@ async function executeSmsToolCallSafe({ name, arguments: rawArgs, context }) {
             name,
             args: parsedArgs,
             hasCaller: Boolean(context?.currentCallerE164),
+            caller: context?.currentCallerE164,
         });
     }
     try {
+        if (IS_DEV) {
+            console.log('sms tool call: executing', {
+                event: 'sms.tool_call.executing',
+                name,
+                argsKeys: Object.keys(parsedArgs || {}),
+            });
+        }
+
         const output = await executeToolCall({
             name,
             args: parsedArgs,
             context,
         });
+
         if (IS_DEV) {
             console.log('sms tool call: success', {
                 name,
                 output,
+                outputType: typeof output,
+                outputKeys:
+                    output && typeof output === 'object'
+                        ? Object.keys(output)
+                        : [],
             });
         }
         return output || { status: 'ok' };
@@ -74,6 +89,8 @@ async function executeSmsToolCallSafe({ name, arguments: rawArgs, context }) {
             console.log('sms tool call: error', {
                 name,
                 detail,
+                errorStack: e?.stack,
+                errorType: e?.constructor?.name,
             });
         }
         return {
@@ -109,26 +126,84 @@ async function runSmsResponseWithTools({ input, instructions, context }) {
         input,
     });
 
+    if (IS_DEV) {
+        console.log('sms response: initial response received', {
+            event: 'sms.response.initial_received',
+            responseId: response?.id,
+            outputItemCount: response?.output?.length || 0,
+            outputTypes: response?.output?.map((item) => item?.type) || [],
+        });
+    }
+
     let rounds = 0;
     while (rounds < MAX_SMS_TOOL_ROUNDS) {
         const toolCalls =
             response?.output?.filter(
                 (item) => item?.type === 'function_call'
             ) || [];
-        if (!toolCalls.length) return response;
+
+        if (IS_DEV) {
+            console.log('sms response: tool call evaluation', {
+                event: 'sms.response.tool_call_check',
+                round: rounds,
+                toolCallCount: toolCalls.length,
+                maxRounds: MAX_SMS_TOOL_ROUNDS,
+            });
+        }
+
+        if (!toolCalls.length) {
+            if (IS_DEV) {
+                console.log('sms response: no tool calls, returning', {
+                    event: 'sms.response.no_tool_calls',
+                    round: rounds,
+                    finalResponseId: response?.id,
+                });
+            }
+            return response;
+        }
 
         /** @type {Array<import('openai/resources/responses/responses').ResponseInputItem>} */
         const outputs = [];
         for (const toolCall of toolCalls) {
             const toolName = toolCall?.name;
             const callId = toolCall?.call_id;
-            if (!toolName || !callId) continue;
+
+            if (IS_DEV) {
+                console.log('sms response: processing tool call', {
+                    event: 'sms.response.tool_call_processing',
+                    round: rounds,
+                    toolName,
+                    callId,
+                });
+            }
+
+            if (!toolName || !callId) {
+                if (IS_DEV) {
+                    console.log('sms response: skipping invalid tool call', {
+                        event: 'sms.response.tool_call_invalid',
+                        round: rounds,
+                        hasName: Boolean(toolName),
+                        hasId: Boolean(callId),
+                    });
+                }
+                continue;
+            }
 
             const toolResult = await executeSmsToolCallSafe({
                 name: toolName,
                 arguments: toolCall?.arguments,
                 context,
             });
+
+            if (IS_DEV) {
+                console.log('sms response: tool call executed', {
+                    event: 'sms.response.tool_call_executed',
+                    round: rounds,
+                    toolName,
+                    callId,
+                    toolResult,
+                });
+            }
 
             outputs.push(
                 /** @type {import('openai/resources/responses/responses').ResponseInputItem} */ ({
@@ -139,13 +214,40 @@ async function runSmsResponseWithTools({ input, instructions, context }) {
             );
         }
 
+        if (IS_DEV) {
+            console.log('sms response: creating continuation response', {
+                event: 'sms.response.continuation_create',
+                round: rounds,
+                outputCount: outputs.length,
+                previousResponseId: response?.id,
+            });
+        }
+
         response = await openaiClient.responses.create({
             ...baseConfig,
             previous_response_id: response?.id,
             input: outputs,
         });
 
+        if (IS_DEV) {
+            console.log('sms response: continuation response received', {
+                event: 'sms.response.continuation_received',
+                round: rounds,
+                newResponseId: response?.id,
+                outputItemCount: response?.output?.length || 0,
+                outputTypes: response?.output?.map((item) => item?.type) || [],
+            });
+        }
+
         rounds += 1;
+    }
+
+    if (IS_DEV) {
+        console.log('sms response: max rounds reached', {
+            event: 'sms.response.max_rounds_reached',
+            rounds: MAX_SMS_TOOL_ROUNDS,
+            finalResponseId: response?.id,
+        });
     }
 
     return response;
