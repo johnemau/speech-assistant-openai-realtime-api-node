@@ -182,6 +182,14 @@ GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 # SPOT public feed (latest track + timezone greeting)
 SPOT_FEED_ID=your_spot_feed_id
 SPOT_FEED_PASSWORD=your_spot_feed_password
+
+# SMS consent records file (for audit/compliance)
+SMS_CONSENT_RECORDS_FILE_PATH=data/sms-consent-records.jsonl
+
+# Markdown document routes (default paths shown)
+TERMS_AND_CONDITIONS_FILE_PATH=tos.md
+PRIVACY_POLICY_FILE_PATH=privacy-policy.md
+HOW_TO_OPT_IN_FILE_PATH=how-to-opt-in.md
 ```
 
 Note: Do not set `TWILIO_ACCOUNT_SID` to an API Key (values starting with `SK`). If you use an API Key, pass `TWILIO_ACCOUNT_SID` separately as shown above.
@@ -204,7 +212,23 @@ Quick local checks:
 
 - Visit http://localhost:10000/ to confirm the root endpoint.
 - Visit http://localhost:10000/healthz for a simple health check.
+- Visit http://localhost:10000/tos for Terms of Service.
+- Visit http://localhost:10000/privacy-policy for Privacy Policy.
+- Visit http://localhost:10000/how-to-opt-in for opt-in instructions.
 - Run `npm test` to lint, typecheck, and verify tests.
+
+### Markdown Document Routes
+
+The app exposes three optional markdown document routes, each rendering markdown as HTML:
+
+- **GET `/tos`** — Terms of Service
+  - Environment variable: `TERMS_AND_CONDITIONS_FILE_PATH` (default: `tos.md`)
+- **GET `/privacy-policy`** — Privacy Policy
+  - Environment variable: `PRIVACY_POLICY_FILE_PATH` (default: `privacy-policy.md`)
+- **GET `/how-to-opt-in`** — How to Opt In / SMS Enrollment Instructions
+  - Environment variable: `HOW_TO_OPT_IN_FILE_PATH` (default: `how-to-opt-in.md`)
+
+Markdown files are rendered to HTML with a standard page template. File paths can be absolute or relative to the current working directory.
 
 ### Debug logging (development)
 
@@ -215,9 +239,12 @@ Set `NODE_ENV=development` to enable verbose diagnostic logs across routes, tool
 Let the assistant auto‑reply to SMS using GPT‑5.2 with the `web_search` tool.
 
 - Webhook: `/sms` (configure in Twilio Console under Messaging → “A message comes in”)
-- Enrollment flow: users text `START`, then must reply `YES` to confirm enrollment. No AI SMS replies are sent until enrollment is confirmed.
-- Opt-out: users can reply `STOP` at any time to opt out immediately.
-- Consent records: the app stores `{ phoneNumber, keyword, timestamp, status }` records in `SMS_CONSENT_RECORDS_FILE_PATH` (default: `data/sms-consent-records.jsonl`) for audit purposes.
+- **Enrollment flow:** users must confirm enrollment before receiving AI replies:
+  - **User texts `START`** → app records "pending" consent status and sends enrollment confirmation message.
+  - **User replies `YES`** → app records "confirmed" consent status and enables AI SMS replies.
+  - **User replies `STOP`** → app records "opted_out" status and will not send further replies; user can text `START` again to re-enroll.
+  - **No AI replies** are sent unless consent status is "confirmed".
+- **Consent records:** the app persists all consent events (START, YES, STOP) as `{ phoneNumber, keyword, timestamp, status }` records to `SMS_CONSENT_RECORDS_FILE_PATH` (default: `data/sms-consent-records.jsonl`) for audit and compliance purposes.
 - Thread context: the app fetches up to the last 10 messages exchanged with the caller in the past 12 hours (both inbound and outbound), merges them, and includes this thread in the prompt.
 - Model and tools: calls OpenAI `responses.create` with `model: gpt-5.2` and `tools: [{ type: 'web_search' }]` (tool_choice=`required`).
 - Reply style: concise, friendly SMS (≤320 chars). When citing sources, include a URL for each cited source if one is available.

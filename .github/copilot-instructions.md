@@ -5,8 +5,8 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 ## Big Picture
 
 - Twilio inbound call → TwiML webhook → Media Stream WebSocket → OpenAI Realtime WebSocket → audio round‑trip.
-- Core entry point: [index.js](../index.js). Reference [Readme.md](../Readme.md) for setup and behavior.
-- Fastify HTTP server exposes: `/` (root), `/healthz` (uptime), `/incoming-call` (TwiML), `/media-stream` (WebSocket for Twilio audio), and `/sms` (Twilio Messaging webhook for auto‑replies).
+- Core entry point: [index.js](../index.js). Reference [README.md](../README.md) for setup and behavior.
+- Fastify HTTP server exposes: `/` (root), `/healthz` (uptime), `/incoming-call` (TwiML), `/media-stream` (WebSocket for Twilio audio), `/sms` (Twilio Messaging webhook for auto‑replies), and markdown document routes (`/tos`, `/privacy-policy`, `/how-to-opt-in`).
 - Audio from Twilio is forwarded to OpenAI via `input_audio_buffer.append`; assistant audio returns via `response.output_audio.delta` and is streamed back to Twilio.
 - Realtime session + prompts live under [src/assistant](../src/assistant) (see [src/assistant/session.js](../src/assistant/session.js) and [src/assistant/prompts.js](../src/assistant/prompts.js)).
 
@@ -42,6 +42,8 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Call allowlists: `PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS` (comma‑separated E.164).
 - Tool toggles: `ALLOW_SEND_SMS=true` and `ALLOW_SEND_EMAIL=true` to enable `send_sms`/`send_email`.
 - SMS send fallback: `TWILIO_SMS_FROM_NUMBER` when the TwiML parameter is missing.
+- SMS consent records: `SMS_CONSENT_RECORDS_FILE_PATH` (default: `data/sms-consent-records.jsonl`)—stores consent audit trail.
+- Markdown document routes: `TERMS_AND_CONDITIONS_FILE_PATH` (default: `tos.md`), `PRIVACY_POLICY_FILE_PATH` (default: `privacy-policy.md`), `HOW_TO_OPT_IN_FILE_PATH` (default: `how-to-opt-in.md`).
 - Logs are sanitized at startup using `redact-logs` and `@zapier/secret-scrubber`. Disable via `DISABLE_LOG_REDACTION=true`. Add any new secret env keys to `REDACT_ENV_KEYS` (comma‑separated).
 
 ## Routing & Twilio Integration
@@ -56,9 +58,14 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
     - After the initial greeting, turn detection is updated to manual response creation (see `input_audio_buffer.speech_stopped`).
 - `/sms` (Messaging webhook):
     - Restricts usage to allowlisted numbers (`PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS`).
+    - **Consent enrollment:** user texts `START` → "pending", user replies `YES` → "confirmed", user replies `STOP` → "opted_out". AI replies only sent when status is "confirmed". Records persisted to `SMS_CONSENT_RECORDS_FILE_PATH`.
     - Builds a 12‑hour recent thread (up to 10 messages, inbound+outbound) and composes a concise reply (≤320 chars).
     - Calls OpenAI `responses.create` with `model: gpt-5.2`, `tools: [{ type: 'web_search' }]`, `tool_choice: 'required'`, and tailored SMS instructions.
     - Sends the reply via Twilio REST API; falls back to TwiML with concise error text when send fails.
+- `/tos`, `/privacy-policy`, `/how-to-opt-in` (Markdown document routes):
+    - Serve as configurable markdown-to-HTML document endpoints.
+    - File paths: `TERMS_AND_CONDITIONS_FILE_PATH`, `PRIVACY_POLICY_FILE_PATH`, `HOW_TO_OPT_IN_FILE_PATH` (with sensible defaults).
+    - Render markdown files with a standard HTML wrapper and return as `text/html`.
 
 ## OpenAI Session & Tools
 
@@ -75,8 +82,11 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 
 ## SMS Auto‑Reply
 
-- Webhook: `/sms` — configure in Twilio Console under Messaging → “A message comes in”.
-- Allowlist: only numbers listed in `PRIMARY_USER_PHONE_NUMBERS` or `SECONDARY_USER_PHONE_NUMBERS` are allowed.
+- Webhook: `/sms` — configure in Twilio Console under Messaging → “A message comes in”.- **Consent enrollment:** users must explicitly enroll before receiving AI replies:
+  - `START` → records "pending" status and prompts for `YES` confirmation.
+  - `YES` → records "confirmed" status and enables AI SMS replies (when status was previously "pending").
+  - `STOP` → records "opted_out" status and stops all AI replies; user can text `START` to re-enroll.
+  - All consent events persisted to `SMS_CONSENT_RECORDS_FILE_PATH` for audit/compliance.- Allowlist: only numbers listed in `PRIMARY_USER_PHONE_NUMBERS` or `SECONDARY_USER_PHONE_NUMBERS` are allowed.
 - Context: fetches last 12 hours of messages (inbound/outbound), merges and includes up to 10 in the prompt.
 - Model & tools: OpenAI `responses.create` with `model: gpt-5.2` and `tools: [{ type: 'web_search' }]` (`tool_choice: 'required'`).
 - Style: reply ≤320 chars, friendly and actionable; at most one short source label; URLs only when directly helpful.

@@ -1,0 +1,36 @@
+{
+  "name": "Auto-run Tests on Session End",
+  "description": "Automatically runs appropriate tests at session end based on which file categories were modified (routes, prompts, or tools).",
+  "trigger": "SessionEnd",
+  "actions": [
+    {
+      "type": "inject-context",
+      "label": "Test Summary Context",
+      "content": "Based on the files modified in this session, the following tests will be run at the end:\n- If src/routes/ files were modified: npm run test:integration\n- If src/assistant/prompts/ files were modified: npm run pf:eval\n- If src/tools/ files were modified: npm test\n\nAll tests will run to ensure changes work correctly."
+    },
+    {
+      "type": "script",
+      "label": "Run Modified-Category Tests",
+      "script": "auto-run-tests.mjs",
+      "blocking": false,
+      "onComplete": "suggest"
+    }
+  ],
+  "conditions": [
+    {
+      "filePattern": ["src/routes/**/*.js", "src/routes/**/*.test.js"],
+      "action": "run",
+      "command": "npm run test:integration"
+    },
+    {
+      "filePattern": ["src/assistant/prompts/**/*.md", "src/assistant/prompts/**/*.json"],
+      "action": "run",
+      "command": "npm run pf:eval"
+    },
+    {
+      "filePattern": ["src/tools/**/*.js", "src/tools/**/*.test.js"],
+      "action": "run",
+      "command": "npm test"
+    }
+  ]
+}
