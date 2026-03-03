@@ -87,6 +87,22 @@ export function isYesKeyword(keyword) {
 }
 
 /**
+ * @param {string} keyword - Normalized keyword.
+ * @returns {boolean} True when keyword is HELP or INFO.
+ */
+export function isHelpKeyword(keyword) {
+    const result = keyword === 'HELP' || keyword === 'INFO';
+    if (IS_DEV) {
+        console.log('sms-consent: help keyword check', {
+            event: 'sms-consent.keyword.check_help',
+            keyword,
+            isHelp: result,
+        });
+    }
+    return result;
+}
+
+/**
  * @param {string} [filePath] - Optional custom records path.
  * @returns {Promise<void>} Ensures records directory exists.
  */

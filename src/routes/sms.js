@@ -24,6 +24,7 @@ import {
     isStartKeyword,
     isStopKeyword,
     isYesKeyword,
+    isHelpKeyword,
     normalizeSmsKeyword,
 } from '../utils/sms-consent.js';
 
@@ -302,6 +303,13 @@ export async function smsHandler(request, reply) {
                 event: 'sms.handler.consent_records_path',
                 filePath: consentRecordsPath,
             });
+        }
+
+        if (isHelpKeyword(keyword)) {
+            twiml.message(
+                'Reply STOP to unsubscribe. Msg&Data Rates May Apply.'
+            );
+            return reply.type('text/xml').send(twiml.toString());
         }
 
         if (isStopKeyword(keyword)) {

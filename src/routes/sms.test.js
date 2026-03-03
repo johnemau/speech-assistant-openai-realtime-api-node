@@ -226,6 +226,41 @@ test('sms STOP opts out immediately', async () => {
     }
 });
 
+test('sms HELP and INFO send help message', async () => {
+    const { smsHandler, cleanup } = await loadSmsHandler({
+        twilioClient: null,
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'ok' }) },
+        },
+    });
+
+    // Test HELP keyword
+    const helpRequest = {
+        body: { Body: 'HELP', From: '+12065550100', To: '+12065550101' },
+    };
+    const helpReply = createReply();
+
+    try {
+        await smsHandler(helpRequest, helpReply);
+        assert.equal(helpReply.headers.type, 'text/xml');
+        assert.ok(String(helpReply.payload).includes('Reply STOP'));
+        assert.ok(String(helpReply.payload).includes('Msg&Data Rates'));
+
+        // Test INFO keyword
+        const infoRequest = {
+            body: { Body: 'INFO', From: '+12065550100', To: '+12065550101' },
+        };
+        const infoReply = createReply();
+
+        await smsHandler(infoRequest, infoReply);
+        assert.equal(infoReply.headers.type, 'text/xml');
+        assert.ok(String(infoReply.payload).includes('Reply STOP'));
+        assert.ok(String(infoReply.payload).includes('Msg&Data Rates'));
+    } finally {
+        cleanup();
+    }
+});
+
 test('sms replies with unconfigured message when Twilio client missing', async () => {
     const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
     const recordsPath = path.join(tmpDir, 'consent.jsonl');

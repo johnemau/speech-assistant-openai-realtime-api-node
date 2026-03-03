@@ -9,6 +9,7 @@ import {
     isStartKeyword,
     isYesKeyword,
     isStopKeyword,
+    isHelpKeyword,
     appendSmsConsentRecord,
     getSmsConsentStatus,
 } from './sms-consent.js';
@@ -22,7 +23,10 @@ test('keyword helpers match supported commands', () => {
     assert.equal(isStartKeyword('START'), true);
     assert.equal(isYesKeyword('YES'), true);
     assert.equal(isStopKeyword('STOP'), true);
+    assert.equal(isHelpKeyword('HELP'), true);
+    assert.equal(isHelpKeyword('INFO'), true);
     assert.equal(isStartKeyword('HELLO'), false);
+    assert.equal(isHelpKeyword('HELLO'), false);
 });
 
 test('getSmsConsentStatus returns latest status for a phone number', async () => {
