@@ -7,6 +7,19 @@ user-invocable: true
 
 # Markdown Document Route
 
+## Current Implementation Status
+
+Three markdown document routes are currently registered and ready for use:
+
+- **GET `/tos`** — Terms of Service
+  - File: `TERMS_AND_CONDITIONS_FILE_PATH` env var (default: `tos.md`)
+- **GET `/privacy-policy`** — Privacy Policy
+  - File: `PRIVACY_POLICY_FILE_PATH` env var (default: `privacy-policy.md`)
+- **GET `/how-to-opt-in`** — SMS Enrollment Instructions
+  - File: `HOW_TO_OPT_IN_FILE_PATH` env var (default: `how-to-opt-in.md`)
+
+All routes render markdown to HTML with a standard page template using the `createMarkdownDocHandler` factory in [src/routes/markdown-doc.js](../../src/routes/markdown-doc.js).
+
 ## When to Use
 
 - Add a new text document URL path such as `/toc.md`.
@@ -71,3 +84,4 @@ user-invocable: true
 - `/markdown-doc-route Add /toc.md that serves docs/toc.md as HTML.`
 - `/markdown-doc-route Add /privacy.md and /terms.md using one shared markdown handler.`
 - `/markdown-doc-route Refactor existing markdown route logic into a generic handler and wire routes in index.js.`
+- `/markdown-doc-route Add a new /faq route for FAQ documentation.`
