@@ -395,29 +395,28 @@ export async function smsHandler(request, reply) {
                     from: fromE164,
                 });
             }
+            let statusBeforeUpdate;
             try {
-                // Check current consent status to determine if this is first-time enrollment
-                const currentStatus = await getSmsConsentStatus(
+                // Check current consent status BEFORE making this update
+                statusBeforeUpdate = await getSmsConsentStatus(
                     fromE164,
                     consentRecordsPath
                 );
                 const hasPendingQuestion = !!getPendingQuestion(fromE164);
 
-                // If user is pending and texting YES/UNSTOP to confirm, upgrade to confirmed
-                const shouldUpgradeToPending = currentStatus !== 'confirmed';
-                const targetStatus = shouldUpgradeToPending
-                    ? 'pending'
-                    : 'confirmed';
+                // Determine target status based on current status
+                const targetStatus =
+                    statusBeforeUpdate === 'pending' ? 'confirmed' : 'pending';
+
                 if (IS_DEV) {
                     console.log(
                         'sms handler: determining target consent status',
                         {
                             event: 'sms.handler.start_keyword_status_check',
                             fromE164,
-                            currentStatus,
-                            hasPendingQuestion,
-                            shouldUpgradeToPending,
+                            statusBeforeUpdate,
                             targetStatus,
+                            hasPendingQuestion,
                         }
                     );
                 }
@@ -437,7 +436,8 @@ export async function smsHandler(request, reply) {
                         {
                             event: 'sms.handler.start_consent_recorded',
                             phoneNumber: fromE164,
-                            status: targetStatus,
+                            statusBefore: statusBeforeUpdate,
+                            statusAfter: targetStatus,
                         }
                     );
                 }
@@ -461,35 +461,50 @@ export async function smsHandler(request, reply) {
                 throw err;
             }
 
-            // Check if there's a pending question to answer
+            // Re-check status after update to see if we upgraded to confirmed
+            const statusAfterUpdate = await getSmsConsentStatus(
+                fromE164,
+                consentRecordsPath
+            );
             const pendingQuestion = getPendingQuestion(fromE164);
-            if (pendingQuestion) {
+            const wasUpgradedToConfirmed =
+                statusAfterUpdate === 'confirmed' &&
+                statusBeforeUpdate !== 'confirmed';
+
+            if (wasUpgradedToConfirmed && pendingQuestion) {
                 if (IS_DEV) {
                     console.log(
-                        'sms handler: found pending question on START/YES confirmation',
+                        'sms handler: upgraded to confirmed with pending question',
                         {
-                            event: 'sms.handler.pending_question_found',
+                            event: 'sms.handler.answer_pending_question',
                             fromE164,
                             pendingQuestion,
                         }
                     );
                 }
-                // Override bodyRaw for processing, but dont clear yet (will clear after processing)
+                // Override bodyRaw to use the pending question for AI processing
                 bodyRaw = pendingQuestion;
+                // Don't return - let code continue to answer the question
             } else {
-                // No pending question, return enrollment confirmation
+                // Return enrollment confirmation
                 if (IS_DEV) {
-                    console.log('sms handler: returning START confirmation', {
-                        event: 'sms.handler.return_start_confirmation',
-                        from: fromE164,
-                    });
+                    console.log(
+                        'sms handler: returning START/enrollment confirmation',
+                        {
+                            event: 'sms.handler.return_enrollment_confirmation',
+                            from: fromE164,
+                            statusAfterUpdate,
+                            wasUpgradedToConfirmed,
+                            hasPendingQuestion: !!pendingQuestion,
+                        }
+                    );
                 }
                 twiml.message(
                     'You have successfully been re-subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.'
                 );
                 return reply.type('text/xml').send(twiml.toString());
             }
-            // If we reach here, we have a pending question to answer, so continue to AI processing
+            // If we reach here with a pending question to answer, continue to AI processing
         }
 
         const consentStatus = await getSmsConsentStatus(
