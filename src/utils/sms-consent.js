@@ -243,10 +243,13 @@ export async function getSmsConsentStatus(
                 errorCode: err?.code,
             });
         } else if (IS_DEV && err?.code === 'ENOENT') {
-            console.log('sms-consent: records file not found (no enrollments yet)', {
-                event: 'sms-consent.records_file.not_found',
-                absolutePath,
-            });
+            console.log(
+                'sms-consent: records file not found (no enrollments yet)',
+                {
+                    event: 'sms-consent.records_file.not_found',
+                    absolutePath,
+                }
+            );
         }
         return null;
     }
