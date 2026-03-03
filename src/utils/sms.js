@@ -69,7 +69,9 @@ export function mergeAndSortMessages(inbound = [], outbound = []) {
  */
 export function buildSmsThreadText({ messages = [], fromE164, limit = 10 }) {
     const recent = messages.slice(0, limit);
-    return recent
+    // Reverse to show oldest first, newest last
+    const reversed = recent.reverse();
+    return reversed
         .map((m) => {
             const ts = new Date(m.dateSent || m.dateCreated || 0).toISOString();
             const who = m.from === fromE164 ? 'User' : 'Assistant';
