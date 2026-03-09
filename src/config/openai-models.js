@@ -22,7 +22,7 @@ import {
 } from './web-search-models.js';
 import { REALTIME_TEMPERATURE } from './constants.js';
 
-export const REALTIME_MODEL = 'gpt-realtime';
+export const REALTIME_MODEL = 'gpt-realtime-1.5';
 export { REALTIME_TEMPERATURE };
 
 export {
