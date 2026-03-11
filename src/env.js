@@ -91,6 +91,20 @@ export let ALLOW_SEND_SMS = isTruthy(process.env.ALLOW_SEND_SMS);
 export let ALLOW_SEND_EMAIL = isTruthy(process.env.ALLOW_SEND_EMAIL);
 
 /**
+ * Public base URL used in outbound SMS messages (e.g. privacy-policy link).
+ * Falls back to NGROK_DOMAIN with https scheme when SERVER_BASE_URL is not set.
+ *
+ * @returns {string} Base URL without trailing slash, or empty string when unavailable.
+ */
+export function getServerBaseUrl() {
+    const explicit = process.env.SERVER_BASE_URL;
+    if (explicit) return explicit.replace(/\/+$/, '');
+    const ngrok = process.env.NGROK_DOMAIN;
+    if (ngrok) return `https://${ngrok}`.replace(/\/+$/, '');
+    return '';
+}
+
+/**
  * Test/helper override for SMS sending flag.
  * @param {boolean} value - Whether to allow SMS sending.
  */

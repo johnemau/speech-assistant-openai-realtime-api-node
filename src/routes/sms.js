@@ -8,7 +8,12 @@ import {
     extractSmsRequest,
     mergeAndSortMessages,
 } from '../utils/sms.js';
-import { IS_DEV, PRIMARY_CALLERS_SET, SECONDARY_CALLERS_SET } from '../env.js';
+import {
+    IS_DEV,
+    PRIMARY_CALLERS_SET,
+    SECONDARY_CALLERS_SET,
+    getServerBaseUrl,
+} from '../env.js';
 import {
     buildSmsResponseConfig,
     GPT_5_2_MODEL,
@@ -302,6 +307,12 @@ export async function smsHandler(request, reply) {
             return reply.type('text/xml').send(twiml.toString());
         }
 
+        // Build privacy-policy URL suffix for consent messages
+        const baseUrl = getServerBaseUrl();
+        const privacySuffix = baseUrl
+            ? ` Privacy Policy: ${baseUrl}/privacy-policy`
+            : '';
+
         // Use env var if set, otherwise let the consent functions use their defaults
         const consentRecordsPath = process.env.SMS_CONSENT_RECORDS_FILE_PATH;
         const nowIso = new Date().toISOString();
@@ -322,7 +333,7 @@ export async function smsHandler(request, reply) {
                 });
             }
             twiml.message(
-                'Reply STOP to unsubscribe. Msg&Data Rates May Apply.'
+                `Reply STOP to unsubscribe. Msg&Data Rates May Apply.${privacySuffix}`
             );
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -381,7 +392,7 @@ export async function smsHandler(request, reply) {
                 });
             }
             twiml.message(
-                'You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.'
+                `You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.${privacySuffix}`
             );
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -499,7 +510,7 @@ export async function smsHandler(request, reply) {
                     );
                 }
                 twiml.message(
-                    'You have successfully been re-subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.'
+                    `You have successfully been re-subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.${privacySuffix}`
                 );
                 return reply.type('text/xml').send(twiml.toString());
             }
@@ -553,7 +564,7 @@ export async function smsHandler(request, reply) {
                 });
             }
             twiml.message(
-                'You are not enrolled yet. Reply START to subscribe. Reply HELP for help.'
+                `You are not enrolled yet. Reply START to subscribe. Reply HELP for help.${privacySuffix}`
             );
             return reply.type('text/xml').send(twiml.toString());
         }

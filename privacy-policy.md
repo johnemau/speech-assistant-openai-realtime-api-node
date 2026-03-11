@@ -1,39 +1,53 @@
-# Privacy Policy
-
+**Privacy Policy**
 Effective date: March 3, 2026
 
-This service is a voice and messaging assistant that helps process phone calls and SMS messages.
+This service operates a voice and messaging assistant that processes incoming phone calls and SMS messages in order to respond to users and perform requested actions.
 
-## What We Collect
+## Information We Collect
 
-- Caller and sender phone numbers from Twilio webhooks.
-- Audio streamed during active calls.
+We may collect the following information when you interact with the service:
+
+- Phone numbers of callers and SMS senders received through messaging and voice platforms.
+- Audio transmitted during active voice calls.
 - SMS message content sent to the service.
-- Metadata needed to operate the service (timestamps, routing, and request identifiers).
+- Operational metadata required to provide the service, such as timestamps, routing information, and request identifiers.
 
 ## How We Use Information
 
-- To run the voice assistant and generate responses.
-- To support requested actions such as sending SMS, email, directions, or call transfers.
-- To monitor reliability, diagnose issues, and improve service quality.
+Information collected through the service is used solely for the purpose of operating and improving the service, including:
 
-## Third-Party Processing
+- Processing voice calls and SMS interactions.
+- Generating automated responses or completing requested actions.
+- Sending SMS messages or transferring calls when requested by the user.
+- Monitoring system reliability, diagnosing technical issues, and improving service quality.
 
-This service relies on third-party providers, including Twilio and OpenAI, to process call audio, messages, and model responses. Additional integrations (for example, maps or email providers) may process limited data required to complete requested actions.
+## Third-Party Service Providers
+
+The service relies on third-party infrastructure providers to operate the platform. These providers may process data only to the extent necessary to deliver the service.
+
+Examples include communications infrastructure providers, AI processing services, and integrations such as mapping or email services used to fulfill user requests.
+
+These providers are not permitted to use personal information for their own marketing or promotional purposes.
+
+## Mobile Information Privacy
+
+No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.
+Mobile information collected through messaging interactions is used solely for the purpose of delivering the requested service.
 
 ## Data Retention
 
-We retain operational logs and message data only as long as reasonably necessary to provide the service, maintain security, and troubleshoot issues.
+Operational logs, call metadata, and message records are retained only as long as reasonably necessary to operate the service, maintain security, comply with legal obligations, and troubleshoot issues.
 
 ## Security
 
-We use reasonable safeguards designed to protect data in transit and at rest, including environment-based secret management and log redaction where configured.
+Reasonable technical and organizational safeguards are used to protect information in transit and at rest. These measures may include encrypted communications, secure infrastructure, environment-based secret management, and controlled access to operational logs.
 
 ## Your Choices
 
-- Do not use the service if you do not agree with this policy.
-- You may stop a call or message interaction at any time.
+Participation in calls or messaging interactions with the service is voluntary.
+
+You may stop a call or discontinue messaging at any time. If you do not agree with this privacy policy, please do not use the service.
 
 ## Contact
 
-For privacy questions, contact the service operator.
+For questions about this privacy policy or data handling practices, please contact the service operator.
