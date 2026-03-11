@@ -415,8 +415,11 @@ export async function smsHandler(request, reply) {
                 );
                 const hasPendingQuestion = !!getPendingQuestion(fromE164);
 
-                // A2P 10DLC: opt-in keywords immediately confirm
-                const targetStatus = 'confirmed';
+                // Two-step enrollment: YES when already pending → confirmed; otherwise → pending
+                const targetStatus =
+                    keyword === 'YES' && statusBeforeUpdate === 'pending'
+                        ? 'confirmed'
+                        : 'pending';
 
                 if (IS_DEV) {
                     console.log(
@@ -481,10 +484,10 @@ export async function smsHandler(request, reply) {
                 statusAfterUpdate === 'confirmed' &&
                 statusBeforeUpdate !== 'confirmed';
 
-            if (!wasUpgradedToConfirmed && pendingQuestion) {
+            if (wasUpgradedToConfirmed && pendingQuestion) {
                 if (IS_DEV) {
                     console.log(
-                        'sms handler: already confirmed with pending question',
+                        'sms handler: upgraded to confirmed with pending question',
                         {
                             event: 'sms.handler.answer_pending_question',
                             fromE164,
@@ -495,6 +498,22 @@ export async function smsHandler(request, reply) {
                 // Override bodyRaw to use the pending question for AI processing
                 bodyRaw = pendingQuestion;
                 // Don't return - let code continue to answer the question
+            } else if (statusAfterUpdate === 'pending') {
+                // Two-step: ask for YES confirmation
+                if (IS_DEV) {
+                    console.log(
+                        'sms handler: returning pending enrollment, asking for YES',
+                        {
+                            event: 'sms.handler.return_pending_enrollment',
+                            from: fromE164,
+                            statusAfterUpdate,
+                        }
+                    );
+                }
+                twiml.message(
+                    `To subscribe to ${SMS_BRAND_NAME}, reply YES to confirm. Reply STOP to cancel.${privacySuffix}`
+                );
+                return reply.type('text/xml').send(twiml.toString());
             } else {
                 // Return enrollment confirmation
                 if (IS_DEV) {
