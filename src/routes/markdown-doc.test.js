@@ -97,3 +97,33 @@ test('markdown-doc returns 500 when file path is not configured', async () => {
     assert.equal(reply.headers.type, 'text/plain; charset=utf-8');
     assert.equal(reply.payload, 'Markdown file path is not configured.');
 });
+
+test('markdown-doc substitutes variables in markdown', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'markdown-doc-'));
+    const mdPath = path.join(tmpDir, 'policy.md');
+    await writeFile(
+        mdPath,
+        '# Contact\n\nEmail us at {{SERVICE_OPERATOR_EMAIL}}.\n',
+        'utf8'
+    );
+
+    const handler = createMarkdownDocHandler({
+        filePath: mdPath,
+        title: 'Privacy Policy',
+        variables: { SERVICE_OPERATOR_EMAIL: 'hello@example.com' },
+    });
+    const reply = createReply();
+
+    try {
+        await handler(/** @type {any} */ ({}), /** @type {any} */ (reply));
+
+        assert.equal(reply.headers.type, 'text/html; charset=utf-8');
+        assert.match(String(reply.payload), /hello@example\.com/);
+        assert.ok(
+            !String(reply.payload).includes('{{SERVICE_OPERATOR_EMAIL}}'),
+            'placeholder should be replaced'
+        );
+    } finally {
+        await rm(tmpDir, { recursive: true, force: true });
+    }
+});

@@ -53,4 +53,4 @@ You may stop a call or discontinue messaging at any time. If you do not agree wi
 
 ## Contact
 
-For questions about this privacy policy or data handling practices, please contact the service operator.
+For questions about this privacy policy or data handling practices, please contact the service operator at {{SERVICE_OPERATOR_EMAIL}}.

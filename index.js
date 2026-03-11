@@ -7,6 +7,7 @@ import { incomingCallHandler } from './src/routes/incoming-call.js';
 import { mediaStreamHandler } from './src/routes/media-stream.js';
 import { createMarkdownDocHandler } from './src/routes/markdown-doc.js';
 import { NGROK_DOMAIN, PORT } from './src/init.js';
+import { SERVICE_OPERATOR_EMAIL } from './src/env.js';
 
 // Initialize Fastify
 const fastify = Fastify();
@@ -53,6 +54,7 @@ fastify.get(
     createMarkdownDocHandler({
         filePath: process.env.PRIVACY_POLICY_FILE_PATH || 'privacy-policy.md',
         title: 'Privacy Policy',
+        variables: { SERVICE_OPERATOR_EMAIL },
     })
 );
 

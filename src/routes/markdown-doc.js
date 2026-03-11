@@ -23,9 +23,10 @@ function escapeHtml(value) {
  * @param {object} root0 - Markdown route options.
  * @param {string} root0.filePath - Absolute or workspace-relative markdown path.
  * @param {string} [root0.title] - Optional document title.
+ * @param {Record<string, string>} [root0.variables] - Key/value pairs to substitute in the markdown (e.g. `{{KEY}}` → value).
  * @returns {(request: import('fastify').FastifyRequest, reply: import('fastify').FastifyReply) => Promise<void>} Fastify handler.
  */
-export function createMarkdownDocHandler({ filePath, title }) {
+export function createMarkdownDocHandler({ filePath, title, variables }) {
     return async function markdownDocHandler(_request, reply) {
         if (IS_DEV) {
             console.log('markdown-doc: handler invoked', {
@@ -74,7 +75,17 @@ export function createMarkdownDocHandler({ filePath, title }) {
                 });
             }
 
-            const renderedBody = marked.parse(markdown);
+            let processedMarkdown = markdown;
+            if (variables) {
+                for (const [key, value] of Object.entries(variables)) {
+                    processedMarkdown = processedMarkdown.replaceAll(
+                        `{{${key}}}`,
+                        value
+                    );
+                }
+            }
+
+            const renderedBody = marked.parse(processedMarkdown);
             if (IS_DEV) {
                 console.log('markdown-doc: markdown parsed', {
                     event: 'markdown-doc.markdown.parsed',

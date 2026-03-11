@@ -93,6 +93,10 @@ export let ALLOW_SEND_EMAIL = isTruthy(process.env.ALLOW_SEND_EMAIL);
 /** Brand/program name used in A2P 10DLC compliant SMS keyword responses. */
 export const SMS_BRAND_NAME = process.env.SMS_BRAND_NAME || 'AI Assistant';
 
+/** Contact email shown in privacy policy and other public documents. */
+export const SERVICE_OPERATOR_EMAIL =
+    process.env.SERVICE_OPERATOR_EMAIL || 'admin@test.com';
+
 /**
  * Public base URL used in outbound SMS messages (e.g. privacy-policy link).
  * Falls back to NGROK_DOMAIN with https scheme when SERVER_BASE_URL is not set.
