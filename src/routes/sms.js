@@ -509,9 +509,17 @@ export async function smsHandler(request, reply) {
                         }
                     );
                 }
-                twiml.message(
-                    `You have successfully been re-subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.${privacySuffix}`
-                );
+                if (statusAfterUpdate === 'pending') {
+                    // Double opt-in: enrollment is pending until user replies YES
+                    twiml.message(
+                        `You have been opted in to our messaging program. Reply YES to confirm enrollment. Msg&Data Rates May Apply. Reply STOP to cancel.${privacySuffix}`
+                    );
+                } else {
+                    // Confirmed: user is now fully subscribed
+                    twiml.message(
+                        `You have successfully been subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.${privacySuffix}`
+                    );
+                }
                 return reply.type('text/xml').send(twiml.toString());
             }
             // If we reach here with a pending question to answer, continue to AI processing

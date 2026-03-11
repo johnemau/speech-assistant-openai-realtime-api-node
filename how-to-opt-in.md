@@ -1,16 +1,27 @@
-# How to join
+# How to Opt In
 
-Want AI assistant updates by text?
+Want AI assistant updates by text? Follow the steps below to join our SMS messaging program.
 
-Text `START` to our 10DLC phone number to begin enrollment.
+## Enrollment Steps
 
-By opting in, you agree to receive SMS messages from our AI assistant messaging program.
+1. Text `START` to our 10DLC phone number.
+2. You will receive a confirmation message asking you to reply `YES`.
+3. Reply `YES` to complete enrollment.
 
-Message frequency varies. Message and data rates may apply.
+No AI SMS replies are sent until you confirm with `YES`.
 
-After you text `START`, we will send a confirmation message. Reply `YES` to complete enrollment. No AI SMS replies are sent until you confirm.
+## Program Details
 
-Reply `STOP` at any time to opt out.
+By enrolling, you agree to receive SMS messages from our AI assistant messaging program in response to your texts.
+
+Message frequency varies based on your interactions. Message and data rates may apply.
+
+## Opt-Out and Help
+
+- Reply `STOP` at any time to unsubscribe. You will receive a final confirmation and no further messages will be sent.
+- Reply `HELP` for assistance and program information.
+
+## Links
 
 - [Privacy Policy](/privacy-policy)
 - [Terms of Service](/tos)
