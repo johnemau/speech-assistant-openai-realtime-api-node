@@ -35,7 +35,7 @@ These providers are not permitted to use personal information for their own mark
 No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.
 Mobile information collected through messaging interactions is used solely for the purpose of delivering the requested service.
 
-All categories above exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.
+We do not share SMS opt-in information or consent records with any third parties.
 
 ## Data Retention
 
