@@ -190,6 +190,9 @@ SMS_CONSENT_RECORDS_FILE_PATH=data/sms-consent-records.jsonl
 TERMS_AND_CONDITIONS_FILE_PATH=tos.md
 PRIVACY_POLICY_FILE_PATH=privacy-policy.md
 HOW_TO_OPT_IN_FILE_PATH=how-to-opt-in.md
+
+# Contact email injected into the privacy policy (default: admin@test.com)
+SERVICE_OPERATOR_EMAIL=you@yourdomain.com
 ```
 
 Note: Do not set `TWILIO_ACCOUNT_SID` to an API Key (values starting with `SK`). If you use an API Key, pass `TWILIO_ACCOUNT_SID` separately as shown above.
@@ -225,6 +228,7 @@ The app exposes three optional markdown document routes, each rendering markdown
     - Environment variable: `TERMS_AND_CONDITIONS_FILE_PATH` (default: `tos.md`)
 - **GET `/privacy-policy`** — Privacy Policy
     - Environment variable: `PRIVACY_POLICY_FILE_PATH` (default: `privacy-policy.md`)
+    - The privacy policy template uses `{{SERVICE_OPERATOR_EMAIL}}` as a placeholder. Set `SERVICE_OPERATOR_EMAIL` to inject a contact email (default: `admin@example.com`).
 - **GET `/how-to-opt-in`** — How to Opt In / SMS Enrollment Instructions
     - Environment variable: `HOW_TO_OPT_IN_FILE_PATH` (default: `how-to-opt-in.md`)
 
