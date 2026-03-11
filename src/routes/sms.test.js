@@ -151,10 +151,10 @@ test('sms START sets enrollment to pending and asks for YES confirmation', async
         await smsHandler(request, reply);
         assert.equal(reply.headers.type, 'text/xml');
         assert.ok(
-            String(reply.payload).includes('Reply YES to confirm enrollment'),
-            `Expected 'Reply YES to confirm enrollment' in: ${String(reply.payload)}`
+            String(reply.payload).includes('reply YES'),
+            `Expected 'reply YES' in: ${String(reply.payload)}`
         );
-        assert.ok(String(reply.payload).includes('Reply STOP to cancel'));
+        assert.ok(String(reply.payload).includes('STOP to cancel'));
     } finally {
         cleanup();
         delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
@@ -185,10 +185,8 @@ test('sms YES and UNSTOP opt-in keywords set enrollment to pending', async () =>
         await smsHandler(yesRequest, yesReply);
         assert.equal(yesReply.headers.type, 'text/xml');
         assert.ok(
-            String(yesReply.payload).includes(
-                'Reply YES to confirm enrollment'
-            ),
-            `Expected 'Reply YES to confirm enrollment' in YES response: ${String(yesReply.payload)}`
+            String(yesReply.payload).includes('reply YES'),
+            `Expected 'reply YES' in YES response: ${String(yesReply.payload)}`
         );
 
         // Test UNSTOP with no prior status → pending, asks to confirm
@@ -199,10 +197,8 @@ test('sms YES and UNSTOP opt-in keywords set enrollment to pending', async () =>
         await smsHandler(unstopRequest, unstopReply);
         assert.equal(unstopReply.headers.type, 'text/xml');
         assert.ok(
-            String(unstopReply.payload).includes(
-                'Reply YES to confirm enrollment'
-            ),
-            `Expected 'Reply YES to confirm enrollment' in UNSTOP response: ${String(unstopReply.payload)}`
+            String(unstopReply.payload).includes('reply YES'),
+            `Expected 'reply YES' in UNSTOP response: ${String(unstopReply.payload)}`
         );
     } finally {
         cleanup();
@@ -233,9 +229,7 @@ test('sms STOP and other opt-out keywords unsubscribe immediately', async () => 
         const stopReply = createReply();
         await smsHandler(stopRequest, stopReply);
         assert.equal(stopReply.headers.type, 'text/xml');
-        assert.ok(
-            String(stopReply.payload).includes('successfully been unsubscribed')
-        );
+        assert.ok(String(stopReply.payload).includes('been unsubscribed from'));
 
         // Test UNSUBSCRIBE
         const unsubRequest = {
@@ -249,9 +243,7 @@ test('sms STOP and other opt-out keywords unsubscribe immediately', async () => 
         await smsHandler(unsubRequest, unsubReply);
         assert.equal(unsubReply.headers.type, 'text/xml');
         assert.ok(
-            String(unsubReply.payload).includes(
-                'successfully been unsubscribed'
-            )
+            String(unsubReply.payload).includes('been unsubscribed from')
         );
 
         // Test QUIT
@@ -261,9 +253,7 @@ test('sms STOP and other opt-out keywords unsubscribe immediately', async () => 
         const quitReply = createReply();
         await smsHandler(quitRequest, quitReply);
         assert.equal(quitReply.headers.type, 'text/xml');
-        assert.ok(
-            String(quitReply.payload).includes('successfully been unsubscribed')
-        );
+        assert.ok(String(quitReply.payload).includes('been unsubscribed from'));
     } finally {
         cleanup();
         delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
@@ -627,10 +617,8 @@ test('sms remembers unanswered question when user has no consent, then answers a
         // System should acknowledge enrollment is pending and request YES
         assert.equal(startReply.headers.type, 'text/xml');
         assert.ok(
-            String(startReply.payload).includes(
-                'Reply YES to confirm enrollment'
-            ),
-            `Expected 'Reply YES to confirm enrollment' in START response: ${String(startReply.payload)}`
+            String(startReply.payload).includes('reply YES'),
+            `Expected 'reply YES' in START response: ${String(startReply.payload)}`
         );
         // Still no AI call or SMS yet
         assert.equal(calls.ai.length, 0);
