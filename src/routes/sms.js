@@ -393,7 +393,7 @@ export async function smsHandler(request, reply) {
                 });
             }
             twiml.message(
-                `You have been unsubscribed from ${SMS_BRAND_NAME}. No more messages will be sent. Reply START to resubscribe.${privacySuffix}`
+                `You have successfully been unsubscribed from ${SMS_BRAND_NAME}. No more messages will be sent. Reply START to resubscribe.${privacySuffix}`
             );
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -415,9 +415,8 @@ export async function smsHandler(request, reply) {
                 );
                 const hasPendingQuestion = !!getPendingQuestion(fromE164);
 
-                // Determine target status based on current status
-                const targetStatus =
-                    statusBeforeUpdate === 'pending' ? 'confirmed' : 'pending';
+                // A2P 10DLC: opt-in keywords immediately confirm
+                const targetStatus = 'confirmed';
 
                 if (IS_DEV) {
                     console.log(
@@ -482,10 +481,10 @@ export async function smsHandler(request, reply) {
                 statusAfterUpdate === 'confirmed' &&
                 statusBeforeUpdate !== 'confirmed';
 
-            if (wasUpgradedToConfirmed && pendingQuestion) {
+            if (!wasUpgradedToConfirmed && pendingQuestion) {
                 if (IS_DEV) {
                     console.log(
-                        'sms handler: upgraded to confirmed with pending question',
+                        'sms handler: already confirmed with pending question',
                         {
                             event: 'sms.handler.answer_pending_question',
                             fromE164,
@@ -512,15 +511,11 @@ export async function smsHandler(request, reply) {
                 }
                 if (wasUpgradedToConfirmed) {
                     twiml.message(
-                        `Welcome to ${SMS_BRAND_NAME}! You're now enrolled in AI SMS replies. Msg frequency varies. Msg&Data Rates May Apply. Reply HELP for help, STOP to opt out.${privacySuffix}`
-                    );
-                } else if (statusAfterUpdate === 'confirmed') {
-                    twiml.message(
-                        `You're already enrolled in ${SMS_BRAND_NAME}. Reply HELP for help. Reply STOP to unsubscribe.${privacySuffix}`
+                        `You have successfully been re-subscribed to ${SMS_BRAND_NAME}. Reply HELP for help, STOP to opt out.${privacySuffix}`
                     );
                 } else {
                     twiml.message(
-                        `${SMS_BRAND_NAME}: To confirm enrollment in AI SMS replies, reply YES. Msg frequency varies. Msg&Data Rates May Apply. Reply HELP for help, STOP to cancel.${privacySuffix}`
+                        `You're already enrolled in ${SMS_BRAND_NAME}. Reply HELP for help. Reply STOP to unsubscribe.${privacySuffix}`
                     );
                 }
                 return reply.type('text/xml').send(twiml.toString());
