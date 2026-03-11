@@ -1,4 +1,5 @@
 # **Privacy Policy**
+
 Effective date: March 10, 2026
 
 This service operates a voice and messaging assistant that processes incoming phone calls and SMS messages in order to respond to users and perform requested actions.
@@ -33,6 +34,8 @@ These providers are not permitted to use personal information for their own mark
 
 No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.
 Mobile information collected through messaging interactions is used solely for the purpose of delivering the requested service.
+
+All categories above exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.
 
 ## Data Retention
 

@@ -128,7 +128,7 @@ test('sms replies with restricted message for non-allowlisted sender', async () 
     }
 });
 
-test('sms START immediately subscribes with confirmed status', async () => {
+test('sms START sets enrollment to pending and asks for YES confirmation', async () => {
     const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
     process.env.SMS_CONSENT_RECORDS_FILE_PATH = path.join(
         tmpDir,
@@ -151,9 +151,10 @@ test('sms START immediately subscribes with confirmed status', async () => {
         await smsHandler(request, reply);
         assert.equal(reply.headers.type, 'text/xml');
         assert.ok(
-            String(reply.payload).includes('successfully been re-subscribed')
+            String(reply.payload).includes('Reply YES to confirm enrollment'),
+            `Expected 'Reply YES to confirm enrollment' in: ${String(reply.payload)}`
         );
-        assert.ok(String(reply.payload).includes('Reply HELP'));
+        assert.ok(String(reply.payload).includes('Reply STOP to cancel'));
     } finally {
         cleanup();
         delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
@@ -161,7 +162,7 @@ test('sms START immediately subscribes with confirmed status', async () => {
     }
 });
 
-test('sms YES, UNSTOP, and other opt-in keywords immediately subscribe', async () => {
+test('sms YES and UNSTOP opt-in keywords set enrollment to pending', async () => {
     const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
     process.env.SMS_CONSENT_RECORDS_FILE_PATH = path.join(
         tmpDir,
@@ -176,7 +177,7 @@ test('sms YES, UNSTOP, and other opt-in keywords immediately subscribe', async (
     });
 
     try {
-        // Test YES
+        // Test YES with no prior status → pending, asks to confirm
         const yesRequest = {
             body: { Body: 'YES', From: '+12065550100', To: '+12065550101' },
         };
@@ -184,10 +185,13 @@ test('sms YES, UNSTOP, and other opt-in keywords immediately subscribe', async (
         await smsHandler(yesRequest, yesReply);
         assert.equal(yesReply.headers.type, 'text/xml');
         assert.ok(
-            String(yesReply.payload).includes('successfully been re-subscribed')
+            String(yesReply.payload).includes(
+                'Reply YES to confirm enrollment'
+            ),
+            `Expected 'Reply YES to confirm enrollment' in YES response: ${String(yesReply.payload)}`
         );
 
-        // Test UNSTOP
+        // Test UNSTOP with no prior status → pending, asks to confirm
         const unstopRequest = {
             body: { Body: 'UNSTOP', From: '+14255550101', To: '+12065550101' },
         };
@@ -196,8 +200,9 @@ test('sms YES, UNSTOP, and other opt-in keywords immediately subscribe', async (
         assert.equal(unstopReply.headers.type, 'text/xml');
         assert.ok(
             String(unstopReply.payload).includes(
-                'successfully been re-subscribed'
-            )
+                'Reply YES to confirm enrollment'
+            ),
+            `Expected 'Reply YES to confirm enrollment' in UNSTOP response: ${String(unstopReply.payload)}`
         );
     } finally {
         cleanup();
@@ -619,9 +624,14 @@ test('sms remembers unanswered question when user has no consent, then answers a
         const startReply = createReply();
         await smsHandler(startRequest, startReply);
 
-        // System should acknowledge enrollment
+        // System should acknowledge enrollment is pending and request YES
         assert.equal(startReply.headers.type, 'text/xml');
-        assert.ok(String(startReply.payload).includes('successfully been'));
+        assert.ok(
+            String(startReply.payload).includes(
+                'Reply YES to confirm enrollment'
+            ),
+            `Expected 'Reply YES to confirm enrollment' in START response: ${String(startReply.payload)}`
+        );
         // Still no AI call or SMS yet
         assert.equal(calls.ai.length, 0);
         assert.equal(calls.create.length, 0);
