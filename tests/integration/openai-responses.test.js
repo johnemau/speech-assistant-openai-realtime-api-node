@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { config as loadEnv } from 'dotenv';
 
-loadEnv({ path: '.env' });
+loadEnv({ path: '.env', override: true });
 
 const apiKey = process.env.OPENAI_API_KEY;
 let importCounter = 0;
@@ -22,33 +22,37 @@ test('requires OPENAI_API_KEY', () => {
     );
 });
 
-test('gpt_web_search integration', async () => {
-    const { execute } = await loadWebSearchModule();
+test(
+    'gpt_web_search integration',
+    { skip: !apiKey || apiKey === 'test' },
+    async () => {
+        const { execute } = await loadWebSearchModule();
 
-    const result = /** @type {any} */ (
-        await execute({
-            args: {
-                query: 'What time is it in Seattle right now?',
-                user_location: {
-                    type: 'approximate',
-                    country: 'US',
-                    region: 'Washington',
-                    city: 'Seattle',
+        const result = /** @type {any} */ (
+            await execute({
+                args: {
+                    query: 'What time is it in Seattle right now?',
+                    user_location: {
+                        type: 'approximate',
+                        country: 'US',
+                        region: 'Washington',
+                        city: 'Seattle',
+                    },
                 },
-            },
-            context: {},
-        })
-    );
+                context: {},
+            })
+        );
 
-    assert.ok(result, 'Expected a response object');
-    if (result.id != null) {
-        assert.equal(typeof result.id, 'string');
-        assert.ok(result.id.length > 0);
+        assert.ok(result, 'Expected a response object');
+        if (result.id != null) {
+            assert.equal(typeof result.id, 'string');
+            assert.ok(result.id.length > 0);
+        }
+        if (result.output != null) {
+            assert.ok(Array.isArray(result.output));
+        }
+        if (result.output_text != null) {
+            assert.equal(typeof result.output_text, 'string');
+        }
     }
-    if (result.output != null) {
-        assert.ok(Array.isArray(result.output));
-    }
-    if (result.output_text != null) {
-        assert.equal(typeof result.output_text, 'string');
-    }
-});
+);
