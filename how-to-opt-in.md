@@ -12,5 +12,7 @@ After you text `START`, we will send a confirmation message. Reply `YES` to comp
 
 Reply `STOP` at any time to opt out.
 
+Carriers are not liable for any delayed or undelivered messages.
+
 - [Privacy Policy](/privacy-policy)
 - [Terms of Service](/tos)

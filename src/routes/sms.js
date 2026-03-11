@@ -12,6 +12,7 @@ import {
     IS_DEV,
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
+    SMS_BRAND_NAME,
     getServerBaseUrl,
 } from '../env.js';
 import {
@@ -333,7 +334,7 @@ export async function smsHandler(request, reply) {
                 });
             }
             twiml.message(
-                `Reply STOP to unsubscribe. Msg&Data Rates May Apply.${privacySuffix}`
+                `${SMS_BRAND_NAME}: Reply STOP to unsubscribe. Msg&Data Rates May Apply. Msg frequency varies.${privacySuffix}`
             );
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -392,7 +393,7 @@ export async function smsHandler(request, reply) {
                 });
             }
             twiml.message(
-                `You have successfully been unsubscribed. You will not receive any more messages from this number. Reply START to resubscribe.${privacySuffix}`
+                `You have been unsubscribed from ${SMS_BRAND_NAME}. No more messages will be sent. Reply START to resubscribe.${privacySuffix}`
             );
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -509,9 +510,19 @@ export async function smsHandler(request, reply) {
                         }
                     );
                 }
-                twiml.message(
-                    `You have successfully been re-subscribed to messages from this number. Reply HELP for help. Reply STOP to unsubscribe. Msg&Data Rates May Apply.${privacySuffix}`
-                );
+                if (wasUpgradedToConfirmed) {
+                    twiml.message(
+                        `Welcome to ${SMS_BRAND_NAME}! You're now enrolled in AI SMS replies. Msg frequency varies. Msg&Data Rates May Apply. Reply HELP for help, STOP to opt out.${privacySuffix}`
+                    );
+                } else if (statusAfterUpdate === 'confirmed') {
+                    twiml.message(
+                        `You're already enrolled in ${SMS_BRAND_NAME}. Reply HELP for help. Reply STOP to unsubscribe.${privacySuffix}`
+                    );
+                } else {
+                    twiml.message(
+                        `${SMS_BRAND_NAME}: To confirm enrollment in AI SMS replies, reply YES. Msg frequency varies. Msg&Data Rates May Apply. Reply HELP for help, STOP to cancel.${privacySuffix}`
+                    );
+                }
                 return reply.type('text/xml').send(twiml.toString());
             }
             // If we reach here with a pending question to answer, continue to AI processing
@@ -564,7 +575,7 @@ export async function smsHandler(request, reply) {
                 });
             }
             twiml.message(
-                `You are not enrolled yet. Reply START to subscribe. Reply HELP for help.${privacySuffix}`
+                `${SMS_BRAND_NAME}: You are not enrolled yet. Reply START to subscribe. Reply HELP for help.${privacySuffix}`
             );
             return reply.type('text/xml').send(twiml.toString());
         }
@@ -586,7 +597,7 @@ export async function smsHandler(request, reply) {
                 );
             }
             twiml.message(
-                'Sorry, this SMS line is restricted to approved users. Contact support for access.'
+                `${SMS_BRAND_NAME}: This SMS line is restricted to approved users.`
             );
             return reply.type('text/xml').send(twiml.toString());
         }

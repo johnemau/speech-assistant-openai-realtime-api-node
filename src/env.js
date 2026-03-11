@@ -90,6 +90,9 @@ export function getSpotFeedPassword() {
 export let ALLOW_SEND_SMS = isTruthy(process.env.ALLOW_SEND_SMS);
 export let ALLOW_SEND_EMAIL = isTruthy(process.env.ALLOW_SEND_EMAIL);
 
+/** Brand/program name used in A2P 10DLC compliant SMS keyword responses. */
+export const SMS_BRAND_NAME = process.env.SMS_BRAND_NAME || 'AI Assistant';
+
 /**
  * Public base URL used in outbound SMS messages (e.g. privacy-policy link).
  * Falls back to NGROK_DOMAIN with https scheme when SERVER_BASE_URL is not set.
