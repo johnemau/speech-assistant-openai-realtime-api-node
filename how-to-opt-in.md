@@ -23,5 +23,7 @@ Message frequency varies based on your interactions. Message and data rates may 
 
 ## Links
 
+Carriers are not liable for any delayed or undelivered messages.
+
 - [Privacy Policy](/privacy-policy)
 - [Terms of Service](/tos)

@@ -79,6 +79,17 @@ We may suspend or terminate access to the Service at any time if we believe you 
 
 Sections that by their nature should survive termination will survive.
 
+## 13. Messaging Terms
+
+If you opt in to receive SMS messages from the Service, the following terms apply:
+
+- Message frequency varies.
+- Message and data rates may apply.
+- **Reply STOP to unsubscribe** from SMS messages at any time.
+- **Reply HELP for help** or contact the service operator.
+- Carriers are not liable for any delayed or undelivered messages.
+- View our [Privacy Policy](/privacy-policy) for information on how your data is handled.
+
 ## 13. Governing Law
 
 These Terms are governed by the laws of your chosen jurisdiction, without regard to conflict-of-law rules. Venue and dispute resolution procedures should be specified by the service operator.

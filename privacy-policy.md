@@ -1,4 +1,4 @@
-**Privacy Policy**
+# **Privacy Policy**
 Effective date: March 10, 2026
 
 This service operates a voice and messaging assistant that processes incoming phone calls and SMS messages in order to respond to users and perform requested actions.
