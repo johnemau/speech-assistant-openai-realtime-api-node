@@ -46,7 +46,7 @@ export function buildSearchModelConfig({
 }) {
     return {
         model: GPT_5_4_MODEL,
-        reasoning: { effort: 'high' },
+        reasoning: { effort: 'xhigh' },
         tools: [buildWebSearchTool({ userLocation })],
         instructions,
         tool_choice: 'required',

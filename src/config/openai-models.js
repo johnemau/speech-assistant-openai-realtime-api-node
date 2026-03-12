@@ -147,7 +147,7 @@ export function buildSmsToolConfig() {
 export function buildSmsResponseConfig({ instructions }) {
     return {
         model: GPT_5_4_MODEL,
-        reasoning: { effort: 'high' },
+        reasoning: { effort: 'xhigh' },
         truncation: 'auto',
         instructions,
         ...buildSmsToolConfig(),
