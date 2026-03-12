@@ -60,7 +60,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
     - Restricts usage to allowlisted numbers (`PRIMARY_USER_PHONE_NUMBERS`, `SECONDARY_USER_PHONE_NUMBERS`).
     - **Consent enrollment:** user texts `START` → "pending", user replies `YES` → "confirmed", user replies `STOP` → "opted_out". AI replies only sent when status is "confirmed". Records persisted to `SMS_CONSENT_RECORDS_FILE_PATH`.
     - Builds a 12‑hour recent thread (up to 10 messages, inbound+outbound) and composes a concise reply (≤320 chars).
-    - Calls OpenAI `responses.create` with `model: gpt-5.2`, `tools: [{ type: 'web_search' }]`, `tool_choice: 'required'`, and tailored SMS instructions.
+    - Calls OpenAI `responses.create` with `model: gpt-5.4`, `tools: [{ type: 'web_search' }]`, `tool_choice: 'required'`, and tailored SMS instructions.
     - Sends the reply via Twilio REST API; falls back to TwiML with concise error text when send fails.
 - `/tos`, `/privacy-policy`, `/how-to-opt-in` (Markdown document routes):
     - Serve as configurable markdown-to-HTML document endpoints.
@@ -88,7 +88,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
     - `STOP` → records "opted_out" status and stops all AI replies; user can text `START` to re-enroll.
     - All consent events persisted to `SMS_CONSENT_RECORDS_FILE_PATH` for audit/compliance.- Allowlist: only numbers listed in `PRIMARY_USER_PHONE_NUMBERS` or `SECONDARY_USER_PHONE_NUMBERS` are allowed.
 - Context: fetches last 12 hours of messages (inbound/outbound), merges and includes up to 10 in the prompt.
-- Model & tools: OpenAI `responses.create` with `model: gpt-5.2` and `tools: [{ type: 'web_search' }]` (`tool_choice: 'required'`).
+- Model & tools: OpenAI `responses.create` with `model: gpt-5.4` and `tools: [{ type: 'web_search' }]` (`tool_choice: 'required'`).
 - Style: reply ≤320 chars, friendly and actionable; at most one short source label; URLs only when directly helpful.
 - Errors: returns concise user texts — AI error → “Sorry—SMS reply error.”; send error → “Sorry—SMS send error.” with brief details.
 

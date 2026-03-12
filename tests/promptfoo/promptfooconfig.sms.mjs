@@ -1,5 +1,5 @@
 import {
-    GPT_5_2_MODEL,
+    GPT_5_4_MODEL,
     buildSmsResponseConfig,
 } from '../../src/config/openai-models.js';
 import { SMS_REPLY_INSTRUCTIONS } from '../../src/assistant/prompts.js';
@@ -9,8 +9,8 @@ const config = {
     prompts: ['promptfoo-default-prompt.txt'],
     providers: [
         {
-            id: `openai:responses:${GPT_5_2_MODEL}`,
-            label: `${GPT_5_2_MODEL}-sms`,
+            id: `openai:responses:${GPT_5_4_MODEL}`,
+            label: `${GPT_5_4_MODEL}-sms`,
             config: {
                 ...buildSmsResponseConfig({
                     instructions: SMS_REPLY_INSTRUCTIONS,

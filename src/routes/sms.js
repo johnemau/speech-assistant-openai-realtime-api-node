@@ -17,7 +17,7 @@ import {
 } from '../env.js';
 import {
     buildSmsResponseConfig,
-    GPT_5_2_MODEL,
+    GPT_5_4_MODEL,
 } from '../config/openai-models.js';
 import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
@@ -737,10 +737,10 @@ export async function smsHandler(request, reply) {
 
         // Concise log of AI request (dev-friendly, but short)
         console.info(
-            `sms ai request: model=${GPT_5_2_MODEL} tools=web_search,places_text_search,find_currently_nearby_place,get_current_location,send_email,directions promptLen=${String(smsPrompt || '').length}`,
+            `sms ai request: model=${GPT_5_4_MODEL} tools=web_search,places_text_search,find_currently_nearby_place,get_current_location,send_email,directions promptLen=${String(smsPrompt || '').length}`,
             {
                 event: 'sms.ai.request',
-                model: GPT_5_2_MODEL,
+                model: GPT_5_4_MODEL,
                 tools: [
                     'web_search',
                     'places_text_search',

@@ -406,7 +406,7 @@ test('sms sends AI reply via Twilio', async () => {
         assert.equal(calls.list.length, 2);
         assert.equal(calls.create.length, 1);
         assert.ok(calls.ai);
-        assert.equal(calls.ai.model, 'gpt-5.2');
+        assert.equal(calls.ai.model, 'gpt-5.4');
         assert.ok(String(calls.ai.input || '').includes('Latest request'));
         assert.equal(calls.create[0].from, '+12065550101');
         assert.equal(calls.create[0].to, '+12065550100');

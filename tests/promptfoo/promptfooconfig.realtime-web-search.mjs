@@ -1,5 +1,5 @@
 import {
-    GPT_5_2_MODEL,
+    GPT_5_4_MODEL,
     buildSearchModelConfig,
 } from '../../src/config/openai-models.js';
 import { REALTIME_WEB_SEARCH_INSTRUCTIONS } from '../../src/assistant/prompts.js';
@@ -9,8 +9,8 @@ const config = {
     prompts: ['promptfoo-default-prompt.txt'],
     providers: [
         {
-            id: `openai:responses:${GPT_5_2_MODEL}`,
-            label: `${GPT_5_2_MODEL}-realtime-web-search`,
+            id: `openai:responses:${GPT_5_4_MODEL}`,
+            label: `${GPT_5_4_MODEL}-realtime-web-search`,
             config: {
                 ...buildSearchModelConfig({
                     instructions: REALTIME_WEB_SEARCH_INSTRUCTIONS,

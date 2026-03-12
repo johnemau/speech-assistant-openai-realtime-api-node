@@ -14,6 +14,7 @@ import { definition as directionsDefinition } from '../tools/directions.js';
 import { definition as weatherDefinition } from '../tools/weather.js';
 import {
     GPT_5_2_MODEL,
+    GPT_5_4_MODEL,
     DEFAULT_WEB_SEARCH_USER_LOCATION,
     DEFAULT_SMS_USER_LOCATION,
     buildWebSearchTool,
@@ -27,6 +28,7 @@ export { REALTIME_TEMPERATURE };
 
 export {
     GPT_5_2_MODEL,
+    GPT_5_4_MODEL,
     DEFAULT_WEB_SEARCH_USER_LOCATION,
     DEFAULT_SMS_USER_LOCATION,
 };
@@ -144,7 +146,7 @@ export function buildSmsToolConfig() {
  */
 export function buildSmsResponseConfig({ instructions }) {
     return {
-        model: GPT_5_2_MODEL,
+        model: GPT_5_4_MODEL,
         reasoning: { effort: 'high' },
         truncation: 'auto',
         instructions,

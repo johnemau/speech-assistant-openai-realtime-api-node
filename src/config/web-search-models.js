@@ -6,6 +6,7 @@
 /** @typedef {import('openai/resources/responses/responses').ResponseCreateParamsNonStreaming} ResponseCreateParamsNonStreaming */
 
 export const GPT_5_2_MODEL = 'gpt-5.2';
+export const GPT_5_4_MODEL = 'gpt-5.4';
 
 /** @type {WebSearchUserLocation} */
 export const DEFAULT_WEB_SEARCH_USER_LOCATION = {
@@ -44,7 +45,7 @@ export function buildSearchModelConfig({
     userLocation = DEFAULT_WEB_SEARCH_USER_LOCATION,
 }) {
     return {
-        model: GPT_5_2_MODEL,
+        model: GPT_5_4_MODEL,
         reasoning: { effort: 'high' },
         tools: [buildWebSearchTool({ userLocation })],
         instructions,
