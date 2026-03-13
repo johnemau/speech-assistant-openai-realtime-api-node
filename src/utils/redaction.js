@@ -21,6 +21,11 @@ export const DEFAULT_SECRET_ENV_KEYS = [
     'TWILIO_ACCOUNT_SID',
     'TWILIO_API_KEY',
     'TWILIO_API_SECRET',
+    // Yale/August smart lock credentials
+    'AUGUST_INSTALL_ID',
+    'AUGUST_ID',
+    'AUGUST_PASSWORD',
+    'AUGUST_API_KEY',
 ];
 
 export const REDACTION_KEYS = getSecretEnvKeys(

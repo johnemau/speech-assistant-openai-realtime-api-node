@@ -46,6 +46,10 @@ import {
     definition as weatherDefinition,
     execute as executeWeather,
 } from './weather.js';
+import {
+    definition as yaleLockDefinition,
+    execute as executeYaleLock,
+} from './yale-lock.js';
 import { IS_DEV } from '../env.js';
 
 const toolExecutors = new Map(
@@ -62,6 +66,7 @@ const toolExecutors = new Map(
         ['places_text_search', executePlacesTextSearch],
         ['directions', executeDirections],
         ['weather', executeWeather],
+        ['yale_lock', executeYaleLock],
     ])
 );
 
@@ -84,6 +89,7 @@ export function getToolDefinitions() {
         placesTextSearchDefinition,
         directionsDefinition,
         weatherDefinition,
+        yaleLockDefinition,
     ];
 }
 
