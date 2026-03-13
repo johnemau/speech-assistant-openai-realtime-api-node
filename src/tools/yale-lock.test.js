@@ -4,8 +4,11 @@ import assert from 'node:assert/strict';
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
 const envModule = await import('../env.js');
+const { setYaleLockOpsForTests, resetYaleLockOpsForTests } =
+    await import('../utils/yale.js');
+const { execute } = await import('./yale-lock.js');
 
-// Mock the yale utility before importing the tool
+// Mock state that tests can reconfigure
 const yaleMock = {
     /** @type {Record<string, any>} */
     locks: {},
@@ -17,10 +20,8 @@ const yaleMock = {
     unlockResult: null,
 };
 
-// We'll use Node's module mock or direct injection via test helper
-// Since the tool imports from utils/yale.js, we mock at the module level
-await test.mock.module('../utils/yale.js', {
-    namedExports: {
+test.beforeEach(() => {
+    setYaleLockOpsForTests({
         listLocks: async () => yaleMock.locks,
         getLockStatus: async (/** @type {string | undefined} */ lockId) => {
             if (yaleMock.lockStatus instanceof Error) throw yaleMock.lockStatus;
@@ -71,12 +72,16 @@ await test.mock.module('../utils/yale.js', {
                 }
             );
         },
-        getAugustClient: () => ({}),
-        resetAugustClientForTests: () => {},
-    },
+    });
 });
 
-const { execute } = await import('./yale-lock.js');
+test.afterEach(() => {
+    resetYaleLockOpsForTests();
+    yaleMock.locks = {};
+    yaleMock.lockStatus = null;
+    yaleMock.lockResult = null;
+    yaleMock.unlockResult = null;
+});
 
 test('yale-lock.execute rejects non-primary caller', async () => {
     const prevPrimary = new Set(envModule.PRIMARY_CALLERS_SET);
