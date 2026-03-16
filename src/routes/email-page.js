@@ -44,6 +44,16 @@ export async function emailPageHandler(request, reply) {
             return reply.code(401).send({ error: 'Unauthorized.' });
         }
 
+        if (IS_DEV) {
+            console.log('email-page: incoming request', {
+                event: 'email_page.request',
+                method: request.method,
+                url: request.url,
+                headers: request.headers,
+                body: request.body,
+            });
+        }
+
         const rawBody = request.body;
         const bodyStr =
             typeof rawBody === 'object' && rawBody !== null
