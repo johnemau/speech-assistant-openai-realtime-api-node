@@ -7,9 +7,9 @@ import {
     readPageCriteriaFile,
     buildPageEvaluationPrompt,
     parsePageEvaluation,
-    sendPageSms,
-    placePageCall,
 } from '../utils/email-page.js';
+import { sendPageSms } from '../utils/page-sms.js';
+import { placePageCall } from '../utils/page-call.js';
 
 /**
  * POST /email-page handler.
