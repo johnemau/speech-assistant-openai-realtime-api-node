@@ -52,14 +52,9 @@ export async function emailPageHandler(request, reply) {
                 headers: request.headers,
                 body: request.body,
             });
-            console.log('email-page: request', request);
         }
 
-        const rawBody = request.body;
-        const bodyStr =
-            typeof rawBody === 'object' && rawBody !== null
-                ? /** @type {any} */ (rawBody).content || ''
-                : rawBody || '';
+        const bodyStr = /** @type {{ body: string }} */ (request.body).body;
         const emailContent = String(bodyStr).trim().replace(/\r\n/g, '\n');
         if (!emailContent) {
             if (IS_DEV) {
