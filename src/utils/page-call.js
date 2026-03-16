@@ -1,7 +1,9 @@
+import twilio from 'twilio';
 import { getPrimaryCallerNumbers } from './email-page.js';
+import { placeCall } from './place-call.js';
 
 /**
- * @typedef {{ calls: { create: Function } }} CallLikeClient
+ * @typedef {import('./place-call.js').CallLikeClient} CallLikeClient
  */
 
 /**
@@ -11,13 +13,18 @@ import { getPrimaryCallerNumbers } from './email-page.js';
  * @returns {string} TwiML XML string.
  */
 export function buildPageCallTwiml(pageMessage) {
-    return [
-        '<Response>',
-        `<Say voice="Google.en-US-Chirp3-HD-Charon">Urgent page. ${pageMessage}</Say>`,
-        '<Pause length="1"/>',
-        `<Say voice="Google.en-US-Chirp3-HD-Charon">Repeating. ${pageMessage}</Say>`,
-        '</Response>',
-    ].join('');
+    const { VoiceResponse } = twilio.twiml;
+    const response = new VoiceResponse();
+    response.say(
+        { voice: 'Google.en-US-Chirp3-HD-Charon' },
+        `Urgent page. ${pageMessage}`
+    );
+    response.pause({ length: 1 });
+    response.say(
+        { voice: 'Google.en-US-Chirp3-HD-Charon' },
+        `Repeating. ${pageMessage}`
+    );
+    return response.toString();
 }
 
 /**
@@ -35,15 +42,6 @@ export async function placePageCall({ pageMessage, fromNumber, client }) {
     if (!toNumber) {
         return { to: '', error: 'No primary caller numbers configured.' };
     }
-    try {
-        const twiml = buildPageCallTwiml(pageMessage);
-        const call = await client.calls.create({
-            from: fromNumber,
-            to: toNumber,
-            twiml,
-        });
-        return { to: toNumber, sid: call?.sid, status: call?.status };
-    } catch (e) {
-        return { to: toNumber, error: e?.message || String(e) };
-    }
+    const twiml = buildPageCallTwiml(pageMessage);
+    return placeCall({ twiml, toNumber, fromNumber, client });
 }
