@@ -52,6 +52,7 @@ export async function emailPageHandler(request, reply) {
                 headers: request.headers,
                 body: request.body,
             });
+            console.log('email-page: request', request);
         }
 
         const rawBody = request.body;
