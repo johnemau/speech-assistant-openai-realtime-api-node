@@ -1,7 +1,8 @@
 import { getPrimaryCallerNumbers } from './email-page.js';
+import { sendSms } from './send-sms.js';
 
 /**
- * @typedef {{ messages: { create: Function } }} SmsLikeClient
+ * @typedef {import('./send-sms.js').SmsLikeClient} SmsLikeClient
  */
 
 /**
@@ -18,10 +19,11 @@ export async function sendPageSms({ pageMessage, fromNumber, client }) {
     const results = [];
     for (const toNumber of numbers) {
         try {
-            const res = await client.messages.create({
-                from: fromNumber,
+            const res = await sendSms({
                 to: toNumber,
+                from: fromNumber,
                 body: pageMessage,
+                client,
             });
             results.push({
                 to: toNumber,
