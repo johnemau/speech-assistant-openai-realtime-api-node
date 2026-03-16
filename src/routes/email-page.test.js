@@ -101,7 +101,7 @@ test('email-page: returns 401 when secret header is missing', async () => {
     try {
         const reply = createReply();
         await emailPageHandler(
-            { headers: {}, body: { content: 'test email' } },
+            { headers: {}, body: { body: 'test email' } },
             reply
         );
         assert.equal(reply.statusCode, 401);
@@ -118,7 +118,7 @@ test('email-page: returns 401 when secret header is wrong', async () => {
         await emailPageHandler(
             {
                 headers: { 'x-email-page-secret': 'wrong-key' },
-                body: { content: 'test email' },
+                body: { body: 'test email' },
             },
             reply
         );
@@ -136,7 +136,7 @@ test('email-page: returns 400 when body content is missing', async () => {
         await emailPageHandler(
             {
                 headers: { 'x-email-page-secret': 'test-secret-key' },
-                body: {},
+                body: { body: '' },
             },
             reply
         );
@@ -158,7 +158,7 @@ test('email-page: returns 500 when criteria file is missing', async () => {
         await emailPageHandler(
             {
                 headers: { 'x-email-page-secret': 'test-secret-key' },
-                body: { content: 'Some important email' },
+                body: { body: 'Some important email' },
             },
             reply
         );
@@ -193,7 +193,7 @@ test('email-page: returns not page-worthy when AI says no', async () => {
         await emailPageHandler(
             {
                 headers: { 'x-email-page-secret': 'test-secret-key' },
-                body: { content: 'Weekly newsletter about cats' },
+                body: { body: 'Weekly newsletter about cats' },
             },
             reply
         );
@@ -249,7 +249,7 @@ test('email-page: pages primary caller when AI says page-worthy', async () => {
         await emailPageHandler(
             {
                 headers: { 'x-email-page-secret': 'test-secret-key' },
-                body: { content: 'Server us-east-1 is completely down!' },
+                body: { body: 'Server us-east-1 is completely down!' },
             },
             reply
         );
@@ -289,7 +289,7 @@ test('email-page: returns 500 when EMAIL_PAGE_SECRET is not set', async () => {
         await emailPageHandler(
             {
                 headers: { 'x-email-page-secret': 'anything' },
-                body: { content: 'test' },
+                body: { body: 'test' },
             },
             reply
         );
@@ -326,7 +326,7 @@ test('email-page: returns 500 when Twilio from number is not configured', async 
         await emailPageHandler(
             {
                 headers: { 'x-email-page-secret': 'test-secret-key' },
-                body: { content: 'Critical alert!' },
+                body: { body: 'Critical alert!' },
             },
             reply
         );
@@ -363,7 +363,7 @@ test('email-page: returns 500 when Twilio client is unavailable', async () => {
         await emailPageHandler(
             {
                 headers: { 'x-email-page-secret': 'test-secret-key' },
-                body: { content: 'Critical alert!' },
+                body: { body: 'Critical alert!' },
             },
             reply
         );
@@ -419,7 +419,7 @@ test('email-page: handles AI response with markdown code fences', async () => {
         await emailPageHandler(
             {
                 headers: { 'x-email-page-secret': 'test-secret-key' },
-                body: { content: 'Some critical issue.' },
+                body: { body: 'Some critical issue.' },
             },
             reply
         );
