@@ -21,3 +21,19 @@ export const REALTIME_WEB_SEARCH_INSTRUCTIONS = readPrompt(
 export const SMS_REPLY_INSTRUCTIONS = readPrompt(
     'prompts/sms-reply-instructions.md'
 );
+export const PAGE_EVALUATION_TEMPLATE = readPrompt(
+    'prompts/page-evaluation-instructions.md'
+);
+
+/**
+ * Render a prompt template by replacing `{{ key }}` placeholders with values.
+ *
+ * @param {string} template - Template string with `{{ key }}` placeholders.
+ * @param {Record<string, string>} vars - Key-value pairs to inject.
+ * @returns {string} Rendered prompt.
+ */
+export function renderTemplate(template, vars) {
+    return template.replace(/\{\{\s*([\w]+)\s*\}\}/g, (_, key) =>
+        key in vars ? vars[key] : `{{ ${key} }}`
+    );
+}
