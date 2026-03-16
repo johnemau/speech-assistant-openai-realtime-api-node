@@ -36,6 +36,11 @@ export async function emailPageHandler(request, reply) {
             request.headers['x-email-page-secret'] ||
             request.headers['X-Email-Page-Secret'];
         if (!headerSecret || headerSecret !== secret) {
+            if (IS_DEV) {
+                console.log('email-page: unauthorized request', {
+                    event: 'email_page.unauthorized',
+                });
+            }
             return reply.code(401).send({ error: 'Unauthorized.' });
         }
 
@@ -44,6 +49,11 @@ export async function emailPageHandler(request, reply) {
         );
         const emailContent = String(body.content || '').trim();
         if (!emailContent) {
+            if (IS_DEV) {
+                console.log('email-page: missing email content', {
+                    event: 'email_page.missing_content',
+                });
+            }
             return reply
                 .code(400)
                 .send({ error: 'Missing email content in body.' });
@@ -54,6 +64,12 @@ export async function emailPageHandler(request, reply) {
         try {
             criteria = await readPageCriteriaFile();
         } catch (e) {
+            if (IS_DEV) {
+                console.log('email-page: criteria file read error detail', {
+                    event: 'email_page.criteria_error',
+                    error: e?.message,
+                });
+            }
             console.error(
                 'email-page: failed to read criteria file',
                 e?.message
@@ -108,6 +124,12 @@ export async function emailPageHandler(request, reply) {
         try {
             evaluation = parsePageEvaluation(rawOutput);
         } catch {
+            if (IS_DEV) {
+                console.log('email-page: parse failure raw output', {
+                    event: 'email_page.parse_error',
+                    rawOutput,
+                });
+            }
             console.error('email-page: failed to parse AI response', rawOutput);
             return reply
                 .code(500)
@@ -123,6 +145,12 @@ export async function emailPageHandler(request, reply) {
 
         const pageMessage = String(evaluation.page_message || '').trim();
         if (!pageMessage) {
+            if (IS_DEV) {
+                console.log('email-page: evaluation missing page_message', {
+                    event: 'email_page.no_page_message',
+                    evaluation,
+                });
+            }
             console.error('email-page: page_worthy but no page_message');
             return reply
                 .code(500)
@@ -133,6 +161,11 @@ export async function emailPageHandler(request, reply) {
         const fromNumber =
             normalizeUSNumberToE164(process.env.TWILIO_SMS_FROM_NUMBER) || '';
         if (!fromNumber) {
+            if (IS_DEV) {
+                console.log('email-page: TWILIO_SMS_FROM_NUMBER missing or invalid', {
+                    event: 'email_page.no_from_number',
+                });
+            }
             console.error('email-page: no Twilio from number configured');
             return reply.code(500).send({
                 error: 'Twilio from number not configured.',
@@ -140,6 +173,11 @@ export async function emailPageHandler(request, reply) {
         }
 
         if (!twilioClient) {
+            if (IS_DEV) {
+                console.log('email-page: Twilio client not initialized', {
+                    event: 'email_page.no_twilio_client',
+                });
+            }
             console.error('email-page: Twilio client unavailable');
             return reply
                 .code(500)
@@ -168,6 +206,15 @@ export async function emailPageHandler(request, reply) {
             result: callResult,
         });
 
+        if (IS_DEV) {
+            console.log('email-page: page complete', {
+                event: 'email_page.success',
+                pageMessage,
+                smsResults,
+                callResult,
+            });
+        }
+
         return reply.send({
             page_worthy: true,
             page_message: pageMessage,
@@ -175,6 +222,13 @@ export async function emailPageHandler(request, reply) {
             call_result: callResult,
         });
     } catch (e) {
+        if (IS_DEV) {
+            console.log('email-page: unhandled error detail', {
+                event: 'email_page.unhandled_error',
+                error: e?.message || String(e),
+                stack: e?.stack,
+            });
+        }
         console.error(
             `email-page: unhandled error: ${(e?.message || String(e)).slice(0, 220)}`
         );

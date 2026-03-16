@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { normalizeUSNumberToE164 } from './phone.js';
-import { PRIMARY_CALLERS_SET } from '../env.js';
+import { IS_DEV, PRIMARY_CALLERS_SET } from '../env.js';
 import {
     PAGE_EVALUATION_TEMPLATE,
     renderTemplate,
@@ -17,7 +17,16 @@ export async function readPageCriteriaFile(filePath) {
         filePath ||
         process.env.EMAIL_PAGE_CRITERIA_FILE_PATH ||
         'data/email-page-criteria.md';
-    return readFile(resolved, 'utf-8');
+    if (IS_DEV) {
+        console.log('readPageCriteriaFile: reading', { resolved });
+    }
+    const content = await readFile(resolved, 'utf-8');
+    if (IS_DEV) {
+        console.log('readPageCriteriaFile: loaded', {
+            length: content.length,
+        });
+    }
+    return content;
 }
 
 /**
