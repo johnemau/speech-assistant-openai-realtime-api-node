@@ -1,3 +1,5 @@
+import { IS_DEV } from '../env.js';
+
 /**
  * @typedef {{ messages: { create: Function } }} SmsLikeClient
  */
@@ -13,6 +15,13 @@
  * @returns {Promise<{ sid?: string, status?: string }>} Send result.
  */
 export async function sendSms({ to, from, body, client }) {
+    if (IS_DEV) {
+        console.log('[sendSms] Sending SMS', { to, from, body });
+    }
     const res = await client.messages.create({ from, to, body });
-    return { sid: res?.sid, status: res?.status };
+    const result = { sid: res?.sid, status: res?.status };
+    if (IS_DEV) {
+        console.log('[sendSms] Response', result);
+    }
+    return result;
 }
