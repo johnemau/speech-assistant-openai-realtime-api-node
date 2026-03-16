@@ -44,10 +44,8 @@ export async function emailPageHandler(request, reply) {
             return reply.code(401).send({ error: 'Unauthorized.' });
         }
 
-        const body = /** @type {Record<string, unknown>} */ (
-            request.body || {}
-        );
-        const emailContent = String(body.content || '').trim();
+        const body = /** @type {string} */ (request.body || '');
+        const emailContent = String(body?.trim() || '').replace(/\r\n/g, '\n');
         if (!emailContent) {
             if (IS_DEV) {
                 console.log('email-page: missing email content', {
