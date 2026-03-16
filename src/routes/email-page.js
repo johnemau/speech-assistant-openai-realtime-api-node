@@ -162,9 +162,12 @@ export async function emailPageHandler(request, reply) {
             normalizeUSNumberToE164(process.env.TWILIO_SMS_FROM_NUMBER) || '';
         if (!fromNumber) {
             if (IS_DEV) {
-                console.log('email-page: TWILIO_SMS_FROM_NUMBER missing or invalid', {
-                    event: 'email_page.no_from_number',
-                });
+                console.log(
+                    'email-page: TWILIO_SMS_FROM_NUMBER missing or invalid',
+                    {
+                        event: 'email_page.no_from_number',
+                    }
+                );
             }
             console.error('email-page: no Twilio from number configured');
             return reply.code(500).send({
