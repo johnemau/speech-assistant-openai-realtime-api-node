@@ -1,3 +1,5 @@
+import { IS_DEV } from '../env.js';
+
 /**
  * @typedef {{ calls: { create: Function } }} CallLikeClient
  */
@@ -13,14 +15,30 @@
  * @returns {Promise<{ to: string, sid?: string, status?: string, error?: string }>} Call result.
  */
 export async function placeCall({ twiml, toNumber, fromNumber, client }) {
+    if (IS_DEV) {
+        console.log('placeCall:request', {
+            toNumber,
+            fromNumber,
+            twimlLength: twiml?.length,
+            twimlPreview: twiml?.slice(0, 200),
+        });
+    }
     try {
         const call = await client.calls.create({
             from: fromNumber,
             to: toNumber,
             twiml,
         });
-        return { to: toNumber, sid: call?.sid, status: call?.status };
+        const result = { to: toNumber, sid: call?.sid, status: call?.status };
+        if (IS_DEV) {
+            console.log('placeCall:result', result);
+        }
+        return result;
     } catch (e) {
-        return { to: toNumber, error: e?.message || String(e) };
+        const result = { to: toNumber, error: e?.message || String(e) };
+        if (IS_DEV) {
+            console.log('placeCall:error', result);
+        }
+        return result;
     }
 }
