@@ -26,6 +26,7 @@ export const DEFAULT_SECRET_ENV_KEYS = [
     'AUGUST_ID',
     'AUGUST_PASSWORD',
     'AUGUST_API_KEY',
+    'EMAIL_PAGE_SECRET',
 ];
 
 export const REDACTION_KEYS = getSecretEnvKeys(

@@ -6,6 +6,7 @@ import { smsHandler } from './src/routes/sms.js';
 import { incomingCallHandler } from './src/routes/incoming-call.js';
 import { mediaStreamHandler } from './src/routes/media-stream.js';
 import { createMarkdownDocHandler } from './src/routes/markdown-doc.js';
+import { emailPageHandler } from './src/routes/email-page.js';
 import { NGROK_DOMAIN, PORT } from './src/init.js';
 import { SERVICE_OPERATOR_EMAIL } from './src/env.js';
 
@@ -65,6 +66,8 @@ fastify.get(
         title: 'How to Opt In',
     })
 );
+
+fastify.post('/email-page', emailPageHandler);
 
 fastify.all('/incoming-call', incomingCallHandler);
 
