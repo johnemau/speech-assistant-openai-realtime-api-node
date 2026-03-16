@@ -14,6 +14,7 @@
         "format": "prettier . --check",
         "format:fix": "npm run format:write",
         "format:write": "prettier . --write",
+        "fix": "npm run lint:fix",
         "typecheck": "tsc -p tsconfig.json",
         "test": "npm run lint && npm run typecheck && npm run test:unit && npm run test:integration",
         "test:unit": "node --import ./tests/setup.js --test src/**/*.test.js scripts/**/*.test.js",
