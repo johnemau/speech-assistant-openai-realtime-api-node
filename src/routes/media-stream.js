@@ -227,15 +227,12 @@ export function mediaStreamHandler(connection, req) {
                 folder: WAIT_MUSIC_FOLDER || null,
             });
         }
-        console.info(
-            'media-stream: wait music start',
-            {
-                event: 'wait_music.start',
-                reason,
-                streamSid,
-                threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
-            }
-        );
+        console.info('media-stream: wait music start', {
+            event: 'wait_music.start',
+            reason,
+            streamSid,
+            threshold_ms: WAIT_MUSIC_THRESHOLD_MS,
+        });
         // If audio folder is provided and exists
         if (WAIT_MUSIC_FOLDER && fs.existsSync(WAIT_MUSIC_FOLDER)) {
             try {
@@ -335,10 +332,11 @@ export function mediaStreamHandler(connection, req) {
         }
         if (isWaitingMusic) {
             isWaitingMusic = false;
-            console.info(
-                'media-stream: wait music stop',
-                { event: 'wait_music.stop', reason, streamSid }
-            );
+            console.info('media-stream: wait music stop', {
+                event: 'wait_music.stop',
+                reason,
+                streamSid,
+            });
         }
         const shouldResetTrack =
             reason === 'assistant_audio' ||
@@ -1233,16 +1231,22 @@ export function mediaStreamHandler(connection, req) {
                     timeZone = trackTimezone.timezoneId;
                 }
                 if (IS_DEV) {
-                    console.log('media-stream: initial greeting timezone lookup', {
-                        shouldLookupTimezone,
-                        resolvedTimeZone: trackTimezone?.timezoneId || null,
-                    });
+                    console.log(
+                        'media-stream: initial greeting timezone lookup',
+                        {
+                            shouldLookupTimezone,
+                            resolvedTimeZone: trackTimezone?.timezoneId || null,
+                        }
+                    );
                 }
             } else if (IS_DEV) {
-                console.log('media-stream: initial greeting timezone lookup skipped', {
-                    shouldLookupTimezone,
-                    hasSpotCredentials,
-                });
+                console.log(
+                    'media-stream: initial greeting timezone lookup skipped',
+                    {
+                        shouldLookupTimezone,
+                        hasSpotCredentials,
+                    }
+                );
             }
         } catch (e) {
             if (IS_DEV) {

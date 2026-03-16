@@ -51,7 +51,7 @@ export async function execute({ args, context }) {
         );
 
     if (IS_DEV) {
-        console.log('send_sms: twilio messages.create request', {
+        console.log('send-sms: twilio messages create request', {
             from: fromNumber,
             to: toNumber,
             length: bodyText.length,
@@ -64,7 +64,7 @@ export async function execute({ args, context }) {
         body: bodyText,
     });
     if (IS_DEV) {
-        console.log('send_sms: twilio messages.create response', {
+        console.log('send-sms: twilio messages create response', {
             sid: sendRes?.sid,
             status: sendRes?.status,
             errorCode: sendRes?.errorCode,

@@ -20,7 +20,7 @@ export function getAugustClient() {
     if (!installId || !augustId || !password) {
         if (IS_DEV) {
             console.warn(
-                'Yale/August credentials missing (AUGUST_INSTALL_ID, AUGUST_ID, AUGUST_PASSWORD). Smart lock features unavailable.'
+                'yale: credentials missing, smart lock features unavailable'
             );
         }
         return null;

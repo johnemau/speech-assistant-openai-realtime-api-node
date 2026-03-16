@@ -80,7 +80,7 @@ export async function execute({ args, context }) {
         formatted = formatDateTimeWithTimeZoneImpl({ timeZone: timeZoneId });
     } catch (error) {
         if (IS_DEV) {
-            console.warn('get_current_time: invalid timezone, using default', {
+            console.warn('get-current-time: invalid timezone, using default', {
                 timeZoneId,
                 message: error instanceof Error ? error.message : String(error),
             });
@@ -91,7 +91,7 @@ export async function execute({ args, context }) {
     }
 
     if (IS_DEV) {
-        console.log('get_current_time: resolved', {
+        console.log('get-current-time: resolved', {
             timeZoneId,
             source,
             formatted,

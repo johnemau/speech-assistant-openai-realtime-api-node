@@ -75,7 +75,7 @@ export async function execute({ args, context }) {
 
     if (onTransferCall) {
         if (IS_DEV) {
-            console.log('transfer_call: deferring update', {
+            console.log('transfer-call: deferring update', {
                 callSid,
                 destination,
                 destinationLabel,
@@ -91,7 +91,7 @@ export async function execute({ args, context }) {
     if (!client) throw new Error('Twilio client unavailable.');
 
     if (IS_DEV) {
-        console.log('transfer_call: updating call', {
+        console.log('transfer-call: updating call', {
             callSid,
             destination,
         });
@@ -102,7 +102,7 @@ export async function execute({ args, context }) {
     });
 
     if (IS_DEV) {
-        console.log('transfer_call: update complete', {
+        console.log('transfer-call: update complete', {
             callSid,
             destination,
         });

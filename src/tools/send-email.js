@@ -137,7 +137,7 @@ export async function execute({ args, context }) {
     };
 
     if (IS_DEV) {
-        console.log('send_email: senderTransport.sendMail request', {
+        console.log('send-email: transport sendmail request', {
             from: mailOptions.from,
             to: mailOptions.to,
             subject: mailOptions.subject,
@@ -147,7 +147,7 @@ export async function execute({ args, context }) {
     }
     const info = await senderTransport.sendMail(mailOptions);
     if (IS_DEV) {
-        console.log('send_email: senderTransport.sendMail response', {
+        console.log('send-email: transport sendmail response', {
             messageId: info?.messageId,
             accepted: info?.accepted,
             rejected: info?.rejected,

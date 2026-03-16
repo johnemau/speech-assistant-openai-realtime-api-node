@@ -65,7 +65,7 @@ export async function execute({ args, context }) {
             effectiveLocation = latestTrack?.location?.userLocation;
         } catch (error) {
             console.warn(
-                'Failed to load tracked location; using default.',
+                'gpt-web-search: failed to load tracked location, using default',
                 error
             );
         }

@@ -104,7 +104,7 @@ export function getToolDefinitions() {
  */
 async function realExecuteToolCall({ name, args, context }) {
     if (IS_DEV) {
-        console.log('tool executor: dispatch', {
+        console.log('tool-executor: dispatch', {
             name,
             hasArgs: Boolean(args),
             hasContext: Boolean(context),
@@ -114,7 +114,7 @@ async function realExecuteToolCall({ name, args, context }) {
     if (!executor) throw new Error(`Unknown tool: ${name}`);
     const result = await executor({ args, context });
     if (IS_DEV) {
-        console.log('tool executor: result', {
+        console.log('tool-executor: result', {
             name,
             result,
         });
@@ -132,7 +132,7 @@ let executeToolCallImpl = realExecuteToolCall;
  */
 export async function executeToolCall({ name, args, context }) {
     if (IS_DEV) {
-        console.log('tool executor: executeToolCall', {
+        console.log('tool-executor: execute tool call', {
             name,
         });
     }
@@ -145,7 +145,7 @@ export async function executeToolCall({ name, args, context }) {
  */
 export function setExecuteToolCallForTests(override) {
     if (IS_DEV) {
-        console.log('tool executor: set override', {
+        console.log('tool-executor: set override', {
             hasOverride: Boolean(override),
         });
     }
@@ -158,7 +158,7 @@ export function setExecuteToolCallForTests(override) {
  */
 export function resetExecuteToolCallForTests() {
     if (IS_DEV) {
-        console.log('tool executor: reset override');
+        console.log('tool-executor: reset override');
     }
     executeToolCallImpl = realExecuteToolCall;
 }
