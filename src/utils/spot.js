@@ -111,7 +111,7 @@ export async function getLatestTrackLatLng(opts = {}) {
     const feedPassword = getSpotFeedPassword();
 
     if (IS_DEV) {
-        console.log('getLatestTrackLatLng:start', {
+        console.log('spot: latest track start', {
             force,
             timeoutMs,
             hasFeedId: Boolean(feedId),
@@ -121,7 +121,7 @@ export async function getLatestTrackLatLng(opts = {}) {
 
     if (!feedId || !feedPassword) {
         if (IS_DEV) {
-            console.log('getLatestTrackLatLng:missing-credentials');
+            console.log('spot: latest track missing credentials');
         }
         return null;
     }
@@ -132,7 +132,7 @@ export async function getLatestTrackLatLng(opts = {}) {
 
     if (!force && cached && now - cached.fetchedAt < SPOT_THROTTLE_MS) {
         if (IS_DEV) {
-            console.log('getLatestTrackLatLng:cache-hit', {
+            console.log('spot: latest track cache hit', {
                 ageMs: now - cached.fetchedAt,
             });
         }
@@ -163,7 +163,7 @@ export async function getLatestTrackLatLng(opts = {}) {
             } catch {
                 errorBody = null;
             }
-            console.log('getLatestTrackLatLng:fetch-failed', {
+            console.log('spot: latest track fetch failed', {
                 ok: res?.ok ?? false,
                 status: res?.status ?? null,
                 statusText: res?.statusText ?? null,
@@ -187,7 +187,7 @@ export async function getLatestTrackLatLng(opts = {}) {
             value: cached?.value ?? null,
         });
         if (IS_DEV) {
-            console.log('getLatestTrackLatLng:json-parse-failed');
+            console.log('spot: latest track json parse failed');
         }
         return cached?.value ?? null;
     }
@@ -215,7 +215,7 @@ export async function getLatestTrackLatLng(opts = {}) {
             value: cached?.value ?? null,
         });
         if (IS_DEV) {
-            console.log('getLatestTrackLatLng:missing-message');
+            console.log('spot: latest track missing message');
         }
         return cached?.value ?? null;
     }
@@ -229,7 +229,7 @@ export async function getLatestTrackLatLng(opts = {}) {
             value: cached?.value ?? null,
         });
         if (IS_DEV) {
-            console.log('getLatestTrackLatLng:invalid-latlng', {
+            console.log('spot: latest track invalid latlng', {
                 latitude,
                 longitude,
             });
@@ -255,7 +255,7 @@ export async function getLatestTrackLatLng(opts = {}) {
 
     spotLatestTrackCache.set(cacheKey, { fetchedAt: now, value: result });
     if (IS_DEV) {
-        console.log('getLatestTrackLatLng:return', {
+        console.log('spot: latest track return', {
             latitude: result.latitude,
             longitude: result.longitude,
             unixTime: result.unixTime,
@@ -280,7 +280,7 @@ export async function getLatestTrackTimezone(opts = {}) {
     try {
         const timezoneId = tzLookup(track.latitude, track.longitude);
         if (IS_DEV) {
-            console.log('getLatestTrackTimezone:return', {
+            console.log('spot: timezone return', {
                 latitude: track.latitude,
                 longitude: track.longitude,
                 timezoneId,
@@ -289,7 +289,7 @@ export async function getLatestTrackTimezone(opts = {}) {
         return { timezoneId, track };
     } catch (error) {
         if (IS_DEV) {
-            console.log('getLatestTrackTimezone:error', {
+            console.log('spot: timezone error', {
                 message:
                     error instanceof Error ? error.message : 'Unknown error',
             });

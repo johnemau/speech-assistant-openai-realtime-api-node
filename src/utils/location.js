@@ -341,7 +341,7 @@ export async function locationFromLatLng({
     const apiKey = getGoogleMapsApiKey();
 
     if (IS_DEV) {
-        console.log('locationFromLatLng:start', {
+        console.log('location: start', {
             lat: resolvedLat,
             lng: resolvedLng,
             includeTimezone,
@@ -352,7 +352,7 @@ export async function locationFromLatLng({
 
     if (!isValidLatLng(resolvedLat, resolvedLng)) {
         if (IS_DEV) {
-            console.log('locationFromLatLng:invalid-latlng', {
+            console.log('location: invalid latlng', {
                 lat: resolvedLat,
                 lng: resolvedLng,
             });
@@ -361,7 +361,7 @@ export async function locationFromLatLng({
     }
     if (!apiKey) {
         if (IS_DEV) {
-            console.log('locationFromLatLng:missing-api-key');
+            console.log('location: missing api key');
         }
         throw new Error('apiKey is required.');
     }
@@ -375,7 +375,7 @@ export async function locationFromLatLng({
     });
     if (!hasGeocodeResults(geocode)) {
         if (IS_DEV) {
-            console.log('locationFromLatLng:geocode-fallback', {
+            console.log('location: geocode fallback', {
                 lat: resolvedLat,
                 lng: resolvedLng,
             });
@@ -392,14 +392,14 @@ export async function locationFromLatLng({
     }
     if (!hasGeocodeResults(geocode)) {
         if (IS_DEV) {
-            console.log('locationFromLatLng:geocode-fallback', {
+            console.log('location: geocode fallback', {
                 lat: resolvedLat,
                 lng: resolvedLng,
             });
         }
     }
     if (IS_DEV) {
-        console.log('locationFromLatLng:geocode-received', {
+        console.log('location: geocode received', {
             hasResults: Array.isArray(geocode?.results),
             resultsCount: geocode?.results?.length ?? 0,
         });
@@ -408,7 +408,7 @@ export async function locationFromLatLng({
     const userLocation = mapGeocodeToUserLocation(geocode);
     const address = mapGeocodeToAddress(geocode);
     if (IS_DEV) {
-        console.log('locationFromLatLng:derived-location', {
+        console.log('location: derived location', {
             userLocation,
             address,
         });
@@ -431,14 +431,14 @@ export async function locationFromLatLng({
             timezoneId = DEFAULT_TIMEZONE_ID;
         }
         if (IS_DEV) {
-            console.log('locationFromLatLng:timezone-resolved', {
+            console.log('location: timezone resolved', {
                 status: timezone?.status,
                 timezoneId,
                 usedFallback: timezoneId === DEFAULT_TIMEZONE_ID,
             });
         }
     } else if (IS_DEV) {
-        console.log('locationFromLatLng:timezone-skipped');
+        console.log('location: timezone skipped');
     }
 
     const result = {
@@ -452,7 +452,7 @@ export async function locationFromLatLng({
     };
 
     if (IS_DEV) {
-        console.log('locationFromLatLng:return', {
+        console.log('location: return', {
             lat: result.lat,
             lng: result.lng,
             timezoneId: result.timezoneId,

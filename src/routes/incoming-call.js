@@ -16,7 +16,7 @@ export async function incomingCallHandler(request, reply) {
     const toRaw = body.To || body.to || '';
     const toE164 = normalizeUSNumberToE164(toRaw);
     const callSid = body.CallSid || body.callSid || '';
-    console.log('Incoming call from:', fromRaw, '=>', fromE164);
+    console.log('incoming-call: received', { from: fromRaw, fromE164 });
 
     if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
         const { VoiceResponse } = twilio.twiml;
@@ -27,7 +27,7 @@ export async function incomingCallHandler(request, reply) {
         );
         denyTwiml.hangup();
         if (IS_DEV) {
-            console.log('denyTwiml:', denyTwiml.toString());
+            console.log('incoming-call: deny twiml', denyTwiml.toString());
         }
         return reply.type('text/xml').send(denyTwiml.toString());
     }
@@ -43,7 +43,7 @@ export async function incomingCallHandler(request, reply) {
     stream.parameter({ name: 'call_sid', value: callSid || '' });
 
     if (IS_DEV) {
-        console.log('twimlResponse:', twimlResponse.toString());
+        console.log('incoming-call: twiml response', twimlResponse.toString());
     }
     reply.type('text/xml').send(twimlResponse.toString());
 }

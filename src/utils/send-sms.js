@@ -16,12 +16,12 @@ import { IS_DEV } from '../env.js';
  */
 export async function sendSms({ to, from, body, client }) {
     if (IS_DEV) {
-        console.log('[sendSms] Sending SMS', { to, from, body });
+        console.log('send-sms: sending', { to, from, body });
     }
     const res = await client.messages.create({ from, to, body });
     const result = { sid: res?.sid, status: res?.status };
     if (IS_DEV) {
-        console.log('[sendSms] Response', result);
+        console.log('send-sms: response', result);
     }
     return result;
 }

@@ -36,28 +36,23 @@ export function createTwilioClient({
         // Prefer API Key + Secret with Account SID (recommended by Twilio for production)
         if (apiKey && apiSecret && accountSid) {
             const client = twilio(apiKey, apiSecret, { accountSid });
-            console.log(
-                'Twilio REST client initialized with API Key + Secret.'
-            );
+            console.log('clients: twilio initialized with api key and secret');
             return client;
         }
         if (accountSid && authToken) {
             // Fallback: Account SID + Auth Token (best for local testing)
             const client = twilio(accountSid, authToken);
             console.log(
-                'Twilio REST client initialized with Account SID + Auth Token.'
+                'clients: twilio initialized with account sid and auth token'
             );
             return client;
         }
         console.warn(
-            'Twilio credentials missing; provide API Key + Secret + Account SID or Account SID + Auth Token. SMS auto-reply will be unavailable.'
+            'clients: twilio credentials missing, sms auto-reply will be unavailable'
         );
         return null;
     } catch (e) {
-        console.warn(
-            'Failed to initialize Twilio REST client:',
-            e?.message || e
-        );
+        console.warn('clients: twilio initialization failed', e?.message || e);
         return null;
     }
 }
@@ -74,7 +69,7 @@ export function createTwilioClient({
 export function createEmailTransport({ user, pass, serviceId }) {
     if (!user || !pass) {
         console.warn(
-            'SMTP credentials missing; send_email will be unavailable.'
+            'clients: smtp credentials missing, send_email will be unavailable'
         );
         return null;
     }
@@ -85,11 +80,11 @@ export function createEmailTransport({ user, pass, serviceId }) {
     transport
         .verify()
         .then(() => {
-            console.log('Email transporter verified.');
+            console.log('clients: email transporter verified');
         })
         .catch((err) => {
             console.warn(
-                'Email transporter verification failed:',
+                'clients: email transporter verification failed',
                 err?.message || err
             );
         });

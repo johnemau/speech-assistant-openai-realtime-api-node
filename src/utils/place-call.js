@@ -16,7 +16,7 @@ import { IS_DEV } from '../env.js';
  */
 export async function placeCall({ twiml, toNumber, fromNumber, client }) {
     if (IS_DEV) {
-        console.log('placeCall:request', {
+        console.log('place-call: request', {
             toNumber,
             fromNumber,
             twimlLength: twiml?.length,
@@ -31,13 +31,13 @@ export async function placeCall({ twiml, toNumber, fromNumber, client }) {
         });
         const result = { to: toNumber, sid: call?.sid, status: call?.status };
         if (IS_DEV) {
-            console.log('placeCall:result', result);
+            console.log('place-call: result', result);
         }
         return result;
     } catch (e) {
         const result = { to: toNumber, error: e?.message || String(e) };
         if (IS_DEV) {
-            console.log('placeCall:error', result);
+            console.log('place-call: error', result);
         }
         return result;
     }

@@ -80,27 +80,31 @@ fastify.register(async (fastify) => {
 (async () => {
     try {
         fastify.listen({ host: '0.0.0.0', port: PORT });
-        console.log(`HTTP server listening on 0.0.0.0:${PORT}`);
+        console.log(`server: listening on 0.0.0.0:${PORT}`);
 
         // Optionally establish ngrok ingress if NGROK_DOMAIN is provided
         if (NGROK_DOMAIN) {
             if (!process.env.NGROK_AUTHTOKEN) {
                 console.warn(
-                    'Warning: NGROK_AUTHTOKEN is not set. Ensure ngrok is authenticated for domain binding.'
+                    'server: NGROK_AUTHTOKEN is not set, ensure ngrok is authenticated for domain binding'
                 );
             }
             const session = await new ngrok.SessionBuilder()
                 .authtokenFromEnv()
                 .connect();
             const endpointBuilder = session.httpEndpoint().domain(NGROK_DOMAIN);
-            console.log(`ngrok forwarding active on domain ${NGROK_DOMAIN}`);
+            console.log(
+                `server: ngrok forwarding active on domain ${NGROK_DOMAIN}`
+            );
             const listener = await endpointBuilder.listen();
             await listener.forward(`0.0.0.0:${PORT}`);
         } else {
-            console.log('ngrok domain not configured; skipping ngrok setup.');
+            console.log(
+                'server: ngrok domain not configured, skipping ngrok setup'
+            );
         }
     } catch (err) {
-        console.error('Server startup failed', err);
+        console.error('server: startup failed', err);
         process.exit(1);
     }
 })();

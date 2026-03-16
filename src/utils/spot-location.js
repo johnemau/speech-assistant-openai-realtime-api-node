@@ -37,7 +37,7 @@ export async function getLatestTrackLocation({
     force = false,
 } = {}) {
     if (IS_DEV) {
-        console.log('getLatestTrackLocation:start', {
+        console.log('spot-location: start', {
             includeTimezone,
             language,
             timestampSeconds,
@@ -50,7 +50,7 @@ export async function getLatestTrackLocation({
     }
     if (!getSpotFeedId() || !getSpotFeedPassword()) return null;
     if (!getGoogleMapsApiKey()) {
-        console.error('GOOGLE_MAPS_API_KEY is required for spot location.');
+        console.error('spot-location: GOOGLE_MAPS_API_KEY is required');
         return null;
     }
 
@@ -61,7 +61,7 @@ export async function getLatestTrackLocation({
 
     if (!track) {
         if (IS_DEV) {
-            console.log('getLatestTrackLocation:no-track');
+            console.log('spot-location: no track');
         }
         return null;
     }
@@ -77,7 +77,7 @@ export async function getLatestTrackLocation({
 
     const result = { track, location };
     if (IS_DEV) {
-        console.log('getLatestTrackLocation:return', {
+        console.log('spot-location: return', {
             latitude: result.track.latitude,
             longitude: result.track.longitude,
             timezoneId: result.location.timezoneId,

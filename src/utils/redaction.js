@@ -51,23 +51,26 @@ export function setupConsoleRedaction(env = process.env) {
         // Enable redaction by default
         disableLogRedaction = patchLogs(secretKeys);
         // Optional: brief confirmation without leaking values
-        console.log('Log redaction enabled for env keys:', secretKeys);
+        console.log('redaction: enabled for env keys', secretKeys);
         // If env flag is truthy, disable the redaction immediately
         if (isTruthy(env.DISABLE_LOG_REDACTION)) {
             try {
                 disableLogRedaction();
                 console.log(
-                    'Log redaction disabled via DISABLE_LOG_REDACTION env flag.'
+                    'redaction: disabled via DISABLE_LOG_REDACTION env flag'
                 );
             } catch (err) {
                 console.warn(
-                    'Failed to disable log redaction:',
+                    'redaction: failed to disable log redaction',
                     err?.message || err
                 );
             }
         }
     } catch (e) {
-        console.warn('Failed to initialize log redaction:', e?.message || e);
+        console.warn(
+            'redaction: failed to initialize log redaction',
+            e?.message || e
+        );
     }
 
     const redactionDisabled = isTruthy(env.DISABLE_LOG_REDACTION);
@@ -136,13 +139,13 @@ export function setupConsoleRedaction(env = process.env) {
         } catch (e) {
             // If scrubber initialization fails, leave console untouched
             console.warn(
-                'Secret scrubber initialization failed:',
+                'redaction: secret scrubber initialization failed',
                 e?.message || e
             );
         }
     } else {
         console.warn(
-            'DISABLE_LOG_REDACTION is truthy; secret scrubber not initialized.'
+            'redaction: DISABLE_LOG_REDACTION is truthy, secret scrubber not initialized'
         );
     }
 

@@ -24,7 +24,7 @@ const { SENDER_FROM_EMAIL, SMTP_USER, SMTP_PASS, SMTP_NODEMAILER_SERVICE_ID } =
     process.env;
 
 if (!OPENAI_API_KEY) {
-    console.error('Missing OpenAI API key. Please set it in the .env file.');
+    console.error('init: missing OpenAI API key');
     process.exit(1);
 }
 
@@ -47,7 +47,7 @@ export let senderTransport = createEmailTransport({
 });
 if (!SENDER_FROM_EMAIL) {
     console.warn(
-        'SENDER_FROM_EMAIL missing; emails cannot be sent until configured.'
+        'init: SENDER_FROM_EMAIL missing, emails cannot be sent until configured'
     );
 }
 

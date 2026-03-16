@@ -42,7 +42,7 @@ export function safeParseToolArguments(args) {
         return JSON.parse(str);
     } catch {
         if (IS_DEV) {
-            console.warn('Tool arguments JSON parse failed (raw):', original);
+            console.warn('session: tool arguments json parse failed', original);
         }
         // Second attempt: relaxed JSON (JSON5) for single quotes, unquoted keys, etc.
         try {
@@ -119,7 +119,7 @@ function realCreateAssistantSession({
                 pendingOpenAiMessages.push(payload);
             }
         } catch (e) {
-            console.error('Failed to send/queue OpenAI message:', e);
+            console.error('session: failed to send or queue openai message', e);
         }
     };
 
@@ -131,7 +131,7 @@ function realCreateAssistantSession({
                 if (msg != null) openAiWs.send(msg);
             }
         } catch (e) {
-            console.error('Failed to flush OpenAI queued messages:', e);
+            console.error('session: failed to flush openai queued messages', e);
         }
     };
 
@@ -202,14 +202,14 @@ function realCreateAssistantSession({
         } catch (error) {
             if (IS_DEV) {
                 console.error(
-                    'OpenAI message JSON parse failed (raw):',
+                    'session: openai message json parse failed',
                     rawMessage
                 );
             }
             console.error(
-                'Error processing OpenAI message:',
+                'session: error processing openai message',
                 error,
-                'Raw message:',
+                'raw:',
                 data
             );
         }

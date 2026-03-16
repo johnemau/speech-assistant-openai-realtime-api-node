@@ -58,7 +58,7 @@ function unrefTimer(timer) {
  * @returns {void}
  */
 export function mediaStreamHandler(connection, req) {
-    console.log('Client connected');
+    console.log('media-stream: client connected');
 
     // Connection-specific state
     /** @type {string | null} */
@@ -180,7 +180,7 @@ export function mediaStreamHandler(connection, req) {
         );
         const delay = Math.max(baseDelay, suppressRemaining);
         if (IS_DEV) {
-            console.log('wait music delay computed', {
+            console.log('media-stream: wait music delay computed', {
                 baseDelay,
                 sinceLastResponse,
                 suppressRemaining,
@@ -203,7 +203,7 @@ export function mediaStreamHandler(connection, req) {
         }
         const delayMs = immediate ? 0 : getWaitingMusicDelayMs();
         if (IS_DEV) {
-            console.log('wait music schedule requested', {
+            console.log('media-stream: wait music schedule requested', {
                 reason,
                 delayMs,
                 isWaitingMusic,
@@ -221,14 +221,14 @@ export function mediaStreamHandler(connection, req) {
         if (!streamSid || isWaitingMusic || isCallerSpeaking) return;
         isWaitingMusic = true;
         if (IS_DEV) {
-            console.log('wait music start requested', {
+            console.log('media-stream: wait music start requested', {
                 reason,
                 streamSid,
                 folder: WAIT_MUSIC_FOLDER || null,
             });
         }
         console.info(
-            `wait music start: reason=${reason} streamSid=${streamSid || ''} thresholdMs=${WAIT_MUSIC_THRESHOLD_MS}`,
+            'media-stream: wait music start',
             {
                 event: 'wait_music.start',
                 reason,
@@ -250,13 +250,13 @@ export function mediaStreamHandler(connection, req) {
                         );
                     if (files.length === 0) {
                         console.warn(
-                            'Waiting music folder has no files; using silence frames.'
+                            'media-stream: waiting music folder has no files, using silence'
                         );
                     } else {
                         const selectedFile =
                             files[Math.floor(Math.random() * files.length)];
                         console.info(
-                            'Waiting music file selected:',
+                            'media-stream: waiting music file selected',
                             selectedFile
                         );
                         // Read raw PCMU and pre-load into µ-law buffer
@@ -266,7 +266,7 @@ export function mediaStreamHandler(connection, req) {
                 }
             } catch (e) {
                 console.error(
-                    'Failed to load waiting music file; using silence frames:',
+                    'media-stream: failed to load waiting music file, using silence',
                     e?.message || e
                 );
             }
@@ -336,7 +336,7 @@ export function mediaStreamHandler(connection, req) {
         if (isWaitingMusic) {
             isWaitingMusic = false;
             console.info(
-                `wait music stop: reason=${reason} streamSid=${streamSid || ''}`,
+                'media-stream: wait music stop',
                 { event: 'wait_music.stop', reason, streamSid }
             );
         }
@@ -373,7 +373,9 @@ export function mediaStreamHandler(connection, req) {
             if (!force && markQueue.length !== 0) return;
 
             if (force && IS_DEV)
-                console.warn('Forcing call disconnect after timeout.');
+                console.warn(
+                    'media-stream: forcing call disconnect after timeout'
+                );
 
             pendingDisconnect = false;
             pendingDisconnectResponseReceived = false;
@@ -396,10 +398,10 @@ export function mediaStreamHandler(connection, req) {
                 // noop: websocket may already be closed
                 void 0;
             }
-            console.log('Call closed after goodbye playback.');
+            console.log('media-stream: call closed after goodbye playback');
         } catch (e) {
             console.warn(
-                'Attempt to close pending disconnect failed:',
+                'media-stream: attempt to close pending disconnect failed',
                 e?.message || e
             );
         }
@@ -439,7 +441,7 @@ export function mediaStreamHandler(connection, req) {
                 if (markQueue.length !== 0) {
                     if (IS_DEV) {
                         console.log(
-                            'transfer_call: marks pending; proceeding after timing fallback',
+                            'media-stream: transfer call marks pending, proceeding after timing fallback',
                             {
                                 elapsedMs,
                                 minElapsedMs,
@@ -466,21 +468,28 @@ export function mediaStreamHandler(connection, req) {
             }
 
             if (!transfer.callSid || !transfer.destination_number) {
-                console.warn('Pending transfer missing callSid/number.');
+                console.warn(
+                    'media-stream: pending transfer missing callSid or number'
+                );
                 pendingTransferInFlight = false;
                 return;
             }
             if (!twilioClient) {
-                console.warn('Twilio client unavailable for transfer_call.');
+                console.warn(
+                    'media-stream: twilio client unavailable for transfer call'
+                );
                 pendingTransferInFlight = false;
                 return;
             }
 
             if (IS_DEV) {
-                console.log('transfer_call: updating Twilio call', {
-                    callSid: transfer.callSid,
-                    destination: transfer.destination_number,
-                });
+                console.log(
+                    'media-stream: transfer call updating twilio call',
+                    {
+                        callSid: transfer.callSid,
+                        destination: transfer.destination_number,
+                    }
+                );
             }
 
             await twilioClient.calls(transfer.callSid).update({
@@ -500,7 +509,7 @@ export function mediaStreamHandler(connection, req) {
             }
         } catch (e) {
             console.warn(
-                'Attempt to update pending transfer failed:',
+                'media-stream: attempt to update pending transfer failed',
                 e?.message || e
             );
         } finally {
@@ -559,7 +568,7 @@ export function mediaStreamHandler(connection, req) {
                 responseStartTimestampTwilio = latestMediaTimestamp;
                 if (showTimingMath)
                     console.log(
-                        `Setting start timestamp for new response: ${responseStartTimestampTwilio}ms`
+                        `media-stream: setting start timestamp for new response ${responseStartTimestampTwilio}ms`
                     );
             }
 
@@ -575,8 +584,11 @@ export function mediaStreamHandler(connection, req) {
     const handleOpenAiEvent = (response) => {
         if (LOG_EVENT_TYPES.includes(response.type)) {
             if (IS_DEV)
-                console.log(`Received event: ${response.type}`, response);
-            else console.log(`Received event: ${response.type}`);
+                console.log(
+                    `media-stream: received event ${response.type}`,
+                    response
+                );
+            else console.log(`media-stream: received event ${response.type}`);
         }
 
         // Track response lifecycle to avoid overlapping creates
@@ -594,7 +606,7 @@ export function mediaStreamHandler(connection, req) {
                     pendingTransferAnnouncementResponseId = createdResponseId;
                     if (IS_DEV) {
                         console.log(
-                            'transfer_call: announcement response created',
+                            'media-stream: transfer call announcement response created',
                             {
                                 responseId: createdResponseId,
                             }
@@ -636,11 +648,11 @@ export function mediaStreamHandler(connection, req) {
                         },
                     });
                     console.log(
-                        'Turn detection updated after initial greeting response.'
+                        'media-stream: turn detection updated after initial greeting'
                     );
                 } catch (e) {
                     console.warn(
-                        'Failed to update turn detection after initial greeting:',
+                        'media-stream: failed to update turn detection after initial greeting',
                         e?.message || e
                     );
                 }
@@ -671,7 +683,7 @@ export function mediaStreamHandler(connection, req) {
                     scheduleWaitingMusic('speech_stopped');
                 } catch (e) {
                     console.warn(
-                        'Failed to request response.create after speech_stopped:',
+                        'media-stream: failed to request response after speech stopped',
                         e?.message || e
                     );
                 }
@@ -726,7 +738,7 @@ export function mediaStreamHandler(connection, req) {
                                 const body = `Your request is complete.${subjectNote}`;
                                 if (IS_DEV)
                                     console.log(
-                                        'Post-hang-up completion SMS:',
+                                        'media-stream: post-hangup completion sms',
                                         {
                                             from: fromNumber,
                                             to: toNumber,
@@ -741,7 +753,7 @@ export function mediaStreamHandler(connection, req) {
                                     })
                                     .then((sendRes) => {
                                         console.info(
-                                            `posthangup SMS sent: sid=${sendRes?.sid || ''} to=${toNumber || ''}`,
+                                            'media-stream: posthangup sms sent',
                                             {
                                                 event: 'posthangup.sms.sent',
                                                 sid: sendRes?.sid,
@@ -751,14 +763,14 @@ export function mediaStreamHandler(connection, req) {
                                     })
                                     .catch((e) => {
                                         console.warn(
-                                            'Post-hang-up SMS send error:',
+                                            'media-stream: post-hangup sms send error',
                                             e?.message || e
                                         );
                                     });
                                 postHangupSmsSent = true;
                             } else {
                                 console.warn(
-                                    `posthangup SMS unavailable: to=${toNumber || ''} from=${fromNumber || ''}`,
+                                    'media-stream: posthangup sms unavailable',
                                     {
                                         event: 'posthangup.sms.unavailable',
                                         to: toNumber,
@@ -768,14 +780,14 @@ export function mediaStreamHandler(connection, req) {
                             }
                         } catch (e) {
                             console.warn(
-                                'Post-hang-up SMS error:',
+                                'media-stream: post-hangup sms error',
                                 e?.message || e
                             );
                         }
                     }
                     // Close OpenAI WS after all tools complete (with or without SMS)
                     console.log(
-                        'Closing OpenAI session: all tools completed after hangup'
+                        'media-stream: closing openai session, all tools completed after hangup'
                     );
                     try {
                         if (
@@ -824,15 +836,12 @@ export function mediaStreamHandler(connection, req) {
         enqueueResponse(reason);
         if (responseActive || responsePending || isCallerSpeaking) {
             if (IS_DEV) {
-                console.log(
-                    'response.create queued (active/pending/speaking)',
-                    {
-                        reason,
-                        responseActive,
-                        responsePending,
-                        isCallerSpeaking,
-                    }
-                );
+                console.log('media-stream: response create queued', {
+                    reason,
+                    responseActive,
+                    responsePending,
+                    isCallerSpeaking,
+                });
             }
             return;
         }
@@ -848,15 +857,12 @@ export function mediaStreamHandler(connection, req) {
         if (responseActive || responsePending || isCallerSpeaking) {
             pendingToolResponse = true;
             if (IS_DEV) {
-                console.log(
-                    'tool response deferred (active/pending/speaking)',
-                    {
-                        reason,
-                        responseActive,
-                        responsePending,
-                        isCallerSpeaking,
-                    }
-                );
+                console.log('media-stream: tool response deferred', {
+                    reason,
+                    responseActive,
+                    responsePending,
+                    isCallerSpeaking,
+                });
             }
             return;
         }
@@ -886,7 +892,7 @@ export function mediaStreamHandler(connection, req) {
         if (!next) return;
         responseQueueSet.delete(next.reason);
         if (IS_DEV) {
-            console.log('response.create dequeued', {
+            console.log('media-stream: response create dequeued', {
                 reason,
                 next: next.reason,
                 remaining: responseQueue.length,
@@ -898,11 +904,11 @@ export function mediaStreamHandler(connection, req) {
 
     /** @param {any} functionCall - Function call payload from OpenAI. */
     const handleToolCall = async (functionCall) => {
-        console.log('Function call detected:', functionCall.name);
+        console.log('media-stream: function call detected', functionCall.name);
         const callId = functionCall.call_id;
         if (!callId) {
             console.warn(
-                'Function call missing call_id; skipping to prevent duplicate execution.'
+                'media-stream: function call missing call_id, skipping'
             );
             return;
         }
@@ -946,7 +952,7 @@ export function mediaStreamHandler(connection, req) {
                     };
                     if (IS_DEV)
                         console.log(
-                            'Applying noise_reduction change:',
+                            'media-stream: applying noise reduction change',
                             sessionUpdate
                         );
                     assistantSession.updateSession(sessionUpdate);
@@ -999,11 +1005,14 @@ export function mediaStreamHandler(connection, req) {
                         unrefTimer(pendingTransferTimeout);
                     }
                     if (IS_DEV) {
-                        console.log('transfer_call: pending transfer queued', {
-                            callSid: currentCallSid,
-                            destination_number,
-                            destination_label,
-                        });
+                        console.log(
+                            'media-stream: transfer call pending transfer queued',
+                            {
+                                callSid: currentCallSid,
+                                destination_number,
+                                destination_label,
+                            }
+                        );
                     }
                     return {
                         status: 'pending',
@@ -1035,7 +1044,7 @@ export function mediaStreamHandler(connection, req) {
                 requestToolFollowup('tool_call_response');
                 if (IS_DEV)
                     console.log(
-                        'LLM tool output sent to OpenAI',
+                        'media-stream: tool output sent to openai',
                         toolResultEvent
                     );
                 return;
@@ -1048,11 +1057,15 @@ export function mediaStreamHandler(connection, req) {
             });
 
             if (toolName === 'update_mic_distance') {
-                if (IS_DEV) console.log('Noise reduction updated:', output);
+                if (IS_DEV)
+                    console.log(
+                        'media-stream: noise reduction updated',
+                        output
+                    );
             }
 
             if (toolName === 'gpt_web_search' && IS_DEV) {
-                console.log('Dev tool call gpt_web_search output:', output);
+                console.log('media-stream: gpt web search output', output);
             }
 
             const toolResultEvent = {
@@ -1099,7 +1112,7 @@ export function mediaStreamHandler(connection, req) {
                     pendingTransferAnnouncementRequested = true;
                 } else if (IS_DEV) {
                     console.warn(
-                        'transfer_call missing destination_number for announcement.'
+                        'media-stream: transfer call missing destination number for announcement'
                     );
                 }
             }
@@ -1109,9 +1122,12 @@ export function mediaStreamHandler(connection, req) {
                 requestToolFollowup('tool_call_response');
             }
             if (IS_DEV)
-                console.log('LLM tool output sent to OpenAI', toolResultEvent);
+                console.log(
+                    'media-stream: tool output sent to openai',
+                    toolResultEvent
+                );
         } catch (error) {
-            console.error('Error handling tool call:', error);
+            console.error('media-stream: error handling tool call', error);
             markToolCallEnd(callId);
             if (toolName === 'transfer_call') {
                 const msg =
@@ -1158,14 +1174,15 @@ export function mediaStreamHandler(connection, req) {
         onEvent: handleOpenAiEvent,
         onAssistantOutput: handleAssistantOutput,
         onToolCall: handleToolCall,
-        onOpen: () => console.log('Connected to the OpenAI Realtime API'),
+        onOpen: () =>
+            console.log('media-stream: connected to openai realtime api'),
         onClose: () => {
-            console.log('Disconnected from the OpenAI Realtime API');
+            console.log('media-stream: disconnected from openai realtime api');
             stopWaitingMusic('openai_ws_close');
             clearWaitingMusicInterval();
         },
         onError: (error) => {
-            console.error('Error in the OpenAI WebSocket:', error);
+            console.error('media-stream: openai websocket error', error);
             stopWaitingMusic('openai_ws_error');
             clearWaitingMusicInterval();
         },
@@ -1187,7 +1204,7 @@ export function mediaStreamHandler(connection, req) {
             assistantSession.updateSession({ instructions });
         } catch (e) {
             console.warn(
-                'Failed to update realtime instructions with context:',
+                'media-stream: failed to update realtime instructions with context',
                 e?.message || e
             );
         }
@@ -1198,7 +1215,7 @@ export function mediaStreamHandler(connection, req) {
         initialGreetingRequested = true;
         let timeZone = 'America/Los_Angeles';
         if (IS_DEV) {
-            console.log('initial greeting: start', {
+            console.log('media-stream: initial greeting start', {
                 callerNameValue,
                 currentCallerE164,
                 defaultTimeZone: timeZone,
@@ -1216,13 +1233,13 @@ export function mediaStreamHandler(connection, req) {
                     timeZone = trackTimezone.timezoneId;
                 }
                 if (IS_DEV) {
-                    console.log('initial greeting: timezone lookup', {
+                    console.log('media-stream: initial greeting timezone lookup', {
                         shouldLookupTimezone,
                         resolvedTimeZone: trackTimezone?.timezoneId || null,
                     });
                 }
             } else if (IS_DEV) {
-                console.log('initial greeting: timezone lookup skipped', {
+                console.log('media-stream: initial greeting timezone lookup skipped', {
                     shouldLookupTimezone,
                     hasSpotCredentials,
                 });
@@ -1230,7 +1247,7 @@ export function mediaStreamHandler(connection, req) {
         } catch (e) {
             if (IS_DEV) {
                 console.warn(
-                    'Failed to resolve track timezone; using default:',
+                    'media-stream: failed to resolve track timezone, using default',
                     e?.message || e
                 );
             }
@@ -1238,7 +1255,7 @@ export function mediaStreamHandler(connection, req) {
         const timeGreeting = getTimeGreeting({ timeZone });
         const callerDateTimeString = formatDateTimeWithTimeZone({ timeZone });
         if (IS_DEV) {
-            console.log('initial greeting: prepared', {
+            console.log('media-stream: initial greeting prepared', {
                 timeZone,
                 timeGreeting,
                 callerDateTimeString,
@@ -1260,7 +1277,7 @@ export function mediaStreamHandler(connection, req) {
 
         if (showTimingMath)
             console.log(
-                'Sending initial conversation item:',
+                'media-stream: sending initial conversation item',
                 JSON.stringify(initialConversationItem)
             );
         assistantSession.send(initialConversationItem);
@@ -1279,13 +1296,13 @@ export function mediaStreamHandler(connection, req) {
                 ? errorLike
                 : /** @type {any} */ (errorLike)?.message || String(errorLike);
         if (IS_DEV) {
-            console.log('tool error: sending to OpenAI', {
+            console.log('media-stream: tool error sending to openai', {
                 callId,
                 message: msg,
             });
         }
         try {
-            console.error('Sending tool error to OpenAI WS:', msg);
+            console.error('media-stream: sending tool error to openai', msg);
             const toolErrorEvent = {
                 type: 'conversation.item.create',
                 item: {
@@ -1299,14 +1316,17 @@ export function mediaStreamHandler(connection, req) {
                 requestToolFollowup('tool_call_error');
             }
         } catch (e) {
-            console.error('Failed to send tool error to OpenAI WS:', e);
+            console.error(
+                'media-stream: failed to send tool error to openai',
+                e
+            );
         }
     }
 
     // Handle interruption when the caller's speech starts
     const handleSpeechStartedEvent = () => {
         if (IS_DEV) {
-            console.log('speech started event', {
+            console.log('media-stream: speech started event', {
                 markQueueLength: markQueue.length,
                 responseStartTimestampTwilio,
                 lastAssistantItem,
@@ -1318,7 +1338,7 @@ export function mediaStreamHandler(connection, req) {
                 latestMediaTimestamp - responseStartTimestampTwilio;
             if (showTimingMath)
                 console.log(
-                    `Calculating elapsed time for truncation: ${latestMediaTimestamp} - ${responseStartTimestampTwilio} = ${elapsedTime}ms`
+                    `media-stream: calculating elapsed time for truncation: ${latestMediaTimestamp} - ${responseStartTimestampTwilio} = ${elapsedTime}ms`
                 );
 
             if (lastAssistantItem) {
@@ -1342,13 +1362,13 @@ export function mediaStreamHandler(connection, req) {
                     };
                     if (showTimingMath)
                         console.log(
-                            'Sending truncation event:',
+                            'media-stream: sending truncation event',
                             stringifyDeep(truncateEvent)
                         );
                     assistantSession.send(truncateEvent);
                 } else if (IS_DEV) {
                     console.log(
-                        'Skipping truncation; invalid audio_end_ms computed.',
+                        'media-stream: skipping truncation, invalid audio_end_ms',
                         {
                             lastAssistantItem,
                             lastAssistantAudioMs,
@@ -1414,7 +1434,10 @@ export function mediaStreamHandler(connection, req) {
                 }
                 case 'start':
                     streamSid = data.start.streamSid;
-                    console.log('Incoming stream has started', streamSid);
+                    console.log(
+                        'media-stream: incoming stream started',
+                        streamSid
+                    );
 
                     // Reset start and media timestamp on a new stream
                     responseStartTimestampTwilio = null;
@@ -1436,7 +1459,7 @@ export function mediaStreamHandler(connection, req) {
                             ) {
                                 fiftyMinuteWarningSent = true;
                                 console.log(
-                                    'Session duration: 50 minutes reached, sending time warning'
+                                    'media-stream: session 50 minutes reached, sending time warning'
                                 );
                                 const warningItem = {
                                     type: 'conversation.item.create',
@@ -1468,7 +1491,7 @@ export function mediaStreamHandler(connection, req) {
                         () => {
                             if (!pendingDisconnect && !postHangupSilentMode) {
                                 console.log(
-                                    'Session duration: 55 minutes reached, initiating graceful hangup'
+                                    'media-stream: session 55 minutes reached, initiating graceful hangup'
                                 );
                                 const hangupItem = {
                                     type: 'conversation.item.create',
@@ -1508,7 +1531,7 @@ export function mediaStreamHandler(connection, req) {
                                             );
                                         }
                                         console.log(
-                                            'Ending call due to 55-minute limit: pending_disconnect set'
+                                            'media-stream: ending call due to 55 minute limit'
                                         );
                                     }
                                 }, 3000); // Give assistant 3 seconds to start speaking
@@ -1530,10 +1553,8 @@ export function mediaStreamHandler(connection, req) {
                         currentCallerE164 = normalizeUSNumberToE164(rawCaller);
                         if (currentCallerE164)
                             console.log(
-                                'Caller (from TwiML Parameter):',
-                                rawCaller,
-                                '=>',
-                                currentCallerE164
+                                'media-stream: caller from twiml parameter',
+                                { from: rawCaller, e164: currentCallerE164 }
                             );
                         const rawTwilioNum =
                             cp.twilio_number || cp.twilioNumber || null;
@@ -1541,10 +1562,11 @@ export function mediaStreamHandler(connection, req) {
                             normalizeUSNumberToE164(rawTwilioNum);
                         if (currentTwilioNumberE164)
                             console.log(
-                                'Twilio number (from TwiML Parameter):',
-                                rawTwilioNum,
-                                '=>',
-                                currentTwilioNumberE164
+                                'media-stream: twilio number from twiml parameter',
+                                {
+                                    from: rawTwilioNum,
+                                    e164: currentTwilioNumberE164,
+                                }
                             );
                         const rawCallSid =
                             data.start?.callSid ||
@@ -1557,7 +1579,10 @@ export function mediaStreamHandler(connection, req) {
                                 ? rawCallSid.trim()
                                 : null;
                         if (currentCallSid && IS_DEV) {
-                            console.log('CallSid captured:', currentCallSid);
+                            console.log(
+                                'media-stream: call sid captured',
+                                currentCallSid
+                            );
                         }
                         // Compute caller name based on group and send initial greeting
                         const primaryName = String(
@@ -1587,7 +1612,7 @@ export function mediaStreamHandler(connection, req) {
                         // noop: missing custom parameters should not break stream handling
                         void 0;
                         console.warn(
-                            'No custom caller parameter found on start event.'
+                            'media-stream: no custom caller parameter found on start event'
                         );
                         // Fallback greeting without a personalized name
                         void updateRealtimeInstructionsAtStart();
@@ -1603,7 +1628,9 @@ export function mediaStreamHandler(connection, req) {
                     void attemptPendingTransferUpdate();
                     break;
                 case 'stop':
-                    console.log('Twilio stream stop event received');
+                    console.log(
+                        'media-stream: twilio stream stop event received'
+                    );
                     // Twilio is ending the stream; clean up waiting music and prepare for disconnect
                     stopWaitingMusic('twilio_stop');
                     clearWaitingMusicInterval();
@@ -1625,17 +1652,25 @@ export function mediaStreamHandler(connection, req) {
                     }
                     break;
                 default:
-                    console.log('Received non-media event:', data.event);
+                    console.log(
+                        'media-stream: received non-media event',
+                        data.event
+                    );
                     break;
             }
         } catch (error) {
             if (IS_DEV) {
                 console.error(
-                    'Twilio message JSON parse failed (raw):',
+                    'media-stream: twilio message json parse failed',
                     rawMessage
                 );
             }
-            console.error('Error parsing message:', error, 'Message:', message);
+            console.error(
+                'media-stream: error parsing message',
+                error,
+                'message:',
+                message
+            );
         }
     });
 
@@ -1646,12 +1681,12 @@ export function mediaStreamHandler(connection, req) {
         if (isToolCallInProgress()) {
             hangupDuringTools = true;
             console.log(
-                'Client disconnected with tools in progress; silent mode enabled. Will notify via SMS after completion.'
+                'media-stream: client disconnected with tools in progress, silent mode enabled'
             );
         } else {
             // No tools in progress; close OpenAI session immediately
             console.log(
-                'Client disconnected with no active tools; closing OpenAI session immediately.'
+                'media-stream: client disconnected, closing openai session'
             );
             try {
                 if (assistantSession.openAiWs?.readyState === WebSocket.OPEN) {
