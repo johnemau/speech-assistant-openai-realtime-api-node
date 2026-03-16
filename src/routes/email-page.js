@@ -93,6 +93,7 @@ export async function emailPageHandler(request, reply) {
             console.log('email-page: evaluating email', {
                 event: 'email_page.evaluate',
                 promptLen: prompt.length,
+                prompt,
             });
         }
 
