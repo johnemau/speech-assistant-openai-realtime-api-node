@@ -28,8 +28,10 @@
         "pf:search": "npm run pf:eval:realtime-web-search",
         "pf:eval:sms": "npx promptfoo eval -c tests/promptfoo/promptfooconfig.sms.mjs",
         "pf:sms": "npm run pf:eval:sms",
+        "pf:eval:page-evaluation": "npx promptfoo eval -c tests/promptfoo/promptfooconfig.page-evaluation.mjs",
+        "pf:page-evaluation": "npm run pf:eval:page-evaluation",
         "pf": "npm run pf:eval",
-        "pf:eval": "npm run pf:eval:realtime-web-search && npm run pf:eval:sms",
+        "pf:eval": "npm run pf:eval:realtime-web-search && npm run pf:eval:sms && npm run pf:eval:page-evaluation",
         "pf:view": "promptfoo view"
     },
     "keywords": [],

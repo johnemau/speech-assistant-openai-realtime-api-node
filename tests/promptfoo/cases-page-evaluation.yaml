@@ -1,0 +1,79 @@
+- name: page-eval-server-outage
+  vars:
+      user_prompt: |
+          Subject: URGENT: Production database cluster down
+          From: alerts@monitoring.example.com
+          To: ops-team@example.com
+          Date: 2026-03-16T08:15:00Z
+
+          CRITICAL ALERT: The primary production database cluster (db-prod-01) has been
+          unreachable for the past 5 minutes. All health checks are failing. Customer-facing
+          services are returning 500 errors. Immediate action required.
+
+          — Monitoring System
+  assert:
+      - type: is-json
+      - type: javascript
+        value: |
+            const parsed = JSON.parse(output);
+            return parsed.page_worthy === true && typeof parsed.page_message === 'string' && parsed.page_message.length <= 300;
+
+- name: page-eval-marketing-newsletter
+  vars:
+      user_prompt: |
+          Subject: Weekly Marketing Digest — March 16
+          From: marketing@example.com
+          To: team@example.com
+          Date: 2026-03-16T09:00:00Z
+
+          Hi team, here's this week's marketing newsletter recap. Blog traffic is up 12%.
+          Social engagement holding steady. New campaign launching next Tuesday.
+
+          Best,
+          Marketing Team
+  assert:
+      - type: is-json
+      - type: javascript
+        value: |
+            const parsed = JSON.parse(output);
+            return parsed.page_worthy === false;
+
+- name: page-eval-security-breach
+  vars:
+      user_prompt: |
+          Subject: SECURITY INCIDENT: Unauthorized access detected
+          From: security@example.com
+          To: incident-response@example.com
+          Date: 2026-03-16T03:22:00Z
+
+          We have detected unauthorized access to the staging environment from an unknown
+          IP address (203.0.113.42). Multiple SSH login attempts succeeded using a compromised
+          service account. The account has been disabled, but data exfiltration cannot be ruled
+          out. Please escalate immediately.
+
+          — Security Operations Center
+  assert:
+      - type: is-json
+      - type: javascript
+        value: |
+            const parsed = JSON.parse(output);
+            return parsed.page_worthy === true && typeof parsed.page_message === 'string' && parsed.page_message.length <= 300;
+
+- name: page-eval-meeting-invite
+  vars:
+      user_prompt: |
+          Subject: Team standup moved to 10:30 AM
+          From: manager@example.com
+          To: team@example.com
+          Date: 2026-03-16T08:45:00Z
+
+          Hey everyone, just a heads-up that tomorrow's standup is moved to 10:30 AM
+          due to a scheduling conflict. Same Zoom link.
+
+          Thanks!
+  assert:
+      - type: is-json
+      - type: javascript
+        value: |
+            const parsed = JSON.parse(output);
+            return parsed.page_worthy === false;
