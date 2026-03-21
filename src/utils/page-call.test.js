@@ -7,12 +7,30 @@ const { buildPageCallTwiml, placePageCall } = await import('./page-call.js');
 
 // --- buildPageCallTwiml ---
 
-test('buildPageCallTwiml: includes page message twice', () => {
+test('buildPageCallTwiml: includes page message three times', () => {
     const twiml = buildPageCallTwiml('Server down');
     assert.match(twiml, /<Response>/);
     assert.match(twiml, /Urgent page\. Server down/);
-    assert.match(twiml, /Repeating\. Server down/);
+    // Two "Repeating" occurrences
+    const repeats = twiml.match(/Repeating\. Server down/g);
+    assert.equal(repeats?.length, 2, 'Expected two "Repeating" occurrences');
+    assert.match(twiml, /Press any key to hear the message again/);
     assert.match(twiml, /<\/Response>/);
+});
+
+test('buildPageCallTwiml: adds Gather with action when repeatUrl provided', () => {
+    const twiml = buildPageCallTwiml('Alert!', {
+        repeatUrl: 'https://example.com/page-repeat?message=Alert!',
+    });
+    assert.match(twiml, /<Gather/);
+    assert.match(twiml, /action="https:\/\/example\.com\/page-repeat/);
+    assert.match(twiml, /Press any key to hear the message again/);
+});
+
+test('buildPageCallTwiml: omits Gather when no repeatUrl', () => {
+    const twiml = buildPageCallTwiml('No URL');
+    assert.ok(!twiml.includes('<Gather'), 'Should not contain <Gather>');
+    assert.match(twiml, /Press any key to hear the message again/);
 });
 
 // --- placePageCall ---

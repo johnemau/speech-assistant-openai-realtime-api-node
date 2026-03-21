@@ -1,29 +1,48 @@
 import twilio from 'twilio';
 import { getPrimaryCallerNumbers } from './email-page.js';
 import { placeCall } from './place-call.js';
+import { getServerBaseUrl } from '../env.js';
 
 /**
  * @typedef {import('./place-call.js').CallLikeClient} CallLikeClient
  */
 
+/** @type {import('twilio/lib/twiml/VoiceResponse.js').SayAttributes} */
+const SAY_ATTRS = { voice: 'Google.en-US-Chirp3-HD-Charon' };
+
 /**
- * Build TwiML markup for a page call that reads the message twice.
+ * Build TwiML markup for a page call that reads the message three times
+ * and then offers the listener the option to press any key to hear it again.
  *
  * @param {string} pageMessage - The page message to read aloud.
+ * @param {object} [options] - Optional settings.
+ * @param {string} [options.repeatUrl] - URL for the Gather action to replay the message.
  * @returns {string} TwiML XML string.
  */
-export function buildPageCallTwiml(pageMessage) {
+export function buildPageCallTwiml(pageMessage, options) {
     const { VoiceResponse } = twilio.twiml;
     const response = new VoiceResponse();
-    response.say(
-        { voice: 'Google.en-US-Chirp3-HD-Charon' },
-        `Urgent page. ${pageMessage}`
-    );
+
+    response.say(SAY_ATTRS, `Urgent page. ${pageMessage}`);
     response.pause({ length: 1 });
-    response.say(
-        { voice: 'Google.en-US-Chirp3-HD-Charon' },
-        `Repeating. ${pageMessage}`
-    );
+    response.say(SAY_ATTRS, `Repeating. ${pageMessage}`);
+    response.pause({ length: 1 });
+    response.say(SAY_ATTRS, `Repeating. ${pageMessage}`);
+
+    const repeatUrl = options?.repeatUrl;
+    if (repeatUrl) {
+        const gather = response.gather({
+            numDigits: 1,
+            timeout: 10,
+            action: repeatUrl,
+            method: 'POST',
+        });
+        gather.say(SAY_ATTRS, 'Press any key to hear the message again.');
+    } else {
+        response.say(SAY_ATTRS, 'Press any key to hear the message again.');
+        response.pause({ length: 10 });
+    }
+
     return response.toString();
 }
 
@@ -42,6 +61,10 @@ export async function placePageCall({ pageMessage, fromNumber, client }) {
     if (!toNumber) {
         return { to: '', error: 'No primary caller numbers configured.' };
     }
-    const twiml = buildPageCallTwiml(pageMessage);
+    const baseUrl = getServerBaseUrl();
+    const repeatUrl = baseUrl
+        ? `${baseUrl}/page-repeat?message=${encodeURIComponent(pageMessage)}`
+        : undefined;
+    const twiml = buildPageCallTwiml(pageMessage, { repeatUrl });
     return placeCall({ twiml, toNumber, fromNumber, client });
 }
