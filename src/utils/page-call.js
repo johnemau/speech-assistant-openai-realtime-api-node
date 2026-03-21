@@ -40,7 +40,7 @@ export function buildPageCallTwiml(pageMessage, options) {
         gather.say(SAY_ATTRS, 'Press any key to hear the message again.');
     } else {
         response.say(SAY_ATTRS, 'Press any key to hear the message again.');
-        response.pause({ length: 10 });
+        response.pause({ length: 30 });
     }
 
     return response.toString();
