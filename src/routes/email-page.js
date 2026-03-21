@@ -57,9 +57,10 @@ export async function emailPageHandler(request, reply) {
         const {
             body: bodyStr,
             to,
+            subject,
             from,
             date,
-        } = /** @type {{ body: string, to?: string, from?: string, date?: string }} */ (
+        } = /** @type {{ body: string, to?: string, subject?: string, from?: string, date?: string }} */ (
             request.body
         );
         const bodyText = String(bodyStr || '')
@@ -79,6 +80,7 @@ export async function emailPageHandler(request, reply) {
         const emailParts = [];
         if (from) emailParts.push(`From: ${from}`);
         if (to) emailParts.push(`To: ${to}`);
+        if (subject) emailParts.push(`Subject: ${subject}`);
         if (date) emailParts.push(`Date: ${date}`);
         emailParts.push('', bodyText);
         const emailContent = emailParts.join('\n');
