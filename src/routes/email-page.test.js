@@ -47,6 +47,7 @@ function createReply() {
  * @param {string} [options.criteriaFilePath] - Path to criteria file.
  * @param {string} [options.fromNumber] - Twilio from number.
  * @param {string[]} [options.primaryNumbers] - Primary user phone numbers.
+ * @param {Function} [options.isWithinCallingHoursFn] - Override for calling-hours check.
  * @returns {Promise<{ emailPageHandler: Function, cleanup: Function }>} Loaded handler and cleanup.
  */
 async function loadEmailPageHandler({
@@ -56,6 +57,11 @@ async function loadEmailPageHandler({
     criteriaFilePath = undefined,
     fromNumber = '+15550001234',
     primaryNumbers = ['+12065550100'],
+    isWithinCallingHoursFn = async () => ({
+        allowed: true,
+        hour: 12,
+        timeZoneId: 'America/Los_Angeles',
+    }),
 } = {}) {
     const prevEnv = {
         EMAIL_PAGE_SECRET: process.env.EMAIL_PAGE_SECRET,
@@ -83,7 +89,8 @@ async function loadEmailPageHandler({
     const moduleUrl =
         new URL('./email-page.js', import.meta.url).href +
         `?test=email-page-${Math.random()}`;
-    const { emailPageHandler } = await import(moduleUrl);
+    const { emailPageHandler, setEmailPageDeps } = await import(moduleUrl);
+    setEmailPageDeps({ isWithinCallingHoursFn });
 
     const cleanup = () => {
         for (const [key, val] of Object.entries(prevEnv)) {
@@ -428,6 +435,74 @@ test('email-page: handles AI response with markdown code fences', async () => {
         assert.equal(payload.page_message, 'Wrapped response.');
         assert.equal(smsSent.length, 1);
         assert.equal(callsMade.length, 1);
+    } finally {
+        cleanup();
+        await rm(tmpDir, { recursive: true });
+    }
+});
+
+test('email-page: skips page call outside calling hours', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'email-page-test-'));
+    const criteriaPath = path.join(tmpDir, 'criteria.md');
+    await writeFile(criteriaPath, '1. Critical alert\n');
+
+    const mockOpenai = {
+        responses: {
+            create: async () => ({
+                output_text:
+                    '{"page_worthy": true, "page_message": "Late night alert."}',
+            }),
+        },
+    };
+
+    /** @type {any[]} */
+    const smsSent = [];
+    /** @type {any[]} */
+    const callsMade = [];
+    const mockTwilio = {
+        messages: {
+            create: async (/** @type {any} */ params) => {
+                smsSent.push(params);
+                return { sid: 'SM789', status: 'queued' };
+            },
+        },
+        calls: {
+            create: async (/** @type {any} */ params) => {
+                callsMade.push(params);
+                return { sid: 'CA789', status: 'queued' };
+            },
+        },
+    };
+
+    const { emailPageHandler, cleanup } = await loadEmailPageHandler({
+        openaiClient: mockOpenai,
+        twilioClient: mockTwilio,
+        criteriaFilePath: criteriaPath,
+        isWithinCallingHoursFn: async () => ({
+            allowed: false,
+            hour: 23,
+            timeZoneId: 'America/Los_Angeles',
+        }),
+    });
+    try {
+        const reply = createReply();
+        await emailPageHandler(
+            {
+                headers: { 'x-email-page-secret': 'test-secret-key' },
+                body: { body: 'Late night critical alert!' },
+            },
+            reply
+        );
+        const payload = /** @type {Record<string, unknown>} */ (reply.payload);
+        assert.equal(payload.page_worthy, true);
+        assert.equal(payload.page_message, 'Late night alert.');
+
+        // SMS should still be sent
+        assert.equal(smsSent.length, 1);
+
+        // Call should NOT be placed (outside calling hours)
+        assert.equal(callsMade.length, 0);
+        assert.equal(payload.call_result, null);
     } finally {
         cleanup();
         await rm(tmpDir, { recursive: true });

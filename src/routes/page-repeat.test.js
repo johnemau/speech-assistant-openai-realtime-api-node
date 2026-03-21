@@ -9,7 +9,7 @@ const { pageRepeatHandler } = await import('./page-repeat.js');
  * @param {object} [options] - Request overrides.
  * @param {Record<string,string>} [options.query] - Query parameters.
  * @param {Record<string,string>} [options.headers] - Request headers.
- * @returns {{ request: any, reply: any }}
+ * @returns {{ request: any, reply: any }} Mock request/reply pair.
  */
 function createMocks(options = {}) {
     const request = {

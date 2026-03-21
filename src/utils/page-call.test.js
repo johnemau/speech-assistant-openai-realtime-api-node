@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
-const { buildPageCallTwiml, placePageCall } = await import('./page-call.js');
+const { buildPageCallTwiml, placePageCall, isWithinCallingHours } =
+    await import('./page-call.js');
 
 // --- buildPageCallTwiml ---
 
@@ -111,4 +112,110 @@ test('placePageCall: captures call errors gracefully', async () => {
         if (prev == null) delete process.env.PRIMARY_USER_PHONE_NUMBERS;
         else process.env.PRIMARY_USER_PHONE_NUMBERS = prev;
     }
+});
+
+// --- isWithinCallingHours ---
+
+/**
+ * Create a Date that corresponds to a specific hour in the given timezone.
+ * @param {number} targetHour - The desired local hour (0-23).
+ * @param {string} timeZone - IANA timezone.
+ * @returns {Date} A Date whose local representation in the given timezone equals the target hour.
+ */
+function dateAtLocalHour(targetHour, timeZone) {
+    const base = new Date('2026-03-21T12:00:00Z');
+    const currentHour = Number(
+        new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            hour: 'numeric',
+            hour12: false,
+        }).format(base)
+    );
+    const diff = targetHour - currentHour;
+    return new Date(base.getTime() + diff * 60 * 60 * 1000);
+}
+
+test('isWithinCallingHours: returns allowed=true at 7 AM', async () => {
+    const tz = 'America/Los_Angeles';
+    const now = dateAtLocalHour(7, tz);
+    const result = await isWithinCallingHours({
+        now,
+        resolveTimeZoneIdFn: async () => ({
+            timeZoneId: tz,
+            source: 'default',
+        }),
+    });
+    assert.equal(result.allowed, true);
+    assert.equal(result.hour, 7);
+    assert.equal(result.timeZoneId, tz);
+});
+
+test('isWithinCallingHours: returns allowed=true at 7:59 PM (hour 19)', async () => {
+    const tz = 'America/New_York';
+    const now = dateAtLocalHour(19, tz);
+    const result = await isWithinCallingHours({
+        now,
+        resolveTimeZoneIdFn: async () => ({
+            timeZoneId: tz,
+            source: 'spot',
+        }),
+    });
+    assert.equal(result.allowed, true);
+    assert.equal(result.hour, 19);
+});
+
+test('isWithinCallingHours: returns allowed=false at 8 PM (hour 20)', async () => {
+    const tz = 'America/Los_Angeles';
+    const now = dateAtLocalHour(20, tz);
+    const result = await isWithinCallingHours({
+        now,
+        resolveTimeZoneIdFn: async () => ({
+            timeZoneId: tz,
+            source: 'default',
+        }),
+    });
+    assert.equal(result.allowed, false);
+    assert.equal(result.hour, 20);
+});
+
+test('isWithinCallingHours: returns allowed=false at 6 AM', async () => {
+    const tz = 'America/Los_Angeles';
+    const now = dateAtLocalHour(6, tz);
+    const result = await isWithinCallingHours({
+        now,
+        resolveTimeZoneIdFn: async () => ({
+            timeZoneId: tz,
+            source: 'default',
+        }),
+    });
+    assert.equal(result.allowed, false);
+    assert.equal(result.hour, 6);
+});
+
+test('isWithinCallingHours: returns allowed=false at midnight', async () => {
+    const tz = 'America/Chicago';
+    const now = dateAtLocalHour(0, tz);
+    const result = await isWithinCallingHours({
+        now,
+        resolveTimeZoneIdFn: async () => ({
+            timeZoneId: tz,
+            source: 'spot',
+        }),
+    });
+    assert.equal(result.allowed, false);
+    assert.equal(result.hour, 0);
+});
+
+test('isWithinCallingHours: returns allowed=true at noon', async () => {
+    const tz = 'America/Denver';
+    const now = dateAtLocalHour(12, tz);
+    const result = await isWithinCallingHours({
+        now,
+        resolveTimeZoneIdFn: async () => ({
+            timeZoneId: tz,
+            source: 'spot',
+        }),
+    });
+    assert.equal(result.allowed, true);
+    assert.equal(result.hour, 12);
 });

@@ -9,7 +9,20 @@ import {
     parsePageEvaluation,
 } from '../utils/email-page.js';
 import { sendPageSms } from '../utils/page-sms.js';
-import { placePageCall } from '../utils/page-call.js';
+import { placePageCall, isWithinCallingHours } from '../utils/page-call.js';
+
+/** @type {{ isWithinCallingHoursFn: typeof isWithinCallingHours }} */
+const _deps = { isWithinCallingHoursFn: isWithinCallingHours };
+
+/**
+ * Test-only override for internal dependencies.
+ * @param {{ isWithinCallingHoursFn?: typeof isWithinCallingHours }} overrides - Overrides.
+ */
+export function setEmailPageDeps(overrides = {}) {
+    if (overrides.isWithinCallingHoursFn !== undefined) {
+        _deps.isWithinCallingHoursFn = overrides.isWithinCallingHoursFn;
+    }
+}
 
 /**
  * POST /email-page handler.
@@ -225,16 +238,29 @@ export async function emailPageHandler(request, reply) {
             results: smsResults,
         });
 
-        // Call the first primary caller
-        const callResult = await placePageCall({
-            pageMessage,
-            fromNumber,
-            client: twilioClient,
-        });
-        console.info('email-page: page call placed', {
-            event: 'email_page.call_placed',
-            result: callResult,
-        });
+        // Call the first primary caller (only during calling hours)
+        let callResult = null;
+        const callingHours = await _deps.isWithinCallingHoursFn();
+        if (callingHours.allowed) {
+            callResult = await placePageCall({
+                pageMessage,
+                fromNumber,
+                client: twilioClient,
+            });
+            console.info('email-page: page call placed', {
+                event: 'email_page.call_placed',
+                result: callResult,
+            });
+        } else {
+            console.info(
+                'email-page: page call skipped (outside calling hours)',
+                {
+                    event: 'email_page.call_skipped',
+                    hour: callingHours.hour,
+                    timeZoneId: callingHours.timeZoneId,
+                }
+            );
+        }
 
         if (IS_DEV) {
             console.log('email-page: page complete', {

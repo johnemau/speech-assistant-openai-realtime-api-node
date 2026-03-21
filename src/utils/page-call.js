@@ -1,11 +1,50 @@
 import twilio from 'twilio';
 import { getPrimaryCallerNumbers } from './email-page.js';
 import { placeCall } from './place-call.js';
-import { getServerBaseUrl } from '../env.js';
+import { getServerBaseUrl, IS_DEV } from '../env.js';
+import { resolveTimeZoneId } from './time.js';
 
 /**
  * @typedef {import('./place-call.js').CallLikeClient} CallLikeClient
  */
+
+const PAGE_CALL_START_HOUR = 7;
+const PAGE_CALL_END_HOUR = 20;
+
+/**
+ * Check whether the current local time for the primary caller is within
+ * calling hours (7 AM – 8 PM). Uses the SPOT-tracked timezone when available,
+ * falling back to America/Los_Angeles.
+ *
+ * @param {object} [options] - Optional overrides for testing.
+ * @param {Date} [options.now] - Current time override.
+ * @param {(opts?: object) => Promise<import('./time.js').ResolveTimeZoneResult>} [options.resolveTimeZoneIdFn] - Timezone resolver.
+ * @returns {Promise<{ allowed: boolean, hour: number, timeZoneId: string }>} Whether the call is allowed, the resolved hour, and timezone.
+ */
+export async function isWithinCallingHours({
+    now = new Date(),
+    resolveTimeZoneIdFn = resolveTimeZoneId,
+} = {}) {
+    const { timeZoneId } = await resolveTimeZoneIdFn({
+        fallbackTimeZone: 'America/Los_Angeles',
+    });
+    const hour = Number(
+        new Intl.DateTimeFormat('en-US', {
+            timeZone: timeZoneId,
+            hour: 'numeric',
+            hour12: false,
+        }).format(now)
+    );
+    const allowed = hour >= PAGE_CALL_START_HOUR && hour < PAGE_CALL_END_HOUR;
+    if (IS_DEV) {
+        console.log('page-call: calling hours check', {
+            hour,
+            timeZoneId,
+            allowed,
+        });
+    }
+    return { allowed, hour, timeZoneId };
+}
 
 /** @type {import('twilio/lib/twiml/VoiceResponse.js').SayAttributes} */
 const SAY_ATTRS = { voice: 'Google.en-US-Chirp3-HD-Charon' };
