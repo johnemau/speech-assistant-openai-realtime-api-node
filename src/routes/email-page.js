@@ -54,9 +54,18 @@ export async function emailPageHandler(request, reply) {
             });
         }
 
-        const bodyStr = /** @type {{ body: string }} */ (request.body).body;
-        const emailContent = String(bodyStr).trim().replace(/\r\n/g, '\n');
-        if (!emailContent) {
+        const {
+            body: bodyStr,
+            to,
+            from,
+            date,
+        } = /** @type {{ body: string, to?: string, from?: string, date?: string }} */ (
+            request.body
+        );
+        const bodyText = String(bodyStr || '')
+            .trim()
+            .replace(/\r\n/g, '\n');
+        if (!bodyText) {
             if (IS_DEV) {
                 console.log('email-page: missing email content', {
                     event: 'email_page.missing_content',
@@ -66,6 +75,13 @@ export async function emailPageHandler(request, reply) {
                 .code(400)
                 .send({ error: 'Missing email content in body.' });
         }
+
+        const emailParts = [];
+        if (from) emailParts.push(`From: ${from}`);
+        if (to) emailParts.push(`To: ${to}`);
+        if (date) emailParts.push(`Date: ${date}`);
+        emailParts.push('', bodyText);
+        const emailContent = emailParts.join('\n');
 
         // Read page criteria
         let criteria;
