@@ -9,11 +9,11 @@ import { resolveTimeZoneId } from './time.js';
  */
 
 const PAGE_CALL_START_HOUR = 7;
-const PAGE_CALL_END_HOUR = 20;
+const PAGE_CALL_END_HOUR = 18;
 
 /**
  * Check whether the current local time for the primary caller is within
- * calling hours (7 AM – 8 PM). Uses the SPOT-tracked timezone when available,
+ * calling hours (7 AM – 6 PM). Uses the SPOT-tracked timezone when available,
  * falling back to America/Los_Angeles.
  *
  * @param {object} [options] - Optional overrides for testing.
