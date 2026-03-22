@@ -150,9 +150,9 @@ test('isWithinCallingHours: returns allowed=true at 7 AM', async () => {
     assert.equal(result.timeZoneId, tz);
 });
 
-test('isWithinCallingHours: returns allowed=true at 7:59 PM (hour 19)', async () => {
+test('isWithinCallingHours: returns allowed=true at 5 PM (hour 17)', async () => {
     const tz = 'America/New_York';
-    const now = dateAtLocalHour(19, tz);
+    const now = dateAtLocalHour(17, tz);
     const result = await isWithinCallingHours({
         now,
         resolveTimeZoneIdFn: async () => ({
@@ -161,12 +161,12 @@ test('isWithinCallingHours: returns allowed=true at 7:59 PM (hour 19)', async ()
         }),
     });
     assert.equal(result.allowed, true);
-    assert.equal(result.hour, 19);
+    assert.equal(result.hour, 17);
 });
 
-test('isWithinCallingHours: returns allowed=false at 8 PM (hour 20)', async () => {
+test('isWithinCallingHours: returns allowed=false at 6 PM (hour 18)', async () => {
     const tz = 'America/Los_Angeles';
-    const now = dateAtLocalHour(20, tz);
+    const now = dateAtLocalHour(18, tz);
     const result = await isWithinCallingHours({
         now,
         resolveTimeZoneIdFn: async () => ({
@@ -175,7 +175,7 @@ test('isWithinCallingHours: returns allowed=false at 8 PM (hour 20)', async () =
         }),
     });
     assert.equal(result.allowed, false);
-    assert.equal(result.hour, 20);
+    assert.equal(result.hour, 18);
 });
 
 test('isWithinCallingHours: returns allowed=false at 6 AM', async () => {
