@@ -70,6 +70,11 @@ export function buildPageCallTwiml(pageMessage, options) {
 
     const repeatUrl = options?.repeatUrl;
     if (repeatUrl) {
+        if (IS_DEV) {
+            console.log('page-call: buildPageCallTwiml with repeat gather', {
+                repeatUrl,
+            });
+        }
         const gather = response.gather({
             numDigits: 1,
             timeout: 10,
@@ -78,6 +83,11 @@ export function buildPageCallTwiml(pageMessage, options) {
         });
         gather.say(SAY_ATTRS, 'Press any key to hear the message again.');
     } else {
+        if (IS_DEV) {
+            console.log(
+                'page-call: buildPageCallTwiml without repeat (no base URL)'
+            );
+        }
         response.say(SAY_ATTRS, 'End of page. Goodbye.');
     }
 
@@ -97,12 +107,20 @@ export async function placePageCall({ pageMessage, fromNumber, client }) {
     const numbers = getPrimaryCallerNumbers();
     const toNumber = numbers[0];
     if (!toNumber) {
+        console.log('page-call: no primary caller numbers configured');
         return { to: '', error: 'No primary caller numbers configured.' };
     }
     const baseUrl = getServerBaseUrl();
     const repeatUrl = baseUrl
         ? `${baseUrl}/page-repeat?message=${encodeURIComponent(pageMessage)}`
         : undefined;
+    if (IS_DEV) {
+        console.log('page-call: placing page call', {
+            toNumber,
+            fromNumber,
+            hasRepeatUrl: Boolean(repeatUrl),
+        });
+    }
     const twiml = buildPageCallTwiml(pageMessage, { repeatUrl });
     return placeCall({ twiml, toNumber, fromNumber, client });
 }
