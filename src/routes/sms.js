@@ -508,7 +508,7 @@ export async function smsHandler(request, reply) {
                     );
                 }
                 twiml.message(
-                    `To subscribe to ${SMS_BRAND_NAME}, reply YES to confirm. Reply STOP to cancel.${privacySuffix}`
+                    `${SMS_BRAND_NAME}: To confirm enrollment, reply YES. Msg frequency varies. Msg&Data Rates May Apply. Reply HELP for help, STOP to cancel.${privacySuffix}`
                 );
                 return reply.type('text/xml').send(twiml.toString());
             } else {
@@ -527,7 +527,7 @@ export async function smsHandler(request, reply) {
                 }
                 if (wasUpgradedToConfirmed) {
                     twiml.message(
-                        `You have successfully been re-subscribed to ${SMS_BRAND_NAME}. Reply HELP for help, STOP to opt out.${privacySuffix}`
+                        `Welcome to ${SMS_BRAND_NAME}! You're now enrolled. Msg frequency varies. Msg&Data Rates May Apply. Reply HELP for help, STOP to opt out.${privacySuffix}`
                     );
                 } else {
                     twiml.message(
