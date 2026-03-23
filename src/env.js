@@ -90,6 +90,11 @@ export function getSpotFeedPassword() {
 export let ALLOW_SEND_SMS = isTruthy(process.env.ALLOW_SEND_SMS);
 export let ALLOW_SEND_EMAIL = isTruthy(process.env.ALLOW_SEND_EMAIL);
 
+/** When truthy, skip SMS allowlist checks (PRIMARY/SECONDARY caller lists). */
+export let IS_SMS_ALLOWLIST_DISABLED = isTruthy(
+    process.env.IS_SMS_ALLOWLIST_DISABLED
+);
+
 /** Brand/program name used in A2P 10DLC compliant SMS keyword responses. */
 export const SMS_BRAND_NAME =
     process.env.SMS_BRAND_NAME || 'My Starter Profile';
@@ -97,6 +102,13 @@ export const SMS_BRAND_NAME =
 /** Contact email shown in privacy policy and other public documents. */
 export const SERVICE_OPERATOR_EMAIL =
     process.env.SERVICE_OPERATOR_EMAIL || 'admin@test.com';
+
+/** URL for the SMS enrollment request form. */
+export const ENROLLMENT_FORM_URL = process.env.ENROLLMENT_FORM_URL || '';
+
+/** URL for the enrollment request form screenshot image. */
+export const ENROLLMENT_FORM_IMAGE_URL =
+    process.env.ENROLLMENT_FORM_IMAGE_URL || '';
 
 /**
  * Public base URL used in outbound SMS messages (e.g. privacy-policy link).
@@ -126,4 +138,12 @@ export function setAllowSendSms(value) {
  */
 export function setAllowSendEmail(value) {
     ALLOW_SEND_EMAIL = Boolean(value);
+}
+
+/**
+ * Test/helper override for SMS allowlist disabled flag.
+ * @param {boolean} value - Whether to disable the SMS allowlist.
+ */
+export function setIsSmsAllowlistDisabled(value) {
+    IS_SMS_ALLOWLIST_DISABLED = Boolean(value);
 }

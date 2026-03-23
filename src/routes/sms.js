@@ -10,6 +10,7 @@ import {
 } from '../utils/sms.js';
 import {
     IS_DEV,
+    IS_SMS_ALLOWLIST_DISABLED,
     PRIMARY_CALLERS_SET,
     SECONDARY_CALLERS_SET,
     SMS_BRAND_NAME,
@@ -555,6 +556,7 @@ export async function smsHandler(request, reply) {
         if (consentStatus !== 'confirmed') {
             // Check if caller is on allowlist before storing pending question
             const isAllowlisted =
+                IS_SMS_ALLOWLIST_DISABLED ||
                 PRIMARY_CALLERS_SET.has(fromE164) ||
                 SECONDARY_CALLERS_SET.has(fromE164);
 
@@ -591,8 +593,9 @@ export async function smsHandler(request, reply) {
             return reply.type('text/xml').send(twiml.toString());
         }
 
-        // Check if caller is on allowlist
+        // Check if caller is on allowlist (skipped when IS_SMS_ALLOWLIST_DISABLED)
         if (
+            !IS_SMS_ALLOWLIST_DISABLED &&
             !PRIMARY_CALLERS_SET.has(fromE164) &&
             !SECONDARY_CALLERS_SET.has(fromE164)
         ) {

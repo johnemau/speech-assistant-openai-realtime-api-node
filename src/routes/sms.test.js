@@ -128,6 +128,59 @@ test('sms replies with restricted message for non-allowlisted sender', async () 
     }
 });
 
+test('sms skips allowlist check when IS_SMS_ALLOWLIST_DISABLED is set', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-allowlist-'));
+    const consentFile = path.join(tmpDir, 'consent.jsonl');
+    process.env.SMS_CONSENT_RECORDS_FILE_PATH = consentFile;
+
+    const env = await import('../env.js');
+    env.setIsSmsAllowlistDisabled(true);
+
+    // Pre-confirm consent so we reach the allowlist gate
+    await appendSmsConsentRecord(
+        {
+            phoneNumber: '+19995550000',
+            keyword: 'YES',
+            status: 'confirmed',
+            timestamp: new Date().toISOString(),
+        },
+        consentFile
+    );
+
+    const { smsHandler, cleanup } = await loadSmsHandler({
+        allowlist: new Set(['+12065550100']),
+        secondaryAllowlist: new Set(['+14255550101']),
+        twilioClient: {
+            messages: {
+                list: async () => [],
+                create: async () => ({ sid: 'SM123', status: 'queued' }),
+            },
+        },
+        openaiClient: {
+            responses: { create: async () => ({ output_text: 'AI reply' }) },
+        },
+    });
+
+    const request = {
+        body: { Body: 'Hello', From: '+19995550000', To: '+12065550100' },
+    };
+    const reply = createReply();
+
+    try {
+        await smsHandler(request, reply);
+        // Should NOT get "restricted to approved users" — allowlist is disabled
+        assert.ok(
+            !String(reply.payload).includes('restricted to approved users'),
+            `Expected no restriction message, got: ${String(reply.payload)}`
+        );
+    } finally {
+        cleanup();
+        env.setIsSmsAllowlistDisabled(false);
+        delete process.env.SMS_CONSENT_RECORDS_FILE_PATH;
+        await rm(tmpDir, { recursive: true, force: true });
+    }
+});
+
 test('sms START sets enrollment to pending and asks for YES confirmation', async () => {
     const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'sms-consent-route-'));
     process.env.SMS_CONSENT_RECORDS_FILE_PATH = path.join(
