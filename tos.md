@@ -90,6 +90,10 @@ If you opt in to receive SMS messages from the Service, the following terms appl
 - Carriers are not liable for any delayed or undelivered messages.
 - View our [Privacy Policy](/privacy-policy) for information on how your data is handled.
 
-## 13. Governing Law
+## 14. Governing Law
 
 These Terms are governed by the laws of your chosen jurisdiction, without regard to conflict-of-law rules. Venue and dispute resolution procedures should be specified by the service operator.
+
+---
+
+[Privacy Policy](/privacy-policy)
