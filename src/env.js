@@ -91,7 +91,7 @@ export let ALLOW_SEND_SMS = isTruthy(process.env.ALLOW_SEND_SMS);
 export let ALLOW_SEND_EMAIL = isTruthy(process.env.ALLOW_SEND_EMAIL);
 
 /** Brand/program name used in A2P 10DLC compliant SMS keyword responses. */
-export const SMS_BRAND_NAME = process.env.SMS_BRAND_NAME || 'AI Assistant';
+export const SMS_BRAND_NAME = process.env.SMS_BRAND_NAME || 'My Starter Profile';
 
 /** Contact email shown in privacy policy and other public documents. */
 export const SERVICE_OPERATOR_EMAIL =
