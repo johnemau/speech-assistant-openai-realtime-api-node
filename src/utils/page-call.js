@@ -78,8 +78,7 @@ export function buildPageCallTwiml(pageMessage, options) {
         });
         gather.say(SAY_ATTRS, 'Press any key to hear the message again.');
     } else {
-        response.say(SAY_ATTRS, 'Press any key to hear the message again.');
-        response.pause({ length: 30 });
+        response.say(SAY_ATTRS, 'End of page. Goodbye.');
     }
 
     return response.toString();

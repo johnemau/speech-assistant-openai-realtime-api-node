@@ -15,7 +15,7 @@ test('buildPageCallTwiml: includes page message three times', () => {
     // Two "Repeating" occurrences
     const repeats = twiml.match(/Repeating\. Server down/g);
     assert.equal(repeats?.length, 2, 'Expected two "Repeating" occurrences');
-    assert.match(twiml, /Press any key to hear the message again/);
+    assert.match(twiml, /End of page\. Goodbye/);
     assert.match(twiml, /<\/Response>/);
 });
 
@@ -31,7 +31,11 @@ test('buildPageCallTwiml: adds Gather with action when repeatUrl provided', () =
 test('buildPageCallTwiml: omits Gather when no repeatUrl', () => {
     const twiml = buildPageCallTwiml('No URL');
     assert.ok(!twiml.includes('<Gather'), 'Should not contain <Gather>');
-    assert.match(twiml, /Press any key to hear the message again/);
+    assert.ok(
+        !twiml.includes('Press any key'),
+        'Should not promise key-press repeat without Gather'
+    );
+    assert.match(twiml, /End of page\. Goodbye/);
 });
 
 // --- placePageCall ---
