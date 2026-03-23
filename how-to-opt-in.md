@@ -11,7 +11,7 @@ To request access:
 1. Fill out the [enrollment request form]({{ENROLLMENT_FORM_URL}}).
 2. Or contact the service administrator at {{SERVICE_OPERATOR_EMAIL}}.
 
-[![Enrollment request form screenshot]({{ENROLLMENT_FORM_IMAGE_URL}})]({{ENROLLMENT_FORM_URL}})
+[Click here to see the Enrollment request form screenshot.]({{ENROLLMENT_FORM_IMAGE_URL}})
 
 Once approved, you will be notified and can proceed to Step 2.
 
