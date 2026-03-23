@@ -1,3 +1,5 @@
+> This project has been vibe coded.
+
 # Speech Assistant with Twilio Voice and the OpenAI Realtime API (Node.js)
 
 This application demonstrates how to use Node.js, [Twilio Voice](https://www.twilio.com/docs/voice) and [Media Streams](https://www.twilio.com/docs/voice/media-streams), and [OpenAI's Realtime API](https://platform.openai.com/docs/) to make a phone call to speak with an AI Assistant.
