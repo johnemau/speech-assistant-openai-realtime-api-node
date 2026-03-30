@@ -96,5 +96,5 @@ These Terms are governed by the laws of your chosen jurisdiction, without regard
 
 ---
 
-[Privacy Policy](/privacy-policy)
-[How to Opt-in](/how-to-opt-in)
+- [Privacy Policy](/privacy-policy)
+- [How to Opt-in](/how-to-opt-in)
