@@ -14,6 +14,10 @@ By texting START, you agree to receive messages. Message frequency varies. Messa
 
 No AI-generated SMS replies are sent until you confirm with **YES**.
 
+Privacy Policy: https://{{SERVER_BASE_URL}}/privacy-policy
+
+Terms of Service: https://{{SERVER_BASE_URL}}/terms
+
 ## Program Details
 
 - **Brand:** {{SMS_BRAND_NAME}}
