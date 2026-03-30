@@ -189,7 +189,7 @@ SPOT_FEED_PASSWORD=your_spot_feed_password
 SMS_CONSENT_RECORDS_FILE_PATH=data/sms-consent-records.jsonl
 
 # Markdown document routes (default paths shown)
-TERMS_AND_CONDITIONS_FILE_PATH=tos.md
+TERMS_AND_CONDITIONS_FILE_PATH=terms.md
 PRIVACY_POLICY_FILE_PATH=privacy-policy.md
 HOW_TO_OPT_IN_FILE_PATH=how-to-opt-in.md
 

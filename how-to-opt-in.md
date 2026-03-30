@@ -30,5 +30,4 @@ No AI-generated SMS replies are sent until you confirm with **YES**.
 
 ---
 
-- [Privacy Policy](/privacy-policy)
-- [Terms of Service](/terms)
+[Terms of Service](/terms) | [Privacy Policy](/privacy-policy) | [How to Opt-In](/how-to-opt-in)

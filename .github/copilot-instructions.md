@@ -43,7 +43,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 - Tool toggles: `ALLOW_SEND_SMS=true` and `ALLOW_SEND_EMAIL=true` to enable `send_sms`/`send_email`.
 - SMS send fallback: `TWILIO_SMS_FROM_NUMBER` when the TwiML parameter is missing.
 - SMS consent records: `SMS_CONSENT_RECORDS_FILE_PATH` (default: `data/sms-consent-records.jsonl`)—stores consent audit trail.
-- Markdown document routes: `TERMS_AND_CONDITIONS_FILE_PATH` (default: `tos.md`), `PRIVACY_POLICY_FILE_PATH` (default: `privacy-policy.md`), `HOW_TO_OPT_IN_FILE_PATH` (default: `how-to-opt-in.md`).
+- Markdown document routes: `TERMS_AND_CONDITIONS_FILE_PATH` (default: `terms.md`), `PRIVACY_POLICY_FILE_PATH` (default: `privacy-policy.md`), `HOW_TO_OPT_IN_FILE_PATH` (default: `how-to-opt-in.md`).
 - Logs are sanitized at startup using `redact-logs` and `@zapier/secret-scrubber`. Disable via `DISABLE_LOG_REDACTION=true`. Add any new secret env keys to `REDACT_ENV_KEYS` (comma‑separated).
 
 ## Routing & Twilio Integration
