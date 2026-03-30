@@ -1,4 +1,5 @@
 import twilio from 'twilio';
+import { IS_DEV } from '../env.js';
 import { buildPageCallTwiml } from '../utils/page-call.js';
 
 /**
@@ -13,12 +14,21 @@ import { buildPageCallTwiml } from '../utils/page-call.js';
  * @returns {Promise<void>}
  */
 export async function pageRepeatHandler(request, reply) {
+    console.log('page-repeat: handler called');
+
     const message =
         /** @type {string | undefined} */ (
             /** @type {Record<string,string>} */ (request.query)?.message
         ) || '';
 
+    if (IS_DEV) {
+        console.log('page-repeat: parsed query', { message });
+    }
+
     if (!message) {
+        if (IS_DEV) {
+            console.log('page-repeat: no message provided, returning fallback');
+        }
         const { VoiceResponse } = twilio.twiml;
         const response = new VoiceResponse();
         response.say('Page message unavailable. Goodbye.');
@@ -32,6 +42,15 @@ export async function pageRepeatHandler(request, reply) {
     const repeatUrl = baseUrl
         ? `${baseUrl}/page-repeat?message=${encodeURIComponent(message)}`
         : undefined;
+
+    if (IS_DEV) {
+        console.log('page-repeat: building twiml', {
+            protocol,
+            host,
+            baseUrl,
+            repeatUrl,
+        });
+    }
 
     const twiml = buildPageCallTwiml(message, { repeatUrl });
     reply.type('text/xml').send(twiml);
