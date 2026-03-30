@@ -17,8 +17,12 @@ Once approved, you will be notified and can proceed to Step 2.
 
 ## Step 2: SMS Enrollment
 
-1. Text **START** to the My Starter Profile 10DLC phone number.
-2. You will receive a confirmation message asking you to reply **YES**. Msg frequency varies. Msg&Data Rates May Apply.
+Text **START** to **{{TWILIO_SMS_FROM_NUMBER}}** to opt in to My Starter Profile alerts.
+
+By texting START, you agree to receive messages. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.
+
+1. Text **START** to **{{TWILIO_SMS_FROM_NUMBER}}**.
+2. You will receive a confirmation message asking you to reply **YES**. Message frequency varies. Message and data rates may apply.
 3. Reply **YES** to complete enrollment.
 
 No AI-generated SMS replies are sent until you confirm with **YES**.
@@ -40,4 +44,4 @@ No AI-generated SMS replies are sent until you confirm with **YES**.
 ---
 
 - [Privacy Policy](/privacy-policy)
-- [Terms of Service](/tos)
+- [Terms of Service](/terms)

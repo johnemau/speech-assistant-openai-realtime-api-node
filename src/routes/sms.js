@@ -306,10 +306,10 @@ export async function smsHandler(request, reply) {
             return reply.type('text/xml').send(twiml.toString());
         }
 
-        // Build privacy-policy URL suffix for consent messages
+        // Build privacy-policy + terms URL suffix for consent messages
         const baseUrl = getServerBaseUrl();
         const privacySuffix = baseUrl
-            ? ` Privacy Policy: ${baseUrl}/privacy-policy`
+            ? ` Privacy Policy: ${baseUrl}/privacy-policy Terms: ${baseUrl}/terms`
             : '';
 
         // Use env var if set, otherwise let the consent functions use their defaults
@@ -509,7 +509,7 @@ export async function smsHandler(request, reply) {
                     );
                 }
                 twiml.message(
-                    `${SMS_BRAND_NAME}: To confirm enrollment, reply YES. Msg frequency varies. Msg&Data Rates May Apply. Reply HELP for help, STOP to cancel.${privacySuffix}`
+                    `${SMS_BRAND_NAME}: To confirm enrollment, reply YES. Message frequency varies. Message and data rates may apply. Reply HELP for help, STOP to cancel.${privacySuffix}`
                 );
                 return reply.type('text/xml').send(twiml.toString());
             } else {
@@ -528,7 +528,7 @@ export async function smsHandler(request, reply) {
                 }
                 if (wasUpgradedToConfirmed) {
                     twiml.message(
-                        `Welcome to ${SMS_BRAND_NAME}! You're now enrolled. Msg frequency varies. Msg&Data Rates May Apply. Reply HELP for help, STOP to opt out.${privacySuffix}`
+                        `Welcome to ${SMS_BRAND_NAME}. You are now enrolled. Message frequency varies. Message and data rates may apply. Reply HELP for help, STOP to opt out.${privacySuffix}`
                     );
                 } else {
                     twiml.message(
