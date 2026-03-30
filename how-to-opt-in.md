@@ -1,10 +1,10 @@
 # How to Opt In
 
-Want My Starter Profile updates by text? Follow the steps below to join our SMS messaging program.
+Want {{SMS_BRAND_NAME}} updates by text? Follow the steps below to join our SMS messaging program.
 
 ## SMS Enrollment
 
-Text **START** to **{{TWILIO_SMS_FROM_NUMBER}}** to opt in to My Starter Profile alerts.
+Text **START** to **{{TWILIO_SMS_FROM_NUMBER}}** to opt in to {{SMS_BRAND_NAME}} alerts.
 
 By texting START, you agree to receive messages. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.
 
@@ -16,7 +16,7 @@ No AI-generated SMS replies are sent until you confirm with **YES**.
 
 ## Program Details
 
-- **Brand:** My Starter Profile
+- **Brand:** {{SMS_BRAND_NAME}}
 - **Message frequency:** Varies based on your interactions
 - **Message content:** AI-generated replies to your questions (e.g. local business info, directions, weather, current events, general knowledge)
 - **Marketing content:** None — no promotional or marketing messages are sent

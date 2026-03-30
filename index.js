@@ -9,7 +9,7 @@ import { createMarkdownDocHandler } from './src/routes/markdown-doc.js';
 import { emailPageHandler } from './src/routes/email-page.js';
 import { pageRepeatHandler } from './src/routes/page-repeat.js';
 import { NGROK_DOMAIN, PORT } from './src/init.js';
-import { SERVICE_OPERATOR_EMAIL } from './src/env.js';
+import { SERVICE_OPERATOR_EMAIL, SMS_BRAND_NAME } from './src/env.js';
 
 const TWILIO_SMS_FROM_NUMBER = process.env.TWILIO_SMS_FROM_NUMBER || '';
 
@@ -69,6 +69,7 @@ fastify.get(
         title: 'How to Opt In',
         variables: {
             TWILIO_SMS_FROM_NUMBER,
+            SMS_BRAND_NAME,
         },
     })
 );
