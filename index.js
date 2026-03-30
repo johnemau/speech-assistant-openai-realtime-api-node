@@ -9,11 +9,9 @@ import { createMarkdownDocHandler } from './src/routes/markdown-doc.js';
 import { emailPageHandler } from './src/routes/email-page.js';
 import { pageRepeatHandler } from './src/routes/page-repeat.js';
 import { NGROK_DOMAIN, PORT } from './src/init.js';
-import {
-    SERVICE_OPERATOR_EMAIL,
-    ENROLLMENT_FORM_URL,
-    ENROLLMENT_FORM_IMAGE_URL,
-} from './src/env.js';
+import { SERVICE_OPERATOR_EMAIL } from './src/env.js';
+
+const TWILIO_SMS_FROM_NUMBER = process.env.TWILIO_SMS_FROM_NUMBER || '';
 
 // Initialize Fastify
 const fastify = Fastify();
@@ -70,9 +68,7 @@ fastify.get(
         filePath: process.env.HOW_TO_OPT_IN_FILE_PATH || 'how-to-opt-in.md',
         title: 'How to Opt In',
         variables: {
-            SERVICE_OPERATOR_EMAIL,
-            ENROLLMENT_FORM_URL,
-            ENROLLMENT_FORM_IMAGE_URL,
+            TWILIO_SMS_FROM_NUMBER,
         },
     })
 );

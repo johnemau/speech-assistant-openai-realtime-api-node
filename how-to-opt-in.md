@@ -2,20 +2,7 @@
 
 Want My Starter Profile updates by text? Follow the steps below to join our SMS messaging program.
 
-## Step 1: Request Pre-Approval
-
-Before you can enroll in SMS messaging, you must be manually added to the pre-approved user list by an administrator.
-
-To request access:
-
-1. Fill out the [enrollment request form]({{ENROLLMENT_FORM_URL}}).
-2. Or contact the service administrator at {{SERVICE_OPERATOR_EMAIL}}.
-
-[Click here to see the Enrollment request form screenshot.]({{ENROLLMENT_FORM_IMAGE_URL}})
-
-Once approved, you will be notified and can proceed to Step 2.
-
-## Step 2: SMS Enrollment
+## SMS Enrollment
 
 Text **START** to **{{TWILIO_SMS_FROM_NUMBER}}** to opt in to My Starter Profile alerts.
 
