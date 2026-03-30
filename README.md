@@ -217,7 +217,7 @@ Quick local checks:
 
 - Visit http://localhost:10000/ to confirm the root endpoint.
 - Visit http://localhost:10000/healthz for a simple health check.
-- Visit http://localhost:10000/tos for Terms of Service.
+- Visit http://localhost:10000/terms for Terms of Service.
 - Visit http://localhost:10000/privacy-policy for Privacy Policy.
 - Visit http://localhost:10000/how-to-opt-in for opt-in instructions.
 - Run `npm test` to lint, typecheck, and verify tests.
@@ -226,7 +226,7 @@ Quick local checks:
 
 The app exposes three optional markdown document routes, each rendering markdown as HTML:
 
-- **GET `/tos`** — Terms of Service
+- **GET `/terms`** — Terms of Service
     - Environment variable: `TERMS_AND_CONDITIONS_FILE_PATH` (default: `tos.md`)
 - **GET `/privacy-policy`** — Privacy Policy
     - Environment variable: `PRIVACY_POLICY_FILE_PATH` (default: `privacy-policy.md`)

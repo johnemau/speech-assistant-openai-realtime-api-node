@@ -6,7 +6,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
 
 - Twilio inbound call → TwiML webhook → Media Stream WebSocket → OpenAI Realtime WebSocket → audio round‑trip.
 - Core entry point: [index.js](index.js). Reference [README.md](README.md) for setup and behavior.
-- Fastify HTTP server exposes: `/` (root), `/healthz` (uptime), `/incoming-call` (TwiML), `/media-stream` (WebSocket for Twilio audio), `/sms` (Twilio Messaging webhook for auto‑replies), and markdown document routes (`/tos`, `/privacy-policy`, `/how-to-opt-in`).
+- Fastify HTTP server exposes: `/` (root), `/healthz` (uptime), `/incoming-call` (TwiML), `/media-stream` (WebSocket for Twilio audio), `/sms` (Twilio Messaging webhook for auto‑replies), and markdown document routes (`/terms`, `/privacy-policy`, `/how-to-opt-in`).
 - Audio from Twilio is forwarded to OpenAI via `input_audio_buffer.append`; assistant audio returns via `response.output_audio.delta` and is streamed back to Twilio.
 - Realtime session + prompts live under [src/assistant](src/assistant) (see [src/assistant/session.js](src/assistant/session.js) and [src/assistant/prompts.js](src/assistant/prompts.js)).
 
@@ -62,7 +62,7 @@ Use this repo to run a phone-call voice assistant that bridges Twilio Media Stre
     - Builds a 12‑hour recent thread (up to 10 messages, inbound+outbound) and composes a concise reply (≤320 chars).
     - Calls OpenAI `responses.create` with `model: gpt-5.4`, `tools: [{ type: 'web_search' }]`, `tool_choice: 'required'`, and tailored SMS instructions.
     - Sends the reply via Twilio REST API; falls back to TwiML with concise error text when send fails.
-- `/tos`, `/privacy-policy`, `/how-to-opt-in` (Markdown document routes):
+- `/terms`, `/privacy-policy`, `/how-to-opt-in` (Markdown document routes):
     - Serve as configurable markdown-to-HTML document endpoints.
     - File paths: `TERMS_AND_CONDITIONS_FILE_PATH`, `PRIVACY_POLICY_FILE_PATH`, `HOW_TO_OPT_IN_FILE_PATH` (with sensible defaults).
     - Render markdown files with a standard HTML wrapper and return as `text/html`.

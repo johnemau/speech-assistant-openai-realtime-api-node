@@ -74,7 +74,7 @@ test('markdown-doc renders markdown file as html', async () => {
 
 test('markdown-doc returns 500 when file is missing', async () => {
     const handler = createMarkdownDocHandler({
-        filePath: 'does-not-exist/tos.md',
+        filePath: 'does-not-exist/terms.md',
     });
     const reply = createReply();
 

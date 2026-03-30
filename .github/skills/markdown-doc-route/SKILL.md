@@ -11,7 +11,7 @@ user-invocable: true
 
 Three markdown document routes are currently registered and ready for use:
 
-- **GET `/tos`** — Terms of Service
+- **GET `/terms`** — Terms of Service
     - File: `TERMS_AND_CONDITIONS_FILE_PATH` env var (default: `tos.md`)
 - **GET `/privacy-policy`** — Privacy Policy
     - File: `PRIVACY_POLICY_FILE_PATH` env var (default: `privacy-policy.md`)

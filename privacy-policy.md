@@ -57,4 +57,4 @@ For questions about this privacy policy or data handling practices, please conta
 
 ---
 
-[Terms of Service](/tos) | [How to Opt-In](/how-to-opt-in)
+[Terms of Service](/terms) | [How to Opt-In](/how-to-opt-in)
