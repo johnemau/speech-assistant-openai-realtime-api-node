@@ -5,9 +5,8 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
 const { buildPageCallTwiml, placePageCall, isWithinCallingHours } =
     await import('./page-call.js');
-const { readPageMessage, resetPageMessagesForTests } = await import(
-    './page-repeat-context.js'
-);
+const { readPageMessage, resetPageMessagesForTests } =
+    await import('./page-repeat-context.js');
 
 // --- buildPageCallTwiml ---
 
