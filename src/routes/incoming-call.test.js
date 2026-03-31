@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {
+    savePageMessage,
+    resetPageMessagesForTests,
+} from '../utils/page-repeat-context.js';
 
 /**
  * @returns {{
@@ -125,4 +129,72 @@ test('incoming-call responds with connect stream and parameters', async () => {
     } finally {
         restoreAllowlists();
     }
+});
+
+// --- source=page-repeat branch ---
+
+test('incoming-call: source=page-repeat replays stored message', async () => {
+    resetPageMessagesForTests();
+    savePageMessage('CA_repeat1', 'Server is down');
+    const incomingCallHandler = await loadIncomingCallHandler();
+    const request = {
+        query: { source: 'page-repeat' },
+        body: { CallSid: 'CA_repeat1' },
+        headers: { host: 'example.com', 'x-forwarded-proto': 'https' },
+    };
+    const reply = createReply();
+
+    try {
+        await incomingCallHandler(request, reply);
+        const twiml = String(reply.payload);
+        assert.equal(reply.headers.type, 'text/xml');
+        assert.match(twiml, /Urgent page\. Server is down/);
+        const repeats = twiml.match(/Repeating\. Server is down/g);
+        assert.equal(repeats?.length, 2);
+        assert.match(twiml, /<Gather/);
+        assert.match(
+            twiml,
+            /action="https:\/\/example\.com\/incoming-call\?source=page-repeat"/
+        );
+        assert.match(twiml, /Press any key to hear the message again/);
+        // Ensure message text is NOT in the action URL as a query param
+        assert.ok(
+            !twiml.includes('message='),
+            'Action URL must not contain message query parameter'
+        );
+    } finally {
+        resetPageMessagesForTests();
+    }
+});
+
+test('incoming-call: source=page-repeat returns fallback when message not found', async () => {
+    resetPageMessagesForTests();
+    const incomingCallHandler = await loadIncomingCallHandler();
+    const request = {
+        query: { source: 'page-repeat' },
+        body: { CallSid: 'CA_unknown_sid' },
+        headers: { host: 'example.com' },
+    };
+    const reply = createReply();
+
+    await incomingCallHandler(request, reply);
+    const twiml = String(reply.payload);
+    assert.equal(reply.headers.type, 'text/xml');
+    assert.match(twiml, /Page message unavailable/);
+});
+
+test('incoming-call: source=page-repeat without CallSid returns fallback', async () => {
+    resetPageMessagesForTests();
+    const incomingCallHandler = await loadIncomingCallHandler();
+    const request = {
+        query: { source: 'page-repeat' },
+        body: {},
+        headers: { host: 'example.com' },
+    };
+    const reply = createReply();
+
+    await incomingCallHandler(request, reply);
+    const twiml = String(reply.payload);
+    assert.equal(reply.headers.type, 'text/xml');
+    assert.match(twiml, /Page message unavailable/);
 });

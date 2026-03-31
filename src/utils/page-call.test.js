@@ -5,6 +5,9 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
 const { buildPageCallTwiml, placePageCall, isWithinCallingHours } =
     await import('./page-call.js');
+const { readPageMessage, resetPageMessagesForTests } = await import(
+    './page-repeat-context.js'
+);
 
 // --- buildPageCallTwiml ---
 
@@ -21,10 +24,13 @@ test('buildPageCallTwiml: includes page message three times', () => {
 
 test('buildPageCallTwiml: adds Gather with action when repeatUrl provided', () => {
     const twiml = buildPageCallTwiml('Alert!', {
-        repeatUrl: 'https://example.com/page-repeat?message=Alert!',
+        repeatUrl: 'https://example.com/incoming-call?source=page-repeat',
     });
     assert.match(twiml, /<Gather/);
-    assert.match(twiml, /action="https:\/\/example\.com\/page-repeat/);
+    assert.match(
+        twiml,
+        /action="https:\/\/example\.com\/incoming-call\?source=page-repeat"/
+    );
     assert.match(twiml, /Press any key to hear the message again/);
 });
 
@@ -40,7 +46,8 @@ test('buildPageCallTwiml: omits Gather when no repeatUrl', () => {
 
 // --- placePageCall ---
 
-test('placePageCall: calls first primary number', async () => {
+test('placePageCall: calls first primary number and persists message by sid', async () => {
+    resetPageMessagesForTests();
     const prev = process.env.PRIMARY_USER_PHONE_NUMBERS;
     process.env.PRIMARY_USER_PHONE_NUMBERS = '+12065550100,+12065550101';
     /** @type {any[]} */
@@ -64,7 +71,10 @@ test('placePageCall: calls first primary number', async () => {
         assert.equal(calls.length, 1);
         assert.match(calls[0].twiml, /Urgent page\. Alert!/);
         assert.equal(calls[0].from, '+15550001234');
+        // Verify page message persisted for repeat lookup
+        assert.equal(readPageMessage('CA1'), 'Alert!');
     } finally {
+        resetPageMessagesForTests();
         if (prev == null) delete process.env.PRIMARY_USER_PHONE_NUMBERS;
         else process.env.PRIMARY_USER_PHONE_NUMBERS = prev;
     }

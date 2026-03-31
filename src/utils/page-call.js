@@ -3,6 +3,7 @@ import { getPrimaryCallerNumbers } from './email-page.js';
 import { placeCall } from './place-call.js';
 import { getServerBaseUrl, IS_DEV } from '../env.js';
 import { resolveTimeZoneId } from './time.js';
+import { savePageMessage } from './page-repeat-context.js';
 
 /**
  * @typedef {import('./place-call.js').CallLikeClient} CallLikeClient
@@ -112,7 +113,7 @@ export async function placePageCall({ pageMessage, fromNumber, client }) {
     }
     const baseUrl = getServerBaseUrl();
     const repeatUrl = baseUrl
-        ? `${baseUrl}/page-repeat?message=${encodeURIComponent(pageMessage)}`
+        ? `${baseUrl}/incoming-call?source=page-repeat`
         : undefined;
     if (IS_DEV) {
         console.log('page-call: placing page call', {
@@ -122,5 +123,9 @@ export async function placePageCall({ pageMessage, fromNumber, client }) {
         });
     }
     const twiml = buildPageCallTwiml(pageMessage, { repeatUrl });
-    return placeCall({ twiml, toNumber, fromNumber, client });
+    const result = await placeCall({ twiml, toNumber, fromNumber, client });
+    if (result.sid) {
+        savePageMessage(result.sid, pageMessage);
+    }
+    return result;
 }

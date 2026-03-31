@@ -1,6 +1,8 @@
 import twilio from 'twilio';
 import { ALL_ALLOWED_CALLERS_SET, IS_DEV } from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
+import { readPageMessage } from '../utils/page-repeat-context.js';
+import { buildPageCallTwiml } from '../utils/page-call.js';
 
 /**
  * @param {import('fastify').FastifyRequest} request - Incoming Twilio webhook request.
@@ -8,9 +10,42 @@ import { normalizeUSNumberToE164 } from '../utils/phone.js';
  * @returns {Promise<void>}
  */
 export async function incomingCallHandler(request, reply) {
+    const query = /** @type {Record<string, string>} */ (request.query || {});
+    const body = /** @type {Record<string, string>} */ (request.body || {});
+
+    // --- Page-repeat branch (Gather callback) ---
+    if (query.source === 'page-repeat') {
+        const callSid = body.CallSid || body.callSid || '';
+        console.log('incoming-call: page-repeat branch', { callSid });
+
+        const message = readPageMessage(callSid);
+        if (!message) {
+            if (IS_DEV) {
+                console.log(
+                    'incoming-call: page-repeat message not found for callSid',
+                    { callSid }
+                );
+            }
+            const { VoiceResponse } = twilio.twiml;
+            const fallback = new VoiceResponse();
+            fallback.say('Page message unavailable. Goodbye.');
+            return reply.type('text/xml').send(fallback.toString());
+        }
+
+        const protocol = request.headers['x-forwarded-proto'] || 'https';
+        const host = request.headers.host || '';
+        const baseUrl = host ? `${protocol}://${host}` : '';
+        const repeatUrl = baseUrl
+            ? `${baseUrl}/incoming-call?source=page-repeat`
+            : undefined;
+
+        const twiml = buildPageCallTwiml(message, { repeatUrl });
+        return reply.type('text/xml').send(twiml);
+    }
+
+    // --- Standard inbound call path ---
     // Route for Twilio to handle incoming calls
     // <Say> punctuation to improve text-to-speech translation
-    const body = /** @type {Record<string, string>} */ (request.body || {});
     const fromRaw = body.From || body.from || body.Caller;
     const fromE164 = normalizeUSNumberToE164(fromRaw);
     const toRaw = body.To || body.to || '';
