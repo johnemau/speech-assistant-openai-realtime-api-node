@@ -7,6 +7,7 @@ import { incomingCallHandler } from './src/routes/incoming-call.js';
 import { mediaStreamHandler } from './src/routes/media-stream.js';
 import { createMarkdownDocHandler } from './src/routes/markdown-doc.js';
 import { emailPageHandler } from './src/routes/email-page.js';
+import { studyRoomTimesHandler } from './src/routes/get-study-room-times.js';
 import { NGROK_DOMAIN, PORT } from './src/init.js';
 import {
     getServerBaseUrl,
@@ -79,6 +80,25 @@ fastify.get(
 );
 
 fastify.post('/email-page', emailPageHandler);
+
+// Scoped registration for /get-study-room-times so we can capture the raw body
+// bytes needed for HMAC-SHA256 signature verification.
+fastify.register(async (fastify) => {
+    fastify.addContentTypeParser(
+        'application/json',
+        { parseAs: 'buffer' },
+        (_req, body, done) => {
+            /** @type {any} */ (_req).rawBody = body;
+            try {
+                done(null, JSON.parse(body.toString('utf8')));
+            } catch (err) {
+                /** @type {any} */ (err).statusCode = 400;
+                done(/** @type {any} */ (err), undefined);
+            }
+        }
+    );
+    fastify.post('/get-study-room-times', studyRoomTimesHandler);
+});
 
 fastify.all('/incoming-call', incomingCallHandler);
 
