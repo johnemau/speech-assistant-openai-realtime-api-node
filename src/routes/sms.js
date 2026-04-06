@@ -747,18 +747,15 @@ export async function smsHandler(request, reply) {
         }
 
         // Concise log of AI request (dev-friendly, but short)
+        const smsConfig = buildSmsResponseConfig({
+            instructions: SMS_REPLY_INSTRUCTIONS,
+        });
         console.info('sms handler: ai request', {
             event: 'sms.ai.request',
             model: GPT_5_4_MODEL,
-            tools: [
-                'web_search',
-                'places_text_search',
-                'find_currently_nearby_place',
-                'get_current_location',
-                'send_email',
-                'directions',
-                'weather',
-            ],
+            tools: /** @type {any[]} */ (smsConfig.tools || []).map(
+                (t) => t?.name ?? t?.type
+            ),
             prompt_len: String(smsPrompt || '').length,
         });
 
