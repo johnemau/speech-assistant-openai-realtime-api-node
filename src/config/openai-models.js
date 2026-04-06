@@ -13,6 +13,7 @@ import { definition as placesTextSearchDefinition } from '../tools/places-text-s
 import { definition as directionsDefinition } from '../tools/directions.js';
 import { definition as weatherDefinition } from '../tools/weather.js';
 import { definition as getStudyRoomTimesDefinition } from '../tools/get-study-room-times.js';
+import { definition as reserveStudyRoomDefinition } from '../tools/reserve-study-room.js';
 import {
     GPT_5_2_MODEL,
     GPT_5_4_MODEL,
@@ -119,6 +120,9 @@ const SMS_TOOL_DEFINITIONS = [
     ),
     /** @type {import('openai/resources/responses/responses').Tool} */ (
         getStudyRoomTimesDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        reserveStudyRoomDefinition
     ),
 ];
 

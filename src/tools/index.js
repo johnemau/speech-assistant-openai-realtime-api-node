@@ -54,6 +54,10 @@ import {
     definition as getStudyRoomTimesDefinition,
     execute as executeGetStudyRoomTimes,
 } from './get-study-room-times.js';
+import {
+    definition as reserveStudyRoomDefinition,
+    execute as executeReserveStudyRoom,
+} from './reserve-study-room.js';
 import { IS_DEV } from '../env.js';
 
 // This module is the single source of truth for both tool declaration and tool
@@ -74,6 +78,7 @@ const toolExecutors = new Map(
         ['weather', executeWeather],
         ['yale_lock', executeYaleLock],
         ['get_study_room_times', executeGetStudyRoomTimes],
+        ['reserve_study_room', executeReserveStudyRoom],
     ])
 );
 
@@ -100,6 +105,7 @@ export function getToolDefinitions() {
         weatherDefinition,
         yaleLockDefinition,
         getStudyRoomTimesDefinition,
+        reserveStudyRoomDefinition,
     ];
 }
 

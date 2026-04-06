@@ -27,6 +27,9 @@ export const PAGE_EVALUATION_TEMPLATE = readPrompt(
 export const STUDY_ROOM_INSTRUCTIONS = readPrompt(
     'prompts/study-room-instructions.md'
 );
+export const RESERVE_ROOM_INSTRUCTIONS = readPrompt(
+    'prompts/reserve-study-room-instructions.md'
+);
 
 /**
  * Render a prompt template by replacing `{{ key }}` placeholders with values.
