@@ -60,6 +60,8 @@ function unrefTimer(timer) {
 export function mediaStreamHandler(connection, req) {
     console.log('media-stream: client connected');
 
+    // This route coordinates three concurrent timelines: Twilio media events,
+    // OpenAI realtime events, and local timers for waiting music and teardown.
     // Connection-specific state
     /** @type {string | null} */
     let streamSid = null;
@@ -158,6 +160,9 @@ export function mediaStreamHandler(connection, req) {
     let resumeWaitingMusicAfterInterrupt = false;
     let isCallerSpeaking = false;
 
+    // Waiting music depends on pending tool work, not just whether the assistant
+    // is currently speaking, so we track active calls separately from deferred
+    // follow-up responses that still need model output.
     const isToolCallInProgress = () => activeToolCalls.size > 0;
     const hasPendingToolWork = () =>
         isToolCallInProgress() || pendingToolResponse;
@@ -196,6 +201,8 @@ export function mediaStreamHandler(connection, req) {
     ) {
         if (isWaitingMusic || waitingMusicStartTimeout) return;
         if (isCallerSpeaking) {
+            // If the caller interrupts during a tool run, postpone music until
+            // speech ends so the caller never competes with hold audio.
             if (hasPendingToolWork()) {
                 resumeWaitingMusicAfterInterrupt = true;
             }
@@ -428,6 +435,9 @@ export function mediaStreamHandler(connection, req) {
             if (postHangupSilentMode) return;
             if (!force && !pendingTransferResponseReceived) return;
             if (!force && !pendingTransferAudioStarted) return;
+            // The transfer is delayed until the spoken handoff announcement has
+            // likely reached the caller. Marks are preferred, but a timing
+            // fallback keeps transfers from stalling if Twilio is slow to echo.
             if (!force && pendingTransferAnnouncementAudioStartedAt) {
                 const elapsedMs =
                     Date.now() - pendingTransferAnnouncementAudioStartedAt;
@@ -552,6 +562,8 @@ export function mediaStreamHandler(connection, req) {
             }
         }
         if (!postHangupSilentMode) {
+            // After the caller disconnects we keep tools running, but we stop
+            // streaming assistant audio back into a dead Twilio websocket.
             const audioDelta = {
                 event: 'media',
                 streamSid: streamSid,
@@ -591,6 +603,8 @@ export function mediaStreamHandler(connection, req) {
 
         // Track response lifecycle to avoid overlapping creates
         if (response.type === 'response.created') {
+            // response.created/response.done act as a lock for the explicit
+            // response queue below so response.create calls never overlap.
             responseActive = true;
             responsePending = false;
             if (
@@ -673,6 +687,8 @@ export function mediaStreamHandler(connection, req) {
             }
             if (!responseActive) {
                 try {
+                    // Auto-create is disabled after the first greeting, so each
+                    // completed caller turn must enqueue its own response here.
                     if (responseQueue.length > 0) {
                         drainResponseQueue('speech_stopped');
                     } else {
@@ -720,6 +736,8 @@ export function mediaStreamHandler(connection, req) {
                     !isToolCallInProgress() &&
                     !postHangupSmsSent
                 ) {
+                    // If the caller hangs up mid-tool, finish the workflow in the
+                    // background and optionally send a concise completion SMS.
                     // Send SMS only if tools were in progress during hangup
                     if (hangupDuringTools) {
                         try {
@@ -853,6 +871,8 @@ export function mediaStreamHandler(connection, req) {
     const requestToolFollowup = (reason = 'tool_call_response') => {
         enqueueResponse(reason);
         if (responseActive || responsePending || isCallerSpeaking) {
+            // Tool output can arrive while the model is already speaking. Flag a
+            // deferred follow-up so response.done reopens the queue.
             pendingToolResponse = true;
             if (IS_DEV) {
                 console.log('media-stream: tool response deferred', {
@@ -883,6 +903,8 @@ export function mediaStreamHandler(connection, req) {
      * @param {string} reason - Reason for draining.
      */
     const drainResponseQueue = (reason = 'unknown') => {
+        // The queue is deduped by reason so repeated triggers from VAD, tool
+        // completion, and call lifecycle events collapse into one next turn.
         if (responseActive || responsePending) return;
         if (isCallerSpeaking) return;
         if (responseQueue.length === 0) return;
@@ -931,6 +953,8 @@ export function mediaStreamHandler(connection, req) {
                 if (subjectRaw) lastEmailSubject = subjectRaw;
             }
 
+            // Tools stay mostly stateless; this context object is the narrow
+            // bridge back into call-scoped mutable state when needed.
             const toolContext = {
                 currentCallerE164,
                 currentTwilioNumberE164,
@@ -1115,6 +1139,8 @@ export function mediaStreamHandler(connection, req) {
                 }
             }
             // After end_call, only request a single goodbye response
+            // end_call still needs one final response so the caller hears the
+            // goodbye before the websocket is closed.
             const shouldRequest = !pendingDisconnect || toolName === 'end_call';
             if (shouldRequest) {
                 requestToolFollowup('tool_call_response');
@@ -1192,6 +1218,8 @@ export function mediaStreamHandler(connection, req) {
      */
     const updateRealtimeInstructionsAtStart = async () => {
         try {
+            // Per-call context is appended onto the shared realtime prompt so the
+            // base assistant policy stays consistent across entry points.
             const contextSection = await buildRealtimeContextSection({
                 callerE164: currentCallerE164,
             });
@@ -1420,6 +1448,8 @@ export function mediaStreamHandler(connection, req) {
         }
     };
 
+    // Twilio drives the outer event loop here; OpenAI events arrive through the
+    // assistant session websocket above and synchronize through this shared state.
     // Handle incoming messages from Twilio
     connection.on('message', (message) => {
         const rawMessage = toUtf8String(message);
@@ -1546,6 +1576,9 @@ export function mediaStreamHandler(connection, req) {
                     ); // 55 minutes
                     unrefTimer(fiftyFiveMinuteHangupTimeout);
 
+                    // The TwiML webhook injects caller metadata into custom
+                    // parameters so this websocket can personalize the greeting
+                    // without another lookup.
                     // Read caller number from custom parameters passed via TwiML Parameter
                     try {
                         const cp =

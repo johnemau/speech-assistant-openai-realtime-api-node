@@ -37,7 +37,8 @@ import {
     clearPendingQuestion,
 } from '../utils/sms-consent.js';
 
-/** fib inspo */
+// SMS can recurse through tool calls, so we keep a hard ceiling to prevent one
+// webhook request from turning into an unbounded tool-response loop.
 const MAX_SMS_TOOL_ROUNDS = 143; // Safety cap to prevent infinite loops in tool calling
 
 /**
@@ -148,6 +149,8 @@ async function runSmsResponseWithTools({ input, instructions, context }) {
 
     let rounds = 0;
     while (rounds < MAX_SMS_TOOL_ROUNDS) {
+        // Each loop consumes function_call items from the previous model turn and
+        // feeds function_call_output items back until the model returns plain text.
         const toolCalls =
             response?.output?.filter(
                 (item) => item?.type === 'function_call'
@@ -323,6 +326,8 @@ export async function smsHandler(request, reply) {
             });
         }
 
+        // Consent keywords are handled before AI logic so enrollment and opt-out
+        // stay deterministic even if the model or Twilio lookups fail later.
         if (isHelpKeyword(keyword)) {
             if (IS_DEV) {
                 console.log('sms handler: early return - help keyword', {
@@ -413,7 +418,8 @@ export async function smsHandler(request, reply) {
                 );
                 const hasPendingQuestion = !!getPendingQuestion(fromE164);
 
-                // Two-step enrollment: YES when already pending → confirmed; otherwise → pending
+                // START and YES share this path. YES only upgrades to confirmed
+                // when a prior START already put the number into pending state.
                 const targetStatus =
                     keyword === 'YES' && statusBeforeUpdate === 'pending'
                         ? 'confirmed'
@@ -493,6 +499,8 @@ export async function smsHandler(request, reply) {
                         }
                     );
                 }
+                // If the user asked something before confirming consent, answer
+                // that stored question immediately after the YES confirmation.
                 // Override bodyRaw to use the pending question for AI processing
                 bodyRaw = pendingQuestion;
                 // Don't return - let code continue to answer the question
@@ -565,6 +573,8 @@ export async function smsHandler(request, reply) {
                 bodyRaw &&
                 !keyword.match(/^(START|YES|UNSTOP)$/)
             ) {
+                // Preserve the latest free-form question so the next YES can
+                // immediately answer it without asking the user to repeat it.
                 // Store this question in memory for later if they confirm enrollment
                 setPendingQuestion(fromE164, bodyRaw);
                 if (IS_DEV) {
@@ -593,6 +603,8 @@ export async function smsHandler(request, reply) {
             return reply.type('text/xml').send(twiml.toString());
         }
 
+        // Allowlist enforcement happens after consent handling so opted-out users
+        // can still send STOP/HELP/START messages from previously approved numbers.
         // Check if caller is on allowlist (skipped when IS_SMS_ALLOWLIST_DISABLED)
         if (
             !IS_SMS_ALLOWLIST_DISABLED &&
@@ -650,6 +662,8 @@ export async function smsHandler(request, reply) {
             return reply.type('text/xml').send(twiml.toString());
         }
 
+        // The SMS prompt uses a short rolling thread instead of full history to
+        // stay within budget while still grounding the reply in recent context.
         // Build a recent thread: last 12 hours, up to 10 combined messages (inbound/outbound)
         const now = new Date();
         const startWindow = new Date(now.getTime() - 12 * 60 * 60 * 1000);

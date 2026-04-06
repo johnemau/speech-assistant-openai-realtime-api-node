@@ -44,6 +44,9 @@ export function safeParseToolArguments(args) {
         if (IS_DEV) {
             console.warn('session: tool arguments json parse failed', original);
         }
+        // The model often emits almost-JSON rather than strict JSON. Parsing is
+        // intentionally tolerant here so route handlers can focus on validation
+        // and business logic instead of string repair.
         // Second attempt: relaxed JSON (JSON5) for single quotes, unquoted keys, etc.
         try {
             return JSON5.parse(str);
@@ -116,6 +119,8 @@ function realCreateAssistantSession({
             if (openAiWs.readyState === WebSocket.OPEN) {
                 openAiWs.send(payload);
             } else {
+                // Callers are allowed to send startup work before the realtime
+                // websocket opens; queue it here to keep route code linear.
                 pendingOpenAiMessages.push(payload);
             }
         } catch (e) {
@@ -136,6 +141,8 @@ function realCreateAssistantSession({
     };
 
     const initializeSession = () => {
+        // session.update establishes the default prompt, audio formats, voice,
+        // and tool list once per websocket connection.
         const sessionPayload = {
             type: 'session.update',
             session: {
@@ -157,6 +164,9 @@ function realCreateAssistantSession({
             const response = JSON.parse(rawMessage);
             onEvent?.(response);
 
+            // Collapse the raw realtime protocol into a smaller callback surface
+            // so route handlers can reason in terms of audio/text deltas and
+            // tool calls instead of websocket event plumbing.
             if (
                 response.type === 'response.output_audio.delta' &&
                 response.delta
@@ -229,6 +239,8 @@ function realCreateAssistantSession({
         send: openAiSend,
         requestResponse: () => openAiSend({ type: 'response.create' }),
         updateSession: (partialSession) => {
+            // Callers only provide the fields they want to change; the wrapper
+            // keeps the required realtime session type attached consistently.
             /** @type {import('openai/resources/realtime/realtime').SessionUpdateEvent} */
             const sessionUpdateEvent = {
                 type: 'session.update',

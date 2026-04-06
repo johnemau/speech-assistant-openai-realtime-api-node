@@ -52,6 +52,8 @@ import {
 } from './yale-lock.js';
 import { IS_DEV } from '../env.js';
 
+// This module is the single source of truth for both tool declaration and tool
+// dispatch, which makes it easier to verify that every advertised tool is wired.
 const toolExecutors = new Map(
     /** @type {Array<[string, (input: { args: object, context: object }) => Promise<unknown>]>} */ ([
         ['gpt_web_search', executeGptWebSearch],
@@ -76,6 +78,8 @@ const toolExecutors = new Map(
  * @returns {Array<object>} Tool definitions.
  */
 export function getToolDefinitions() {
+    // Keep definition order stable so session payload diffs and test snapshots
+    // stay readable when tools are added or removed.
     return [
         gptWebSearchDefinition,
         sendEmailDefinition,
@@ -112,6 +116,8 @@ async function realExecuteToolCall({ name, args, context }) {
     }
     const executor = toolExecutors.get(name);
     if (!executor) throw new Error(`Unknown tool: ${name}`);
+    // Individual tool modules own validation and side effects. The dispatcher is
+    // intentionally thin so tests and logs have one choke point for execution.
     const result = await executor({ args, context });
     if (IS_DEV) {
         console.log('tool-executor: result', {
