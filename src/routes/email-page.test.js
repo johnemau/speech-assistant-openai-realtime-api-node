@@ -69,6 +69,7 @@ async function loadEmailPageHandler({
             process.env.EMAIL_PAGE_CRITERIA_FILE_PATH,
         TWILIO_SMS_FROM_NUMBER: process.env.TWILIO_SMS_FROM_NUMBER,
         PRIMARY_USER_PHONE_NUMBERS: process.env.PRIMARY_USER_PHONE_NUMBERS,
+        SERVER_BASE_URL: process.env.SERVER_BASE_URL,
         NODE_ENV: process.env.NODE_ENV,
     };
 
@@ -77,6 +78,7 @@ async function loadEmailPageHandler({
         process.env.EMAIL_PAGE_CRITERIA_FILE_PATH = criteriaFilePath;
     process.env.TWILIO_SMS_FROM_NUMBER = fromNumber;
     process.env.PRIMARY_USER_PHONE_NUMBERS = primaryNumbers.join(',');
+    process.env.SERVER_BASE_URL = 'https://test.example.com';
     process.env.NODE_ENV = 'test';
 
     const init = await import('../init.js');
@@ -277,8 +279,7 @@ test('email-page: pages primary caller when AI says page-worthy', async () => {
         // Should have called the first primary number
         assert.equal(callsMade.length, 1);
         assert.equal(callsMade[0].to, '+12065550100');
-        assert.match(callsMade[0].twiml, /Urgent page/);
-        assert.match(callsMade[0].twiml, /ALERT: Server is down/);
+        assert.match(callsMade[0].url, /\/incoming-call\?source=page/);
     } finally {
         cleanup();
         await rm(tmpDir, { recursive: true });

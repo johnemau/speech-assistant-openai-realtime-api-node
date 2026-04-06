@@ -18,6 +18,7 @@ import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { buildRealtimeContextSection } from '../utils/realtime-context.js';
 import { REALTIME_INSTRUCTIONS } from '../assistant/prompts.js';
+import { readPageMessage } from '../utils/page-repeat-context.js';
 import {
     IS_DEV,
     PRIMARY_CALLERS_SET,
@@ -1237,7 +1238,10 @@ export function mediaStreamHandler(connection, req) {
     };
 
     // Send initial conversation item using the caller's name once available
-    const sendInitialConversationItem = async (callerNameValue = 'legend') => {
+    const sendInitialConversationItem = async (
+        callerNameValue = 'legend',
+        /** @type {string | null} */ pageMessage = null
+    ) => {
         initialGreetingRequested = true;
         let timeZone = 'America/Los_Angeles';
         if (IS_DEV) {
@@ -1301,7 +1305,7 @@ export function mediaStreamHandler(connection, req) {
                 content: [
                     {
                         type: 'input_text',
-                        text: `Start the greeting with "${timeGreeting}" and immediately say the caller name "${callerNameValue}" with NO comma or pause between them (e.g., "${timeGreeting} ${callerNameValue}"). Speak slightly faster for THIS initial greeting only. Single concise butler/service‑worker style line; light and optionally witty; always include the name and the time greeting.`,
+                        text: `Start the greeting with "${timeGreeting}" and immediately say the caller name "${callerNameValue}" with NO comma or pause between them (e.g., "${timeGreeting} ${callerNameValue}"). Speak slightly faster for THIS initial greeting only. Single concise butler/service‑worker style line; light and optionally witty; always include the name and the time greeting.${pageMessage ? ` After the greeting, immediately read this urgent page message aloud: "${pageMessage}"` : ''}`,
                     },
                 ],
             },
@@ -1642,9 +1646,24 @@ export function mediaStreamHandler(connection, req) {
                         ) {
                             callerName = secondaryName;
                         }
+                        // Read stored page message when this is an outbound page call
+                        const sourceParam = cp.source || null;
+                        const pageMessage =
+                            sourceParam === 'page' && currentCallSid
+                                ? (readPageMessage(currentCallSid) ?? null)
+                                : null;
+                        if (pageMessage && IS_DEV) {
+                            console.log(
+                                'media-stream: page message found for greeting',
+                                { callSid: currentCallSid }
+                            );
+                        }
                         // Send the personalized greeting to OpenAI to speak first
                         void updateRealtimeInstructionsAtStart();
-                        void sendInitialConversationItem(callerName);
+                        void sendInitialConversationItem(
+                            callerName,
+                            pageMessage
+                        );
                     } catch {
                         // noop: missing custom parameters should not break stream handling
                         void 0;

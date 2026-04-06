@@ -17,7 +17,7 @@ test('placeCall: places call and returns sid/status', async () => {
         },
     };
     const result = await placeCall({
-        twiml: '<Response><Say>Hello</Say></Response>',
+        url: 'https://example.com/incoming-call?source=page',
         toNumber: '+12065550100',
         fromNumber: '+15550001234',
         client: mockClient,
@@ -28,7 +28,7 @@ test('placeCall: places call and returns sid/status', async () => {
     assert.equal(calls.length, 1);
     assert.equal(calls[0].from, '+15550001234');
     assert.equal(calls[0].to, '+12065550100');
-    assert.equal(calls[0].twiml, '<Response><Say>Hello</Say></Response>');
+    assert.equal(calls[0].url, 'https://example.com/incoming-call?source=page');
 });
 
 test('placeCall: captures errors gracefully', async () => {
@@ -40,7 +40,7 @@ test('placeCall: captures errors gracefully', async () => {
         },
     };
     const result = await placeCall({
-        twiml: '<Response><Say>Hello</Say></Response>',
+        url: 'https://example.com/incoming-call?source=page',
         toNumber: '+12065550100',
         fromNumber: '+15550001234',
         client: mockClient,

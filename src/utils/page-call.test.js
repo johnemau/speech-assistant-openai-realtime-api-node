@@ -3,52 +3,18 @@ import assert from 'node:assert/strict';
 
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
-const { buildPageCallTwiml, placePageCall, isWithinCallingHours } =
-    await import('./page-call.js');
+const { placePageCall, isWithinCallingHours } = await import('./page-call.js');
 const { readPageMessage, resetPageMessagesForTests } =
     await import('./page-repeat-context.js');
 
-// --- buildPageCallTwiml ---
-
-test('buildPageCallTwiml: includes page message three times', () => {
-    const twiml = buildPageCallTwiml('Server down');
-    assert.match(twiml, /<Response>/);
-    assert.match(twiml, /Urgent page\. Server down/);
-    // Two "Repeating" occurrences
-    const repeats = twiml.match(/Repeating\. Server down/g);
-    assert.equal(repeats?.length, 2, 'Expected two "Repeating" occurrences');
-    assert.match(twiml, /End of page\. Goodbye/);
-    assert.match(twiml, /<\/Response>/);
-});
-
-test('buildPageCallTwiml: adds Gather with action when repeatUrl provided', () => {
-    const twiml = buildPageCallTwiml('Alert!', {
-        repeatUrl: 'https://example.com/incoming-call?source=page-repeat',
-    });
-    assert.match(twiml, /<Gather/);
-    assert.match(
-        twiml,
-        /action="https:\/\/example\.com\/incoming-call\?source=page-repeat"/
-    );
-    assert.match(twiml, /Press any key to hear the message again/);
-});
-
-test('buildPageCallTwiml: omits Gather when no repeatUrl', () => {
-    const twiml = buildPageCallTwiml('No URL');
-    assert.ok(!twiml.includes('<Gather'), 'Should not contain <Gather>');
-    assert.ok(
-        !twiml.includes('Press any key'),
-        'Should not promise key-press repeat without Gather'
-    );
-    assert.match(twiml, /End of page\. Goodbye/);
-});
-
 // --- placePageCall ---
 
-test('placePageCall: calls first primary number and persists message by sid', async () => {
+test('placePageCall: calls first primary number with URL and persists message by sid', async () => {
     resetPageMessagesForTests();
     const prev = process.env.PRIMARY_USER_PHONE_NUMBERS;
+    const prevBase = process.env.SERVER_BASE_URL;
     process.env.PRIMARY_USER_PHONE_NUMBERS = '+12065550100,+12065550101';
+    process.env.SERVER_BASE_URL = 'https://example.com';
     /** @type {any[]} */
     const calls = [];
     const mockClient = {
@@ -68,14 +34,19 @@ test('placePageCall: calls first primary number and persists message by sid', as
         assert.equal(result.to, '+12065550100');
         assert.equal(result.sid, 'CA1');
         assert.equal(calls.length, 1);
-        assert.match(calls[0].twiml, /Urgent page\. Alert!/);
+        assert.equal(
+            calls[0].url,
+            'https://example.com/incoming-call?source=page'
+        );
         assert.equal(calls[0].from, '+15550001234');
-        // Verify page message persisted for repeat lookup
+        // Verify page message persisted for greeting lookup
         assert.equal(readPageMessage('CA1'), 'Alert!');
     } finally {
         resetPageMessagesForTests();
         if (prev == null) delete process.env.PRIMARY_USER_PHONE_NUMBERS;
         else process.env.PRIMARY_USER_PHONE_NUMBERS = prev;
+        if (prevBase == null) delete process.env.SERVER_BASE_URL;
+        else process.env.SERVER_BASE_URL = prevBase;
     }
 });
 
@@ -103,9 +74,39 @@ test('placePageCall: returns error when no primary numbers configured', async ()
     }
 });
 
+test('placePageCall: returns error when no server base URL configured', async () => {
+    const prev = process.env.PRIMARY_USER_PHONE_NUMBERS;
+    const prevBase = process.env.SERVER_BASE_URL;
+    const prevNgrok = process.env.NGROK_DOMAIN;
+    process.env.PRIMARY_USER_PHONE_NUMBERS = '+12065550100';
+    delete process.env.SERVER_BASE_URL;
+    delete process.env.NGROK_DOMAIN;
+    const mockClient = {
+        calls: { create: async () => ({}) },
+    };
+    try {
+        const result = await placePageCall({
+            pageMessage: 'test',
+            fromNumber: '+15550001234',
+            client: mockClient,
+        });
+        assert.equal(result.to, '');
+        assert.match(result.error || '', /No server base URL/);
+    } finally {
+        if (prev == null) delete process.env.PRIMARY_USER_PHONE_NUMBERS;
+        else process.env.PRIMARY_USER_PHONE_NUMBERS = prev;
+        if (prevBase == null) delete process.env.SERVER_BASE_URL;
+        else process.env.SERVER_BASE_URL = prevBase;
+        if (prevNgrok == null) delete process.env.NGROK_DOMAIN;
+        else process.env.NGROK_DOMAIN = prevNgrok;
+    }
+});
+
 test('placePageCall: captures call errors gracefully', async () => {
     const prev = process.env.PRIMARY_USER_PHONE_NUMBERS;
+    const prevBase = process.env.SERVER_BASE_URL;
     process.env.PRIMARY_USER_PHONE_NUMBERS = '+12065550100';
+    process.env.SERVER_BASE_URL = 'https://example.com';
     const mockClient = {
         calls: {
             create: async () => {
@@ -124,6 +125,8 @@ test('placePageCall: captures call errors gracefully', async () => {
     } finally {
         if (prev == null) delete process.env.PRIMARY_USER_PHONE_NUMBERS;
         else process.env.PRIMARY_USER_PHONE_NUMBERS = prev;
+        if (prevBase == null) delete process.env.SERVER_BASE_URL;
+        else process.env.SERVER_BASE_URL = prevBase;
     }
 });
 

@@ -1,9 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-    savePageMessage,
-    resetPageMessagesForTests,
-} from '../utils/page-repeat-context.js';
 
 /**
  * @returns {{
@@ -131,16 +127,17 @@ test('incoming-call responds with connect stream and parameters', async () => {
     }
 });
 
-// --- source=page-repeat branch ---
+// --- source=page branch ---
 
-test('incoming-call: source=page-repeat replays stored message', async () => {
-    resetPageMessagesForTests();
-    savePageMessage('CA_repeat1', 'Server is down');
+test('incoming-call: source=page connects caller (To) to media-stream', async () => {
+    const restoreAllowlists = await setCallerAllowlists({
+        primaryCaller: '+12065550100',
+    });
     const incomingCallHandler = await loadIncomingCallHandler();
     const request = {
-        query: { source: 'page-repeat' },
-        body: { CallSid: 'CA_repeat1' },
-        headers: { host: 'example.com', 'x-forwarded-proto': 'https' },
+        query: { source: 'page' },
+        body: { From: '+15550001234', To: '+12065550100', CallSid: 'CA_page1' },
+        headers: { host: 'example.com' },
     };
     const reply = createReply();
 
@@ -148,53 +145,43 @@ test('incoming-call: source=page-repeat replays stored message', async () => {
         await incomingCallHandler(request, reply);
         const twiml = String(reply.payload);
         assert.equal(reply.headers.type, 'text/xml');
-        assert.match(twiml, /Urgent page\. Server is down/);
-        const repeats = twiml.match(/Repeating\. Server is down/g);
-        assert.equal(repeats?.length, 2);
-        assert.match(twiml, /<Gather/);
-        assert.match(
-            twiml,
-            /action="https:\/\/example\.com\/incoming-call\?source=page-repeat"/
-        );
-        assert.match(twiml, /Press any key to hear the message again/);
-        // Ensure message text is NOT in the action URL as a query param
+        assert.ok(twiml.includes('wss://example.com/media-stream'));
+        assert.ok(twiml.includes('caller_number'));
         assert.ok(
-            !twiml.includes('message='),
-            'Action URL must not contain message query parameter'
+            twiml.includes('+12065550100'),
+            'caller_number should be To (user number)'
+        );
+        assert.ok(
+            twiml.includes('source'),
+            'stream parameters should include source'
+        );
+        assert.ok(
+            twiml.includes('page'),
+            'source parameter value should be page'
         );
     } finally {
-        resetPageMessagesForTests();
+        restoreAllowlists();
     }
 });
 
-test('incoming-call: source=page-repeat returns fallback when message not found', async () => {
-    resetPageMessagesForTests();
+test('incoming-call: source=page denies when To not in allowlist', async () => {
+    const restoreAllowlists = await setCallerAllowlists({
+        primaryCaller: '+12065550100',
+    });
     const incomingCallHandler = await loadIncomingCallHandler();
     const request = {
-        query: { source: 'page-repeat' },
-        body: { CallSid: 'CA_unknown_sid' },
+        query: { source: 'page' },
+        body: { From: '+15550001234', To: '+19995550000', CallSid: 'CA_page2' },
         headers: { host: 'example.com' },
     };
     const reply = createReply();
 
-    await incomingCallHandler(request, reply);
-    const twiml = String(reply.payload);
-    assert.equal(reply.headers.type, 'text/xml');
-    assert.match(twiml, /Page message unavailable/);
-});
-
-test('incoming-call: source=page-repeat without CallSid returns fallback', async () => {
-    resetPageMessagesForTests();
-    const incomingCallHandler = await loadIncomingCallHandler();
-    const request = {
-        query: { source: 'page-repeat' },
-        body: {},
-        headers: { host: 'example.com' },
-    };
-    const reply = createReply();
-
-    await incomingCallHandler(request, reply);
-    const twiml = String(reply.payload);
-    assert.equal(reply.headers.type, 'text/xml');
-    assert.match(twiml, /Page message unavailable/);
+    try {
+        await incomingCallHandler(request, reply);
+        assert.equal(reply.headers.type, 'text/xml');
+        assert.ok(String(reply.payload).includes('restricted'));
+        assert.ok(String(reply.payload).includes('Hangup'));
+    } finally {
+        restoreAllowlists();
+    }
 });

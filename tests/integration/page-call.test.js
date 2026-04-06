@@ -52,9 +52,20 @@ test('requires Twilio credentials for page call integration', () => {
     );
 });
 
-test('placePageCall places a voice call via live Twilio', async () => {
+test('placePageCall places a voice call via live Twilio', async (t) => {
     const init = await import('../../src/init.js');
     assert.ok(init.twilioClient, 'Twilio client must be initialized.');
+
+    // placePageCall now passes a webhook URL to Twilio instead of inline TwiML,
+    // so a reachable https:// base URL is required for the call to succeed.
+    const { getServerBaseUrl } = await import('../../src/env.js');
+    const baseUrl = getServerBaseUrl();
+    if (!baseUrl || !baseUrl.startsWith('https://')) {
+        t.skip(
+            'A valid https:// SERVER_BASE_URL or NGROK_DOMAIN must be configured for page call integration tests.'
+        );
+        return;
+    }
 
     const { placePageCall } = await import('../../src/utils/page-call.js');
 
@@ -77,15 +88,4 @@ test('placePageCall places a voice call via live Twilio', async () => {
         if (prev == null) delete process.env.PRIMARY_USER_PHONE_NUMBERS;
         else process.env.PRIMARY_USER_PHONE_NUMBERS = prev;
     }
-});
-
-test('buildPageCallTwiml produces valid TwiML with page message', async () => {
-    const { buildPageCallTwiml } = await import('../../src/utils/page-call.js');
-
-    const twiml = buildPageCallTwiml('Server is on fire');
-    assert.match(twiml, /<Response>/);
-    assert.match(twiml, /Urgent page\. Server is on fire/);
-    assert.match(twiml, /Repeating\. Server is on fire/);
-    assert.match(twiml, /<Pause/);
-    assert.match(twiml, /<\/Response>/);
 });

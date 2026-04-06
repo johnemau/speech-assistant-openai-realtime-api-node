@@ -1,8 +1,6 @@
 import twilio from 'twilio';
 import { ALL_ALLOWED_CALLERS_SET, IS_DEV } from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
-import { readPageMessage } from '../utils/page-repeat-context.js';
-import { buildPageCallTwiml } from '../utils/page-call.js';
 
 /**
  * @param {import('fastify').FastifyRequest} request - Incoming Twilio webhook request.
@@ -13,36 +11,6 @@ export async function incomingCallHandler(request, reply) {
     const query = /** @type {Record<string, string>} */ (request.query || {});
     const body = /** @type {Record<string, string>} */ (request.body || {});
 
-    // --- Page-repeat branch (Gather callback) ---
-    if (query.source === 'page-repeat') {
-        const callSid = body.CallSid || body.callSid || '';
-        console.log('incoming-call: page-repeat branch', { callSid });
-
-        const message = readPageMessage(callSid);
-        if (!message) {
-            if (IS_DEV) {
-                console.log(
-                    'incoming-call: page-repeat message not found for callSid',
-                    { callSid }
-                );
-            }
-            const { VoiceResponse } = twilio.twiml;
-            const fallback = new VoiceResponse();
-            fallback.say('Page message unavailable. Goodbye.');
-            return reply.type('text/xml').send(fallback.toString());
-        }
-
-        const protocol = request.headers['x-forwarded-proto'] || 'https';
-        const host = request.headers.host || '';
-        const baseUrl = host ? `${protocol}://${host}` : '';
-        const repeatUrl = baseUrl
-            ? `${baseUrl}/incoming-call?source=page-repeat`
-            : undefined;
-
-        const twiml = buildPageCallTwiml(message, { repeatUrl });
-        return reply.type('text/xml').send(twiml);
-    }
-
     // --- Standard inbound call path ---
     // Route for Twilio to handle incoming calls
     // <Say> punctuation to improve text-to-speech translation
@@ -51,9 +19,20 @@ export async function incomingCallHandler(request, reply) {
     const toRaw = body.To || body.to || '';
     const toE164 = normalizeUSNumberToE164(toRaw);
     const callSid = body.CallSid || body.callSid || '';
-    console.log('incoming-call: received', { from: fromRaw, fromE164 });
 
-    if (!fromE164 || !ALL_ALLOWED_CALLERS_SET.has(fromE164)) {
+    // For page calls (outbound from server), Twilio calls our number as From
+    // and the user's number as To. Use To as the effective caller for allowlist
+    // and stream parameter so the assistant can personalize the greeting.
+    const isPageCall = query.source === 'page';
+    const callerE164 = isPageCall ? toE164 : fromE164;
+    console.log('incoming-call: received', {
+        from: fromRaw,
+        fromE164,
+        toE164,
+        isPageCall,
+    });
+
+    if (!callerE164 || !ALL_ALLOWED_CALLERS_SET.has(callerE164)) {
         const { VoiceResponse } = twilio.twiml;
         const denyTwiml = new VoiceResponse();
         denyTwiml.say(
@@ -73,9 +52,15 @@ export async function incomingCallHandler(request, reply) {
     const stream = connect.stream({
         url: `wss://${request.headers.host}/media-stream`,
     });
-    stream.parameter({ name: 'caller_number', value: fromE164 });
-    stream.parameter({ name: 'twilio_number', value: toE164 || '' });
+    stream.parameter({ name: 'caller_number', value: callerE164 });
+    stream.parameter({
+        name: 'twilio_number',
+        value: isPageCall ? fromE164 || '' : toE164 || '',
+    });
     stream.parameter({ name: 'call_sid', value: callSid || '' });
+    if (isPageCall) {
+        stream.parameter({ name: 'source', value: 'page' });
+    }
 
     if (IS_DEV) {
         console.log('incoming-call: twiml response', twimlResponse.toString());

@@ -1,4 +1,3 @@
-import twilio from 'twilio';
 import { getPrimaryCallerNumbers } from './email-page.js';
 import { placeCall } from './place-call.js';
 import { getServerBaseUrl, IS_DEV } from '../env.js';
@@ -47,56 +46,9 @@ export async function isWithinCallingHours({
     return { allowed, hour, timeZoneId };
 }
 
-/** @type {import('twilio/lib/twiml/VoiceResponse.js').SayAttributes} */
-const SAY_ATTRS = { voice: 'Google.en-US-Chirp3-HD-Charon' };
-
 /**
- * Build TwiML markup for a page call that reads the message three times
- * and then offers the listener the option to press any key to hear it again.
- *
- * @param {string} pageMessage - The page message to read aloud.
- * @param {object} [options] - Optional settings.
- * @param {string} [options.repeatUrl] - URL for the Gather action to replay the message.
- * @returns {string} TwiML XML string.
- */
-export function buildPageCallTwiml(pageMessage, options) {
-    const { VoiceResponse } = twilio.twiml;
-    const response = new VoiceResponse();
-
-    response.say(SAY_ATTRS, `Urgent page. ${pageMessage}`);
-    response.pause({ length: 1 });
-    response.say(SAY_ATTRS, `Repeating. ${pageMessage}`);
-    response.pause({ length: 1 });
-    response.say(SAY_ATTRS, `Repeating. ${pageMessage}`);
-
-    const repeatUrl = options?.repeatUrl;
-    if (repeatUrl) {
-        if (IS_DEV) {
-            console.log('page-call: buildPageCallTwiml with repeat gather', {
-                repeatUrl,
-            });
-        }
-        const gather = response.gather({
-            numDigits: 1,
-            timeout: 10,
-            action: repeatUrl,
-            method: 'POST',
-        });
-        gather.say(SAY_ATTRS, 'Press any key to hear the message again.');
-    } else {
-        if (IS_DEV) {
-            console.log(
-                'page-call: buildPageCallTwiml without repeat (no base URL)'
-            );
-        }
-        response.say(SAY_ATTRS, 'End of page. Goodbye.');
-    }
-
-    return response.toString();
-}
-
-/**
- * Place a voice call to the first primary caller number and read the page message.
+ * Place a voice call to the first primary caller number and connect to the AI assistant.
+ * The page message is stored by the returned call SID so the assistant can read it aloud.
  *
  * @param {object} root0 - Named parameters.
  * @param {string} root0.pageMessage - The page message to read.
@@ -112,18 +64,19 @@ export async function placePageCall({ pageMessage, fromNumber, client }) {
         return { to: '', error: 'No primary caller numbers configured.' };
     }
     const baseUrl = getServerBaseUrl();
-    const repeatUrl = baseUrl
-        ? `${baseUrl}/incoming-call?source=page-repeat`
-        : undefined;
+    if (!baseUrl) {
+        console.log('page-call: no server base URL configured');
+        return { to: '', error: 'No server base URL configured.' };
+    }
+    const url = `${baseUrl}/incoming-call?source=page`;
     if (IS_DEV) {
         console.log('page-call: placing page call', {
             toNumber,
             fromNumber,
-            hasRepeatUrl: Boolean(repeatUrl),
+            url,
         });
     }
-    const twiml = buildPageCallTwiml(pageMessage, { repeatUrl });
-    const result = await placeCall({ twiml, toNumber, fromNumber, client });
+    const result = await placeCall({ url, toNumber, fromNumber, client });
     if (result.sid) {
         savePageMessage(result.sid, pageMessage);
     }
