@@ -3,6 +3,7 @@ import { openaiClient, twilioClient } from '../init.js';
 import { IS_DEV } from '../env.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { GPT_5_4_MODEL } from '../config/openai-models.js';
+import { STUDY_ROOM_INSTRUCTIONS } from '../assistant/prompts.js';
 import { REDACTION_KEYS, redactErrorDetail } from '../utils/redaction.js';
 import { sendPageSms } from '../utils/page-sms.js';
 import { placePageCall, isWithinCallingHours } from '../utils/page-call.js';
@@ -129,8 +130,7 @@ export async function studyRoomTimesHandler(request, reply) {
             aiResult = await openaiClient.responses.create({
                 model: GPT_5_4_MODEL,
                 reasoning: { effort: 'xhigh' },
-                instructions:
-                    'You are a study room assistant. Summarize the available rooms concisely and in a phone-friendly way. Focus only on rooms with a capacity of at least 2.',
+                instructions: STUDY_ROOM_INSTRUCTIONS,
                 input: `Study room data:\n${content}\n\nList the top most recent available rooms and times with a capacity of 2.`,
             });
         } catch (e) {

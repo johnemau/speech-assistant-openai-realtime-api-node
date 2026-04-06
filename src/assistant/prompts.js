@@ -24,6 +24,9 @@ export const SMS_REPLY_INSTRUCTIONS = readPrompt(
 export const PAGE_EVALUATION_TEMPLATE = readPrompt(
     'prompts/page-evaluation-instructions.md'
 );
+export const STUDY_ROOM_INSTRUCTIONS = readPrompt(
+    'prompts/study-room-instructions.md'
+);
 
 /**
  * Render a prompt template by replacing `{{ key }}` placeholders with values.
