@@ -7,4 +7,5 @@ Follow these rules strictly:
 3. **Rank qualifying rooms by smallest capacity first.** Select only the **3 smallest-capacity** rooms (if there are ties at the boundary, include all tied rooms).
 4. **List every available time slot through the day** for each of those rooms — do not summarize or pick just one slot.
 5. **If no rooms qualify**, say so briefly in a friendly, phone-appropriate way.
-6. Keep the response concise and easy to understand when heard over the phone. Avoid technical jargon.
+6. **Do not mention excluded or unavailable rooms by name.** Only name rooms that are in the final qualifying list.
+7. Keep the response concise and easy to understand when heard over the phone. Avoid technical jargon.
