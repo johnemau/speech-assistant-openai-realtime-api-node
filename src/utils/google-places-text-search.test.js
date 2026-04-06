@@ -253,8 +253,12 @@ test('googlePlacesTextSearch prefers restriction over bias', async () => {
     assert.ok(seenBody);
     assert.ok(seenBody.locationRestriction);
     assert.equal(seenBody.locationBias, undefined);
-    assert.deepEqual(seenBody.locationRestriction.circle.center, {
-        latitude: 11.1,
-        longitude: 21.2,
-    });
+    assert.ok(seenBody.locationRestriction.rectangle);
+    assert.ok(seenBody.locationRestriction.rectangle.low);
+    assert.ok(seenBody.locationRestriction.rectangle.high);
+    // Center should be bracketed by the bounding box
+    assert.ok(seenBody.locationRestriction.rectangle.low.latitude < 11.1);
+    assert.ok(seenBody.locationRestriction.rectangle.high.latitude > 11.1);
+    assert.ok(seenBody.locationRestriction.rectangle.low.longitude < 21.2);
+    assert.ok(seenBody.locationRestriction.rectangle.high.longitude > 21.2);
 });

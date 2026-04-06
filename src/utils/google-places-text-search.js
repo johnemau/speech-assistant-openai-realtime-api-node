@@ -129,13 +129,22 @@ export async function googlePlacesTextSearch(args) {
         // Bias: "prefer near here"
         // Restriction: "only within this area"
         if (args.locationRestriction) {
+            // locationRestriction only supports rectangle (not circle) in Places API (New).
+            // Convert center+radius circle to a bounding-box rectangle.
+            const { center, radius_m } = args.locationRestriction;
+            const latDelta = radius_m / 111320;
+            const lngDelta =
+                radius_m / (111320 * Math.cos((center.lat * Math.PI) / 180));
             body.locationRestriction = {
-                circle: {
-                    center: {
-                        latitude: args.locationRestriction.center.lat,
-                        longitude: args.locationRestriction.center.lng,
+                rectangle: {
+                    low: {
+                        latitude: center.lat - latDelta,
+                        longitude: center.lng - lngDelta,
                     },
-                    radius: args.locationRestriction.radius_m,
+                    high: {
+                        latitude: center.lat + latDelta,
+                        longitude: center.lng + lngDelta,
+                    },
                 },
             };
         } else if (args.locationBias) {
