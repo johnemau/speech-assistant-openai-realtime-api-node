@@ -50,6 +50,10 @@ import {
     definition as yaleLockDefinition,
     execute as executeYaleLock,
 } from './yale-lock.js';
+import {
+    definition as getStudyRoomTimesDefinition,
+    execute as executeGetStudyRoomTimes,
+} from './get-study-room-times.js';
 import { IS_DEV } from '../env.js';
 
 // This module is the single source of truth for both tool declaration and tool
@@ -69,6 +73,7 @@ const toolExecutors = new Map(
         ['directions', executeDirections],
         ['weather', executeWeather],
         ['yale_lock', executeYaleLock],
+        ['get_study_room_times', executeGetStudyRoomTimes],
     ])
 );
 
@@ -94,6 +99,7 @@ export function getToolDefinitions() {
         directionsDefinition,
         weatherDefinition,
         yaleLockDefinition,
+        getStudyRoomTimesDefinition,
     ];
 }
 

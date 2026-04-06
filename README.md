@@ -181,6 +181,10 @@ Optional integrations:
 # Google Routes API (Directions tool)
 GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 
+# Skyvern (study room availability workflow)
+SKYVERN_API_KEY=your_skyvern_api_key
+SKYVERN_STUDY_ROOM_WORKFLOW_ID=wpid_your_workflow_id
+
 # SPOT public feed (latest track + timezone greeting)
 SPOT_FEED_ID=your_spot_feed_id
 SPOT_FEED_PASSWORD=your_spot_feed_password
