@@ -1305,7 +1305,9 @@ export function mediaStreamHandler(connection, req) {
                 content: [
                     {
                         type: 'input_text',
-                        text: `Start the greeting with "${timeGreeting}" and immediately say the caller name "${callerNameValue}" with NO comma or pause between them (e.g., "${timeGreeting} ${callerNameValue}"). Speak slightly faster for THIS initial greeting only. Single concise butler/service‑worker style line; light and optionally witty; always include the name and the time greeting.${pageMessage ? ` After the greeting, immediately read this urgent page message aloud: "${pageMessage}"` : ''}`,
+                        text: pageMessage
+                            ? `Say exactly: "${timeGreeting}, ${callerNameValue}. ${pageMessage}. How can I help?" — vary only the phrasing of "How can I help?" slightly each time (e.g. "How can I help you?" / "What can I do for you?"). Speak at a natural, slightly brisk pace.`
+                            : `Start the greeting with "${timeGreeting}" and immediately say the caller name "${callerNameValue}" with NO comma or pause between them (e.g., "${timeGreeting} ${callerNameValue}"). Speak slightly faster for THIS initial greeting only. Single concise butler/service‑worker style line; light and optionally witty; always include the name and the time greeting.`,
                     },
                 ],
             },
