@@ -18,7 +18,7 @@ import { stringifyDeep } from '../utils/format.js';
 import { normalizeUSNumberToE164 } from '../utils/phone.js';
 import { buildRealtimeContextSection } from '../utils/realtime-context.js';
 import { REALTIME_INSTRUCTIONS } from '../assistant/prompts.js';
-import { readPageMessage } from '../utils/page-repeat-context.js';
+import { readPendingMessage } from '../utils/pending-messages.js';
 import {
     IS_DEV,
     PRIMARY_CALLERS_SET,
@@ -1240,7 +1240,7 @@ export function mediaStreamHandler(connection, req) {
     // Send initial conversation item using the caller's name once available
     const sendInitialConversationItem = async (
         callerNameValue = 'legend',
-        /** @type {string | null} */ pageMessage = null
+        /** @type {string | null} */ pendingMessage = null
     ) => {
         initialGreetingRequested = true;
         let timeZone = 'America/Los_Angeles';
@@ -1305,8 +1305,8 @@ export function mediaStreamHandler(connection, req) {
                 content: [
                     {
                         type: 'input_text',
-                        text: pageMessage
-                            ? `Say exactly: "${timeGreeting}, ${callerNameValue}. ${pageMessage}. How can I help?" — vary only the phrasing of "How can I help?" slightly each time (e.g. "How can I help you?" / "What can I do for you?"). Speak at a natural, slightly brisk pace.`
+                        text: pendingMessage
+                            ? `Say exactly: "${timeGreeting}, ${callerNameValue}. ${pendingMessage}. How can I help?" — vary only the phrasing of "How can I help?" slightly each time (e.g. "How can I help you?" / "What can I do for you?"). Speak at a natural, slightly brisk pace.`
                             : `Start the greeting with "${timeGreeting}" and immediately say the caller name "${callerNameValue}" with NO comma or pause between them (e.g., "${timeGreeting} ${callerNameValue}"). Speak slightly faster for THIS initial greeting only. Single concise butler/service‑worker style line; light and optionally witty; always include the name and the time greeting.`,
                     },
                 ],
@@ -1650,13 +1650,13 @@ export function mediaStreamHandler(connection, req) {
                         }
                         // Read stored page message when this is an outbound page call
                         const sourceParam = cp.source || null;
-                        const pageMessage =
+                        const pendingMessage =
                             sourceParam === 'page' && currentCallSid
-                                ? (readPageMessage(currentCallSid) ?? null)
+                                ? (readPendingMessage(currentCallSid) ?? null)
                                 : null;
-                        if (pageMessage && IS_DEV) {
+                        if (pendingMessage && IS_DEV) {
                             console.log(
-                                'media-stream: page message found for greeting',
+                                'media-stream: pending message found for greeting',
                                 { callSid: currentCallSid }
                             );
                         }
@@ -1664,7 +1664,7 @@ export function mediaStreamHandler(connection, req) {
                         void updateRealtimeInstructionsAtStart();
                         void sendInitialConversationItem(
                             callerName,
-                            pageMessage
+                            pendingMessage
                         );
                     } catch {
                         // noop: missing custom parameters should not break stream handling

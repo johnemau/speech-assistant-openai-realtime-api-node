@@ -4,13 +4,13 @@ import assert from 'node:assert/strict';
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test';
 
 const { placePageCall, isWithinCallingHours } = await import('./page-call.js');
-const { readPageMessage, resetPageMessagesForTests } =
-    await import('./page-repeat-context.js');
+const { readPendingMessage, resetPendingMessagesForTests } =
+    await import('./pending-messages.js');
 
 // --- placePageCall ---
 
 test('placePageCall: calls first primary number with URL and persists message by sid', async () => {
-    resetPageMessagesForTests();
+    resetPendingMessagesForTests();
     const prev = process.env.PRIMARY_USER_PHONE_NUMBERS;
     const prevBase = process.env.SERVER_BASE_URL;
     process.env.PRIMARY_USER_PHONE_NUMBERS = '+12065550100,+12065550101';
@@ -40,9 +40,9 @@ test('placePageCall: calls first primary number with URL and persists message by
         );
         assert.equal(calls[0].from, '+15550001234');
         // Verify page message persisted for greeting lookup
-        assert.equal(readPageMessage('CA1'), 'Alert!');
+        assert.equal(readPendingMessage('CA1'), 'Alert!');
     } finally {
-        resetPageMessagesForTests();
+        resetPendingMessagesForTests();
         if (prev == null) delete process.env.PRIMARY_USER_PHONE_NUMBERS;
         else process.env.PRIMARY_USER_PHONE_NUMBERS = prev;
         if (prevBase == null) delete process.env.SERVER_BASE_URL;
