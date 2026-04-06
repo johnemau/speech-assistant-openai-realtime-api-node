@@ -131,7 +131,7 @@ export async function studyRoomTimesHandler(request, reply) {
                 model: GPT_5_4_MODEL,
                 reasoning: { effort: 'xhigh' },
                 instructions: STUDY_ROOM_INSTRUCTIONS,
-                input: `Study room data:\n${content}\n\nList the top most recent available rooms and times with a capacity of 2.`,
+                input: `Study room data:\n${content}\n\nList all available time slots through the day for the 3 smallest-capacity rooms that have at least 30 minutes of available time.`,
             });
         } catch (e) {
             let detail = e?.message || String(e);

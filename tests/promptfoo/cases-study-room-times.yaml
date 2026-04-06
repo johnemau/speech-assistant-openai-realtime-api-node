@@ -1,54 +1,76 @@
-- name: study-room-available-rooms
+- name: study-room-smallest-capacity-3-rooms
   vars:
       user_prompt: |
           Study room data:
           [
-            {"room": "Room 101", "capacity": 4, "available": true, "start": "2026-04-06T14:00:00", "end": "2026-04-06T16:00:00"},
-            {"room": "Room 102", "capacity": 1, "available": true, "start": "2026-04-06T14:00:00", "end": "2026-04-06T15:00:00"},
-            {"room": "Room 201", "capacity": 6, "available": true, "start": "2026-04-06T15:00:00", "end": "2026-04-06T17:00:00"},
-            {"room": "Room 202", "capacity": 2, "available": false, "start": null, "end": null}
+            {"room": "Room A", "capacity": 2, "available": true, "start": "2026-04-06T09:00:00", "end": "2026-04-06T11:00:00"},
+            {"room": "Room B", "capacity": 4, "available": true, "start": "2026-04-06T10:00:00", "end": "2026-04-06T12:00:00"},
+            {"room": "Room C", "capacity": 6, "available": true, "start": "2026-04-06T11:00:00", "end": "2026-04-06T13:00:00"},
+            {"room": "Room D", "capacity": 8, "available": true, "start": "2026-04-06T09:00:00", "end": "2026-04-06T12:00:00"},
+            {"room": "Room E", "capacity": 10, "available": true, "start": "2026-04-06T13:00:00", "end": "2026-04-06T15:00:00"}
           ]
 
-          List the top most recent available rooms and times with a capacity of 2.
+          List all available time slots through the day for the 3 smallest-capacity rooms that have at least 30 minutes of available time.
   assert:
       - type: llm-rubric
         value: >
-            Mentions at least one room with capacity >= 2 that is available
-            (Room 101 or Room 201), does not mention the single-person Room 102,
-            and the summary is concise and easy to understand over the phone.
+            Mentions exactly Room A (capacity 2), Room B (capacity 4), and Room C (capacity 6)
+            as the 3 smallest-capacity rooms, does not mention Room D or Room E,
+            and includes the time slot for each listed room.
 
-- name: study-room-no-available-rooms
+- name: study-room-30-min-minimum-filter
+  vars:
+      user_prompt: |
+          Study room data:
+          [
+            {"room": "Quick Room", "capacity": 2, "available": true, "start": "2026-04-06T10:00:00", "end": "2026-04-06T10:25:00"},
+            {"room": "Study Pod", "capacity": 3, "available": true, "start": "2026-04-06T13:00:00", "end": "2026-04-06T13:45:00"},
+            {"room": "Group Room", "capacity": 6, "available": true, "start": "2026-04-06T14:00:00", "end": "2026-04-06T16:00:00"}
+          ]
+
+          List all available time slots through the day for the 3 smallest-capacity rooms that have at least 30 minutes of available time.
+  assert:
+      - type: llm-rubric
+        value: >
+            Does NOT mention Quick Room (only 25 minutes available, below the 30-minute minimum),
+            mentions Study Pod (45 minutes, qualifies) and Group Room (120 minutes, qualifies),
+            and the response is concise and phone-friendly.
+
+- name: study-room-multi-slot-through-day
+  vars:
+      user_prompt: |
+          Study room data:
+          [
+            {"room": "Room 101", "capacity": 3, "available": true, "start": "2026-04-06T09:00:00", "end": "2026-04-06T10:00:00"},
+            {"room": "Room 101", "capacity": 3, "available": true, "start": "2026-04-06T12:00:00", "end": "2026-04-06T13:30:00"},
+            {"room": "Room 101", "capacity": 3, "available": true, "start": "2026-04-06T15:00:00", "end": "2026-04-06T17:00:00"},
+            {"room": "Room 202", "capacity": 8, "available": true, "start": "2026-04-06T10:00:00", "end": "2026-04-06T12:00:00"}
+          ]
+
+          List all available time slots through the day for the 3 smallest-capacity rooms that have at least 30 minutes of available time.
+  assert:
+      - type: llm-rubric
+        value: >
+            Mentions all three available time slots for Room 101 (9–10 AM, 12–1:30 PM,
+            and 3–5 PM), mentions Room 202, and does not omit any qualifying slot for Room 101.
+
+- name: study-room-no-qualifying-rooms
   vars:
       user_prompt: |
           Study room data:
           [
             {"room": "Room 101", "capacity": 4, "available": false, "start": null, "end": null},
-            {"room": "Room 202", "capacity": 2, "available": false, "start": null, "end": null}
+            {"room": "Room 202", "capacity": 2, "available": false, "start": null, "end": null},
+            {"room": "Quick Room", "capacity": 3, "available": true, "start": "2026-04-06T10:00:00", "end": "2026-04-06T10:20:00"}
           ]
 
-          List the top most recent available rooms and times with a capacity of 2.
+          List all available time slots through the day for the 3 smallest-capacity rooms that have at least 30 minutes of available time.
   assert:
       - type: llm-rubric
         value: >
-            Clearly states that no rooms with capacity of 2 or more are currently
-            available, and the response is brief and phone-friendly.
-
-- name: study-room-filters-small-capacity
-  vars:
-      user_prompt: |
-          Study room data:
-          [
-            {"room": "Cubicle A", "capacity": 1, "available": true, "start": "2026-04-06T13:00:00", "end": "2026-04-06T18:00:00"},
-            {"room": "Cubicle B", "capacity": 1, "available": true, "start": "2026-04-06T13:00:00", "end": "2026-04-06T18:00:00"},
-            {"room": "Group Room 3", "capacity": 8, "available": true, "start": "2026-04-06T16:00:00", "end": "2026-04-06T18:00:00"}
-          ]
-
-          List the top most recent available rooms and times with a capacity of 2.
-  assert:
-      - type: llm-rubric
-        value: >
-            Mentions Group Room 3 (capacity 8, available), does not mention
-            the single-person cubicles, and gives the available time window.
+            Clearly states that no rooms with at least 30 minutes of available time were found,
+            and delivers the message in a brief, friendly, phone-appropriate way without
+            technical jargon.
 
 - name: study-room-failure-reason-payload
   vars:
@@ -56,7 +78,7 @@
           Study room data:
           The study room booking system returned an error: "Service temporarily unavailable. Please try again later."
 
-          List the top most recent available rooms and times with a capacity of 2.
+          List all available time slots through the day for the 3 smallest-capacity rooms that have at least 30 minutes of available time.
   assert:
       - type: llm-rubric
         value: >
