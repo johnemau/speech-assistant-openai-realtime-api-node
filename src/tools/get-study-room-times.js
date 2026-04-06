@@ -1,5 +1,5 @@
 import { runWorkflow as realRunWorkflow } from '../utils/skyvern.js';
-import { IS_DEV } from '../env.js';
+import { IS_DEV, getServerBaseUrl } from '../env.js';
 
 /** @type {typeof realRunWorkflow} */
 let runWorkflowImpl = realRunWorkflow;
@@ -75,12 +75,14 @@ export async function execute({ args }) {
     }
 
     try {
+        const webhookUrl = `${getServerBaseUrl()}/get-study-room-times`;
         await runWorkflowImpl({
             workflowId,
             parameters: {
                 library_location: libraryLocation,
                 target_date: targetDate,
             },
+            webhook_url: webhookUrl,
         });
 
         if (IS_DEV) {

@@ -7,6 +7,7 @@ const SKYVERN_API_BASE = 'https://api.skyvern.com';
  * @typedef {object} RunWorkflowArgs
  * @property {string} workflowId - Skyvern workflow permanent ID (e.g. "wpid_...").
  * @property {Record<string, string>} parameters - Input parameters matching the workflow definition.
+ * @property {string} [webhook_url] - Optional URL Skyvern will POST results to when the workflow completes.
  */
 
 /**
@@ -18,7 +19,7 @@ const SKYVERN_API_BASE = 'https://api.skyvern.com';
  * @param {RunWorkflowArgs} args - Workflow invocation arguments.
  * @returns {Promise<unknown>} Parsed JSON response from the Skyvern API.
  */
-export async function runWorkflow({ workflowId, parameters }) {
+export async function runWorkflow({ workflowId, parameters, webhook_url }) {
     const apiKey = process.env.SKYVERN_API_KEY;
     if (!apiKey) {
         throw new Error('SKYVERN_API_KEY not set');
@@ -30,6 +31,7 @@ export async function runWorkflow({ workflowId, parameters }) {
         parameters,
         proxy_location: 'RESIDENTIAL',
         max_screenshot_scrolls: 10,
+        ...(webhook_url ? { webhook_url } : {}),
     };
 
     if (IS_DEV) {
@@ -38,6 +40,7 @@ export async function runWorkflow({ workflowId, parameters }) {
             url,
             workflow_id: workflowId,
             parameters,
+            webhook_url,
         });
         logHttpRequest({ tag: 'skyvern', url, method: 'POST', body });
     }

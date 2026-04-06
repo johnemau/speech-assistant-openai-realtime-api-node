@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const originalWorkflowId = process.env.SKYVERN_STUDY_ROOM_WORKFLOW_ID;
+const originalServerBaseUrl = process.env.SERVER_BASE_URL;
 
 const { execute, setRunWorkflowForTests, resetRunWorkflowForTests } =
     await import('./get-study-room-times.js');
@@ -13,16 +14,23 @@ test.afterEach(() => {
     } else {
         process.env.SKYVERN_STUDY_ROOM_WORKFLOW_ID = originalWorkflowId;
     }
+    if (originalServerBaseUrl == null) {
+        delete process.env.SERVER_BASE_URL;
+    } else {
+        process.env.SERVER_BASE_URL = originalServerBaseUrl;
+    }
 });
 
 test('get_study_room_times: returns started status with message on success', async () => {
     process.env.SKYVERN_STUDY_ROOM_WORKFLOW_ID = 'wpid_test123';
+    process.env.SERVER_BASE_URL = 'https://example.com';
 
-    /** @type {{ workflowId?: string, parameters?: Record<string, string> }} */
+    /** @type {{ workflowId?: string, parameters?: Record<string, string>, webhook_url?: string }} */
     const seen = {};
-    setRunWorkflowForTests(async ({ workflowId, parameters }) => {
+    setRunWorkflowForTests(async ({ workflowId, parameters, webhook_url }) => {
         seen.workflowId = workflowId;
         seen.parameters = parameters;
+        seen.webhook_url = webhook_url;
         return { run_id: 'run_abc', status: 'queued' };
     });
 
@@ -49,6 +57,7 @@ test('get_study_room_times: returns started status with message on success', asy
         library_location: 'Bellevue Library',
         target_date: 'April 10, 2026',
     });
+    assert.equal(seen.webhook_url, 'https://example.com/get-study-room-times');
 });
 
 test('get_study_room_times: returns error when SKYVERN_STUDY_ROOM_WORKFLOW_ID is not set', async () => {
