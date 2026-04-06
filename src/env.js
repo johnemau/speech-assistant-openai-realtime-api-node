@@ -118,7 +118,12 @@ export const ENROLLMENT_FORM_IMAGE_URL =
  */
 export function getServerBaseUrl() {
     const explicit = process.env.SERVER_BASE_URL;
-    if (explicit) return explicit.replace(/\/+$/, '');
+    if (explicit) {
+        const normalized = /^https?:\/\//i.test(explicit)
+            ? explicit
+            : `https://${explicit}`;
+        return normalized.replace(/\/+$/, '');
+    }
     const ngrok = process.env.NGROK_DOMAIN;
     if (ngrok) return `https://${ngrok}`.replace(/\/+$/, '');
     return '';
