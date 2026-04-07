@@ -33,6 +33,9 @@ export const RESERVE_ROOM_INSTRUCTIONS = readPrompt(
 export const PLACE_HOLD_ON_BOOK_INSTRUCTIONS = readPrompt(
     'prompts/place-hold-on-book-instructions.md'
 );
+export const CHECK_BOOK_HOLDS_INSTRUCTIONS = readPrompt(
+    'prompts/check-book-holds-instructions.md'
+);
 
 /**
  * Render a prompt template by replacing `{{ key }}` placeholders with values.

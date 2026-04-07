@@ -15,6 +15,7 @@ import { definition as weatherDefinition } from '../tools/weather.js';
 import { definition as getStudyRoomTimesDefinition } from '../tools/get-study-room-times.js';
 import { definition as reserveStudyRoomDefinition } from '../tools/reserve-study-room.js';
 import { definition as placeHoldOnBookDefinition } from '../tools/place-hold-on-book.js';
+import { definition as checkBookHoldsDefinition } from '../tools/check-book-holds.js';
 import {
     GPT_5_2_MODEL,
     GPT_5_4_MODEL,
@@ -127,6 +128,9 @@ const SMS_TOOL_DEFINITIONS = [
     ),
     /** @type {import('openai/resources/responses/responses').Tool} */ (
         placeHoldOnBookDefinition
+    ),
+    /** @type {import('openai/resources/responses/responses').Tool} */ (
+        checkBookHoldsDefinition
     ),
 ];
 

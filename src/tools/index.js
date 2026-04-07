@@ -62,6 +62,10 @@ import {
     definition as placeHoldOnBookDefinition,
     execute as executePlaceHoldOnBook,
 } from './place-hold-on-book.js';
+import {
+    definition as checkBookHoldsDefinition,
+    execute as executeCheckBookHolds,
+} from './check-book-holds.js';
 import { IS_DEV } from '../env.js';
 
 // This module is the single source of truth for both tool declaration and tool
@@ -84,6 +88,7 @@ const toolExecutors = new Map(
         ['get_study_room_times', executeGetStudyRoomTimes],
         ['reserve_study_room', executeReserveStudyRoom],
         ['place_hold_on_book', executePlaceHoldOnBook],
+        ['check_book_holds', executeCheckBookHolds],
     ])
 );
 
@@ -112,6 +117,7 @@ export function getToolDefinitions() {
         getStudyRoomTimesDefinition,
         reserveStudyRoomDefinition,
         placeHoldOnBookDefinition,
+        checkBookHoldsDefinition,
     ];
 }
 
