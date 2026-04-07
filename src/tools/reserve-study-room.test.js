@@ -60,8 +60,8 @@ test('reserve_study_room: returns started status with message on success', async
         library_location: 'Bellevue Library',
         room_name: 'Room A',
         target_date: 'April 10, 2026',
-        study_room_reservation_start_time: '2:00 PM',
-        study_room_reservation_end_time: '4:00 PM',
+        Study_Room_Reservation_Start_Time: '2:00 PM',
+        Study_Room_Reservation_End_Time: '4:00 PM',
     });
     assert.equal(seen.webhook_url, 'https://example.com/reserve-study-room');
 });

@@ -106,8 +106,8 @@ export async function execute({ args }) {
                 library_location: libraryLocation,
                 room_name: roomName,
                 target_date: targetDate,
-                study_room_reservation_end_time: endTime,
-                study_room_reservation_start_time: startTime,
+                Study_Room_Reservation_End_Time: endTime,
+                Study_Room_Reservation_Start_Time: startTime,
             },
             webhook_url: webhookUrl,
         });
