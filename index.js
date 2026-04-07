@@ -9,6 +9,7 @@ import { createMarkdownDocHandler } from './src/routes/markdown-doc.js';
 import { emailPageHandler } from './src/routes/email-page.js';
 import { studyRoomTimesHandler } from './src/routes/get-study-room-times.js';
 import { reserveStudyRoomHandler } from './src/routes/reserve-study-room.js';
+import { placeHoldOnBookHandler } from './src/routes/place-hold-on-book.js';
 import { NGROK_DOMAIN, PORT } from './src/init.js';
 import {
     getServerBaseUrl,
@@ -100,6 +101,7 @@ fastify.register(async (fastify) => {
     );
     fastify.post('/get-study-room-times', studyRoomTimesHandler);
     fastify.post('/reserve-study-room', reserveStudyRoomHandler);
+    fastify.post('/place-hold-on-book', placeHoldOnBookHandler);
 });
 
 fastify.all('/incoming-call', incomingCallHandler);

@@ -58,6 +58,10 @@ import {
     definition as reserveStudyRoomDefinition,
     execute as executeReserveStudyRoom,
 } from './reserve-study-room.js';
+import {
+    definition as placeHoldOnBookDefinition,
+    execute as executePlaceHoldOnBook,
+} from './place-hold-on-book.js';
 import { IS_DEV } from '../env.js';
 
 // This module is the single source of truth for both tool declaration and tool
@@ -79,6 +83,7 @@ const toolExecutors = new Map(
         ['yale_lock', executeYaleLock],
         ['get_study_room_times', executeGetStudyRoomTimes],
         ['reserve_study_room', executeReserveStudyRoom],
+        ['place_hold_on_book', executePlaceHoldOnBook],
     ])
 );
 
@@ -106,6 +111,7 @@ export function getToolDefinitions() {
         yaleLockDefinition,
         getStudyRoomTimesDefinition,
         reserveStudyRoomDefinition,
+        placeHoldOnBookDefinition,
     ];
 }
 
